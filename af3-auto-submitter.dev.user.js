@@ -1,16 +1,18 @@
 // ==UserScript==
-// @name         AF3 Auto Submitter DEV
-// @namespace    https://github.com/siyuanj/af3-auto-submitter/dev
-// @version      2.24-dev.1
-// @description  测试版：稳定版，包含轻量多语言、运行前安全摘要、完成统计、失败任务汇总、暂停/停止控制、可折叠运行日志和拖动位置保存，不会覆盖正式版脚本。
-// @author       Jiang Siyuan
+// @name         AF3 Auto Submitter DEV (huaaaajjj)
+// @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
+// @version      2.25.0-dev.1
+// @description  开发版：仅点击一次提交，收到官网明确成功提示才计数，未确认结果时停止并锁定启动。
+// @author       Jiang Siyuan; huaaaajjj
+// @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
+// @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
 // @match        https://alphafoldserver.com/*
 // @match        https://www.alphafoldserver.com/*
 // @grant        none
 // @run-at       document-start
 // @noframes
-// @updateURL    https://raw.githubusercontent.com/siyuanj/af3-auto-submitter/test/greasyfork-dev-v2.2/af3-auto-submitter.dev.user.js
-// @downloadURL  https://raw.githubusercontent.com/siyuanj/af3-auto-submitter/test/greasyfork-dev-v2.2/af3-auto-submitter.dev.user.js
+// @updateURL    https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js
+// @downloadURL  https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js
 // ==/UserScript==
 
 (function() {
@@ -23,6 +25,7 @@
     const LANGUAGE_KEY = `${CONTAINER_ID}-language`;
     const WAIT_FOR_MODAL = 2000;
     const WAIT_FOR_PAGE_LOAD = 3000; // 跳转等待时间
+    const SUBMISSION_TIMEOUT = 60000;
     // -----------
 
     const LANGUAGES = [
@@ -36,6 +39,12 @@
 
     const I18N = {
         zh: {
+            verifyingSubmission: "等待官网确认…",
+            submissionLocked: "需要人工核对",
+            submissionNotReady: "提交按钮已失效或不可用，未提交。",
+            submissionUncertain: "提交结果尚未确认，已停止且锁定启动。请先人工核对历史记录与额度，再刷新页面；不要直接重试。",
+            submissionServerError: "官网报告提交错误：{message}。已停止且锁定启动，请核对历史记录与额度后刷新。",
+            draftListUnchanged: "官网已报告成功，但草稿列表未更新。已停止且锁定启动，未再次提交；请核对历史记录后刷新。",
             headerDev: '🧪 AF3 自动助手 DEV',
             headerProd: '🤖 AF3 自动助手',
             languageTitle: '界面语言',
@@ -112,6 +121,12 @@
             runEnded: '运行结束'
         },
         en: {
+            verifyingSubmission: "Waiting for server confirmation…",
+            submissionLocked: "Manual review required",
+            submissionNotReady: "The submit button is no longer available. Nothing was submitted.",
+            submissionUncertain: "Submission is unconfirmed. The batch stopped and Start is locked. Check history and quota manually before reloading; do not retry blindly.",
+            submissionServerError: "Server reported a submission error: {message}. The batch stopped and Start is locked. Check history and quota before reloading.",
+            draftListUnchanged: "The server reported success, but the draft list did not update. The batch stopped and Start is locked. No repeat submission was sent; check history before reloading.",
             headerDev: '🧪 AF3 Auto Submitter DEV',
             headerProd: '🤖 AF3 Auto Submitter',
             languageTitle: 'Language',
@@ -188,6 +203,12 @@
             runEnded: 'Run ended'
         },
         ja: {
+            verifyingSubmission: "サーバーの確認を待機中…",
+            submissionLocked: "手動確認が必要です",
+            submissionNotReady: "送信ボタンが無効または表示されていません。送信していません。",
+            submissionUncertain: "送信結果を確認できません。処理を停止し、開始をロックしました。履歴と残り枠を手動で確認してから再読み込みしてください。確認せず再試行しないでください。",
+            submissionServerError: "サーバーの送信エラー：{message}。処理を停止し、開始をロックしました。履歴と残り枠を確認してから再読み込みしてください。",
+            draftListUnchanged: "サーバーは成功を報告しましたが、下書き一覧が更新されませんでした。開始をロックし、再送信せず停止しました。履歴を確認してから再読み込みしてください。",
             headerDev: '🧪 AF3 自動送信 DEV',
             headerProd: '🤖 AF3 自動送信',
             languageTitle: '言語',
@@ -264,6 +285,12 @@
             runEnded: '実行終了'
         },
         ko: {
+            verifyingSubmission: "서버 확인 대기 중…",
+            submissionLocked: "수동 확인 필요",
+            submissionNotReady: "제출 버튼을 사용할 수 없습니다. 제출하지 않았습니다.",
+            submissionUncertain: "제출 결과를 확인하지 못했습니다. 중지하고 시작 버튼을 잠갔습니다. 기록과 잔여 할당량을 직접 확인한 뒤 새로고침하세요. 무작정 재시도하지 마세요.",
+            submissionServerError: "서버 제출 오류: {message}. 중지하고 시작 버튼을 잠갔습니다. 기록과 할당량을 확인한 뒤 새로고침하세요.",
+            draftListUnchanged: "서버는 성공을 보고했지만 초안 목록이 갱신되지 않았습니다. 재제출하지 않고 중지하고 시작 버튼을 잠갔습니다. 기록 확인 후 새로고침하세요.",
             headerDev: '🧪 AF3 자동 제출 DEV',
             headerProd: '🤖 AF3 자동 제출',
             languageTitle: '언어',
@@ -340,6 +367,12 @@
             runEnded: '실행 종료'
         },
         es: {
+            verifyingSubmission: "Esperando confirmación del servidor…",
+            submissionLocked: "Revisión manual necesaria",
+            submissionNotReady: "El botón de envío ya no está disponible. No se envió nada.",
+            submissionUncertain: "No se confirmó el envío. El lote se detuvo e Iniciar quedó bloqueado. Revisa el historial y la cuota antes de recargar; no reintentes sin comprobarlos.",
+            submissionServerError: "Error de envío del servidor: {message}. El lote se detuvo e Iniciar quedó bloqueado. Revisa el historial y la cuota antes de recargar.",
+            draftListUnchanged: "El servidor informó de éxito, pero la lista de borradores no se actualizó. Se detuvo el lote y se bloqueó Iniciar sin repetir el envío. Revisa el historial antes de recargar.",
             headerDev: '🧪 AF3 Auto Submitter DEV',
             headerProd: '🤖 AF3 Auto Submitter',
             languageTitle: 'Idioma',
@@ -416,6 +449,12 @@
             runEnded: 'Ejecución finalizada'
         },
         fr: {
+            verifyingSubmission: "En attente de confirmation du serveur…",
+            submissionLocked: "Vérification manuelle requise",
+            submissionNotReady: "Le bouton d’envoi n’est plus disponible. Aucun envoi effectué.",
+            submissionUncertain: "L’envoi n’est pas confirmé. Le lot est arrêté et Démarrer est verrouillé. Vérifiez l’historique et le quota avant de recharger ; ne réessayez pas sans vérifier.",
+            submissionServerError: "Erreur d’envoi du serveur : {message}. Le lot est arrêté et Démarrer est verrouillé. Vérifiez l’historique et le quota avant de recharger.",
+            draftListUnchanged: "Le serveur a signalé un succès, mais la liste des brouillons n’a pas changé. Le lot est arrêté et Démarrer est verrouillé, sans nouvel envoi. Vérifiez l’historique avant de recharger.",
             headerDev: '🧪 AF3 Auto Submitter DEV',
             headerProd: '🤖 AF3 Auto Submitter',
             languageTitle: 'Langue',
@@ -499,6 +538,9 @@
     let isRunning = false;
     let shouldStop = false;
     let isPaused = false;
+    // Keep this guard after a batch ends. Re-enabling the UI is not evidence
+    // that a request was rejected; the user must reconcile it before reloading.
+    let submissionBlockReason = '';
     let isDraggingPanel = false;
     let logExpanded = false;
     let currentLanguage = getSavedLanguage();
@@ -817,6 +859,82 @@
 
         addLog(t('startConfirmed', { mode: getModeLabel(), planned: plannedJobs, rows: rowCount }));
         return plannedJobs;
+    }
+
+    // Watch only official snackbar containers, never our own status or logs.
+    // A closed dialog or a refreshed row cannot confirm a server-side launch.
+    async function submitAndConfirm(confirmButton) {
+        await waitIfPaused();
+        if (!confirmButton?.isConnected || confirmButton.disabled ||
+            confirmButton.getAttribute('aria-disabled') === 'true' || confirmButton.offsetParent === null) {
+            throw new Error(t('submissionNotReady'));
+        }
+        const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
+        const notices = () => Array.from(document.querySelectorAll('mat-snack-bar-container, .mat-mdc-snack-bar-container'));
+        const readNotice = node => {
+            const copy = node.cloneNode(true);
+            copy.querySelectorAll('mat-icon, svg').forEach(icon => icon.remove());
+            return normalize(copy.textContent);
+        };
+        const seen = new Map(notices().map(node => [node, readNotice(node)]));
+        let result = null;
+        const observer = new MutationObserver(() => {
+            for (const node of notices()) {
+                const message = readNotice(node);
+                if (seen.get(node) === message) continue;
+                seen.set(node, message);
+                if (/failed to launch|\berror\b|\bfailed\b|quota|too many requests|rate limit|unauthenticated/i.test(message)) {
+                    result = new Error(t('submissionServerError', { message }));
+                } else if (/\bJob successfully launched\./i.test(message) && !(result instanceof Error)) {
+                    result = true;
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+        try {
+            checkStop();
+            submissionBlockReason = t('submissionUncertain');
+            updateBtnText(t('verifyingSubmission'));
+            const deadline = Date.now() + SUBMISSION_TIMEOUT;
+            // Dispatch exactly one click. Never retry a pending request.
+            confirmButton.click();
+            while (Date.now() < deadline) {
+                if (result instanceof Error) {
+                    submissionBlockReason = result.message;
+                    throw result;
+                }
+                if (result === true) {
+                    submissionBlockReason = '';
+                    return;
+                }
+                // Pause must not suspend confirmation of a request already sent.
+                // Stop interrupts the wait but retains the uncertainty guard.
+                checkStop();
+                await sleep(100);
+            }
+            throw new Error(t('submissionUncertain'));
+        } finally {
+            observer.disconnect();
+        }
+    }
+
+    function getDraftIdentity(row) {
+        const nameCell = row.querySelector('.mat-column-name, .cdk-column-name');
+        return (nameCell || row).textContent.replace(/\s+/g, ' ').trim();
+    }
+
+    async function waitForDraftRemoval(identity) {
+        const deadline = Date.now() + SUBMISSION_TIMEOUT;
+        // Check by name, not DOM-node identity: rerendering can replace an
+        // unchanged row. Keep success counted if this secondary check fails.
+        while (getRows().some(row => getDraftIdentity(row) === identity)) {
+            if (Date.now() >= deadline || shouldStop) {
+                submissionBlockReason = t('draftListUnchanged');
+                if (shouldStop) throw makeStoppedError();
+                throw new Error(submissionBlockReason);
+            }
+            await sleep(100);
+        }
     }
 
     // --- 通用查找工具 ---
@@ -1185,6 +1303,18 @@
 
         if (!btn || !light || !text || isRunning) return;
 
+        if (submissionBlockReason) {
+            btn.disabled = true;
+            btn.textContent = t('submissionLocked');
+            btn.style.cursor = 'not-allowed';
+            light.style.backgroundColor = '#f44336';
+            light.style.boxShadow = '0 0 8px #f44336';
+            text.textContent = t('submissionLocked');
+            text.style.color = '#ef5350';
+            footer.textContent = submissionBlockReason;
+            return;
+        }
+
         const activeTab = document.querySelector('button[aria-selected="true"], div[aria-selected="true"]');
         const tabName = activeTab ? activeTab.textContent.toLowerCase() : "";
 
@@ -1214,7 +1344,7 @@
 
     // --- 主入口 ---
     async function mainProcess() {
-        if (isRunning) return;
+        if (isRunning || submissionBlockReason) return;
 
         const countInput = getUiElement('af3-v20-count');
         const requestedJobs = parseInt(countInput.value, 10) || 10;
@@ -1247,7 +1377,7 @@
                     break;
                 }
                 const taskLabel = getTaskLabel(rows[0], `Draft ${i}`);
-                const firstRowText = rows[0].textContent.trim();
+                const draftIdentity = getDraftIdentity(rows[0]);
 
                 simulateClick(rows[0], 'rgba(0,0,255,0.2)');
                 await controlledSleep(500);
@@ -1273,28 +1403,10 @@
                      continue;
                 }
                 addLog(t('foundConfirm'));
-                simulateClick(confirmBtn, 'rgba(0,255,0,0.3)');
-
-                updateBtnText('Verifying...');
-                let submitted = false;
-                for (let retry = 0; retry < 60; retry++) {
-                    await controlledSleep(500);
-                    confirmBtn = findButtonByText("Confirm and submit");
-                    if (confirmBtn && retry % 3 === 0) simulateClick(confirmBtn);
-
-                    const rowsNow = getRows();
-                    if (rowsNow.length === 0 || rowsNow[0].textContent.trim() !== firstRowText) {
-                        addLog(t('draftDone', { index: i }));
-                        recordProgressResult('success');
-                        submitted = true;
-                        break;
-                    }
-                }
-                if (!submitted) {
-                    const reason = t('draftUnconfirmed', { index: i });
-                    addLog(reason, 'warn');
-                    recordProgressResult('error', { label: taskLabel, reason });
-                }
+                await submitAndConfirm(confirmBtn);
+                addLog(t('draftDone', { index: i }));
+                recordProgressResult('success');
+                await waitForDraftRemoval(draftIdentity);
             }
         } catch (e) {
             finalStatus = isUserStopError(e) ? 'stopped' : 'error';
@@ -1392,10 +1504,7 @@
                      if (!confirmBtn) throw new Error(t('missingConfirmError'));
                 }
                 addLog(t('foundConfirm'));
-                simulateClick(confirmBtn);
-
-                // 7. 提交后等待
-                updateBtnText("Submitted...");
+                await submitAndConfirm(confirmBtn);
                 addLog(t('failedSubmitted', { index: i + 1 }));
                 recordProgressResult('success');
                 await controlledSleep(2500);
@@ -1425,7 +1534,7 @@
         if (btn) {
             if (!state) {
                 btn.textContent = t('startButton');
-                btn.disabled = false;
+                btn.disabled = Boolean(submissionBlockReason);
                 if (input) input.disabled = false;
                 checkSystemStatus();
             } else {

@@ -1,5 +1,33 @@
 # AF3 Auto Submitter
 
+本仓库是 [siyuanj/af3-auto-submitter](https://github.com/siyuanj/af3-auto-submitter) 的开发 fork，保留原作者署名和 MIT 许可证。原版 `main` 的 2.24 仍供对照；本轮改动在 **`dev/confirmed-submission`**，只更新 DEV 脚本，尚未合并进正式版。
+
+## 本 fork 的开发版
+
+[安装 DEV 2.25.0-dev.1](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [查看开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission)
+
+第一轮修复提交结果的确认方式：
+
+- 草稿和 Failed 克隆重提都只点击一次 `Confirm and submit`；等待官网新的 `Job successfully launched.` 消息后才计为成功。
+- 弹窗消失、行内容改变、旧成功通知均不等于新提交成功。未知通知会继续等待，60 秒内没有明确结果就停止。
+- 官网错误、未确认超时、提交中按停止，都会锁住启动按钮。先人工检查历史记录和剩余额度，再决定是否刷新；刷新会清空锁定记录，不要直接重试。
+- 草稿收到明确成功通知后，仍需等该任务从列表移出；列表未更新则保留成功计数并停止，不会再次提交同一行。
+- 暂停不会挂起对已发送请求的结果确认；恢复后才继续后续操作。
+
+本 fork 的 DEV 使用独立名称和 namespace，并从本 fork 的开发分支检查更新。请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份。此版仍依赖英文网页控件及通知；未验证的官网改动可能使它停止。锁定只覆盖当前页面，不提供跨标签页或跨浏览器互斥。
+
+验证使用完整 DEV 脚本和本机 Edge 的合成页面，不访问 AlphaFold、不使用登录资料、不消耗额度：
+
+```bash
+node --check af3-auto-submitter.dev.user.js
+python -I -X utf8 test_submission.py
+git diff --check
+```
+
+完整浏览器检查约需 3–4 分钟，包含两项真实的 60 秒等待；未在真实账号验证，首次使用请只试 1 个。
+
+## 上游 2.24 说明
+
 AF3 Auto Submitter 是一个用于 AlphaFold Server 的 Tampermonkey 脚本，主要用于批量提交 `Saved Drafts`，以及对 `Failed jobs` 执行 `Clone and reuse` 后重新提交。
 
 当前正式版：`2.24`
