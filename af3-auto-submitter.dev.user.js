@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      2.25.0-dev.7
+// @version      2.25.0-dev.8
 // @description  开发版：按天筛选，合并或逐个勾选后手动使用官网 Download 下载；放大面板文字，保留提交确认、实时额度和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -19,7 +19,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '2.25.0-dev.7';
+    const SCRIPT_VERSION = '2.25.0-dev.8';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -2211,7 +2211,7 @@
         try {
             getDownloadContext();
             currentMode = 'NONE';
-            const state = downloadReadiness();
+            const state = { key: 'downloadReadyApply', color: '#81c995' };
             text.textContent = t(state.key, state.vars); text.style.color = state.color;
             light.style.backgroundColor = state.color; light.style.boxShadow = `0 0 8px ${state.color}`;
             footer.textContent = t('downloadReadyFooter');

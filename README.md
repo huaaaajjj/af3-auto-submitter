@@ -4,13 +4,13 @@
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 2.25.0-dev.7](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 2.25.0-dev.8](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 本轮按日期勾选、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。Edge InPrivate 还需允许扩展在 InPrivate 中使用。
-3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.7`。网站控件与通知仍需使用英文。
+3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.8`。网站控件与通知仍需使用英文。
 4. 进入 Saved Drafts 或 Failed jobs 列表。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 5. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 6. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
@@ -25,7 +25,7 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 ## 本轮改动
 
-### 按日期勾选，再用官网下载（DEV 2.25.0-dev.7）
+### 按日期勾选，再用官网下载（DEV 2.25.0-dev.8）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。面板会扫描当前搜索结果的所有分页，保留官网已有的复选框选中状态。
 2. 展开面板的“按日期选择任务”，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。
@@ -37,7 +37,7 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 下载方式保存在当前浏览器本地。分开模式的队列只在当前页面有效；刷新、重新查找、修改日期、面板勾选、全选、清空、下载方式或官网筛选、搜索、排序、每页数量、复选框，都会使队列失效。面板选择或官网勾选变化后请核对并重新应用；日期或官网列表条件变化后请重新查找。停止或出错不会推进队列；停止后可重新应用，出错后需重新查找。
 
-日期区域显示“待机 / 就绪 / 运行中”状态；仅选中 Completed 时，顶部状态也会提示可进行日期勾选。点击“停止”会停止查找或应用选择。应用过程中停止或出错可能留下部分勾选，不会自动恢复旧选择；请先核对官网复选框，再决定是否下载。
+日期区域显示“待机 / 就绪 / 运行中”状态；仅选中 Completed 且空闲时，顶部显示“就绪：核对选择后应用到官网勾选”。点击“停止”会停止查找或应用选择。应用过程中停止或出错可能留下部分勾选，不会自动恢复旧选择；请先核对官网复选框，再决定是否下载。
 
 查找和应用选择期间保持页面打开，不要更改官网搜索、筛选、排序或每页数量；需要调整时先停止，再重新查找。文件是否保存成功，请在手动下载后查看浏览器下载列表；浏览器询问时，按需允许官网的多个文件下载。
 
