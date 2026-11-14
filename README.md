@@ -4,13 +4,13 @@
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 2.25.0-dev.4](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 2.25.0-dev.5](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 本轮按日期下载、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。Edge InPrivate 还需允许扩展在 InPrivate 中使用。
-3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.4`。网站控件与通知仍需使用英文。
+3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.5`。网站控件与通知仍需使用英文。
 4. 进入 Saved Drafts 或 Failed jobs 列表。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 5. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 6. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
@@ -25,15 +25,24 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 ## 本轮改动
 
-### 按日期批量下载（DEV 2.25.0-dev.4）
+### 按日期批量下载（DEV 2.25.0-dev.5）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。面板会扫描当前搜索结果的所有分页，保留官网已有的复选框选中状态。
 2. 展开面板的“按日期批量下载”，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。
 3. 查找完成后，按天或逐个任务核对勾选，也可用“全选”“清空选择”。日期无法识别的任务不纳入结果；若出现同名且显示的 Modified 时间也相同、无法唯一识别的任务，请缩小官网搜索范围后重新查找。
-4. 点击“下载所选”并确认，脚本逐个使用任务行的官网 `Download` 操作。“停止”会阻止后续操作，已发起的下载仍由浏览器处理。
-5. 在浏览器下载列表核对文件。**“已发起下载”不表示文件已保存成功**；浏览器询问时，请允许此站点下载多个文件。
+4. 选择打包方式和操作位置。默认在面板内发起；也可切换到网页手动勾选，按下表操作。
 
-查找和下载期间保持页面打开，不要更改官网搜索、筛选、排序或每页数量；需要调整时先停止，再重新查找。面板中的下载勾选独立于官网复选框，仅处理面板中确认选择的任务。
+| 操作位置与打包方式 | 如何下载 |
+| --- | --- |
+| 面板内：每个任务独立 ZIP | 点击面板“下载所选”并确认，逐个执行任务行的官网 `Download`，保留官网已有勾选。 |
+| 面板内：合并成一个 ZIP | 点击面板“下载所选”并确认，替换官网已有勾选，跨页勾选本次核对过的任务，再执行一次官网批量下载。 |
+| 网页手动：任选打包方式 | 点击面板“在网页中勾选”，将日期结果中已核对的选择写入官网复选框，**此步不下载**。可在官网继续调整勾选，最后点击脚本添加的网页工具条“下载所选”，按当前打包方式下载。也可以直接勾选官网任务并使用该工具条，无需先按日期查找。 |
+
+**合并下载和“在网页中勾选”会先清空官网原有选择，再写入本次选择。** 合并为一个 ZIP 使用官网批量下载，每次最多 **50 个任务**；超过时会停止，不会自动拆成多批。请减少选择后再操作。
+
+下载区域和网页工具条均显示“待机 / 就绪 / 运行中”状态；仅选中 Completed 时，顶部状态也会提示可下载。点击“停止”会阻止后续操作，已发起的下载仍由浏览器处理。**“已发起下载”不表示文件已保存成功**，请在浏览器下载列表核对；逐任务下载时，浏览器询问后请允许此站点下载多个文件。
+
+查找、应用选择和下载期间保持页面打开，不要更改官网搜索、筛选、排序或每页数量；需要调整时先停止，再重新查找。网页手动模式下，可在应用选择完成后调整官网复选框。
 
 ### 提交结果确认
 

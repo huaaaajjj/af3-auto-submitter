@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      2.25.0-dev.4
-// @description  开发版：按天选择已完成任务并批量下载，可调整面板大小、显示官网剩余额度；明确成功才计数。
+// @version      2.25.0-dev.5
+// @description  开发版：按天选择任务，合并或逐任务 ZIP 下载，支持网页手动选择与面板下载；显示实时额度和下载状态。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -19,7 +19,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '2.25.0-dev.4';
+    const SCRIPT_VERSION = '2.25.0-dev.5';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -565,7 +565,26 @@
         downloadRun: 'Download selected', downloadIdle: 'Choose dates, find jobs, then review your selection.',
         downloadScanning: 'Scanning page {page}… {count} matches',
         downloadFound: '{count} matches; {selected} selected. Unknown dates skipped: {unknown}.',
-        downloadHint: 'One results ZIP per job. Allow multiple downloads for this site if your browser asks.',
+        downloadHint: 'Combined ZIP: up to 50 jobs. Individual ZIPs: allow multiple downloads if asked. Combined downloads and applying selections to the website replace its existing checkboxes.',
+        downloadFormat: 'ZIP format', downloadIndividual: 'One ZIP per job', downloadCombined: 'One combined ZIP (up to 50)',
+        downloadLocation: 'Choose and download in', downloadPanel: 'Script panel', downloadWebsite: 'Website (click to download)',
+        downloadApply: 'Select on website', downloadWebRun: 'Download selected',
+        downloadWebNote: 'Use website checkboxes, then click Download selected here. Date matches can be applied from the script panel.',
+        downloadStandby: 'Standby: switch to Completed only',
+        downloadReady: 'Ready: choose jobs to download', downloadReadyWeb: 'Ready: {count} selected on website; click to download',
+        downloadReadyFind: 'Ready: find jobs by date', downloadReadySelect: 'Ready: select jobs',
+        downloadRunningScan: 'Running: finding jobs', downloadRunningApply: 'Running: selecting jobs on website',
+        downloadRunning: 'Running: starting downloads', downloadSubmissionBusy: 'Standby: submission is running',
+        downloadApplied: '{count} jobs selected on the website; no downloads started. Adjust checkboxes and click Download selected above the history.',
+        downloadLimit: 'One combined ZIP supports up to 50 jobs. Reduce the selection or choose one ZIP per job.',
+        downloadNativeMissing: 'Cannot identify the website selection controls. No further download actions were started.',
+        downloadNativeMismatch: 'Website selections include jobs outside this history or changed during the operation. Check the website selection and try again.',
+        downloadNativeChanged: 'Website checkboxes changed during the operation. Stopped before further downloads.',
+        downloadCombinedConfirm: 'Download {count} jobs as one ZIP? This replaces the website checkbox selection with these jobs.',
+        downloadApplyConfirm: 'Select {count} jobs on the website without downloading? This replaces its existing checkbox selection.',
+        downloadCombinedDone: 'Started one combined ZIP download for {count} jobs. Check the browser downloads for the saved file.',
+        downloadWebConfirm: 'Download {count} website-selected jobs? ZIP format: {format}.',
+        downloadReadyFooter: 'Choose the ZIP format and download location in the download section.',
         downloadProgress: 'Download actions started: {count} / {total}',
         downloadFinished: 'Download actions started: {count}. Check your browser downloads for saved files.',
         downloadStopped: 'Stopped. Download actions already started: {count}.',
@@ -592,7 +611,26 @@
             downloadRun: '下载所选', downloadIdle: '先选择日期并查找任务，核对勾选后再下载。',
             downloadScanning: '正在扫描第 {page} 页…已找到 {count} 个',
             downloadFound: '匹配 {count} 个，已选 {selected} 个；日期无法识别、未纳入 {unknown} 个。',
-            downloadHint: '每个任务一个结果 ZIP。浏览器询问时，请允许此站点下载多个文件。',
+            downloadHint: '合并 ZIP 最多 50 个任务；逐任务 ZIP 请按需允许多个下载。合并下载和“在网页中勾选”会替换官网已有勾选。',
+            downloadFormat: '打包方式', downloadIndividual: '一个任务一个 ZIP', downloadCombined: '合并成一个 ZIP（最多 50 个）',
+            downloadLocation: '选择与下载位置', downloadPanel: '脚本窗口中下载', downloadWebsite: '网页中选择，手动点击下载',
+            downloadApply: '在网页中勾选', downloadWebRun: '下载所选',
+            downloadWebNote: '在官网列表勾选任务后，手动点击这里的“下载所选”。也可在脚本窗口按日期查找，再将勾选应用到网页。',
+            downloadStandby: '待机中：请切换到仅选 Completed 的页面',
+            downloadReady: '就绪：选择下载任务', downloadReadyWeb: '就绪：网页已选 {count} 个，请手动点击下载',
+            downloadReadyFind: '就绪：按日期查找任务', downloadReadySelect: '就绪：请勾选任务',
+            downloadRunningScan: '运行中：正在查找任务', downloadRunningApply: '运行中：正在网页中勾选',
+            downloadRunning: '运行中：正在发起下载', downloadSubmissionBusy: '待机中：正在提交任务',
+            downloadApplied: '已在网页中勾选 {count} 个任务，尚未发起下载。可调整勾选，再手动点击历史列表上方的“下载所选”。',
+            downloadLimit: '合并成一个 ZIP 最多支持 50 个任务，请减少选择或改为“一个任务一个 ZIP”。',
+            downloadNativeMissing: '无法识别官网勾选或批量下载控件，未继续发起下载。',
+            downloadNativeMismatch: '官网勾选包含当前列表以外的任务，或勾选已变化。请核对官网选择后重试。',
+            downloadNativeChanged: '运行期间官网勾选发生变化，已停止后续下载。',
+            downloadCombinedConfirm: '将 {count} 个任务合并成一个 ZIP 下载？官网已有勾选会替换为这些任务。',
+            downloadApplyConfirm: '将 {count} 个任务勾选到官网列表，暂不下载？官网已有勾选会被替换。',
+            downloadCombinedDone: '已为 {count} 个任务发起一个合并 ZIP 下载，请在浏览器下载列表核对文件保存情况。',
+            downloadWebConfirm: '下载网页中勾选的 {count} 个任务？打包方式：{format}。',
+            downloadReadyFooter: '请在“按日期批量下载”中选择打包方式和下载位置。',
             downloadProgress: '已发起下载：{count} / {total}',
             downloadFinished: '已发起 {count} 个下载，请在浏览器下载列表核对文件保存情况。',
             downloadStopped: '已停止；此前已发起 {count} 个下载。',
@@ -634,7 +672,11 @@
     let panelSize = null;
     const downloadState = {
         busy: false, stop: false, complete: false, jobs: [], selected: new Set(),
-        unknown: 0, initiated: 0, context: null, message: '', messageVars: {},
+        unknown: 0, initiated: 0, context: null, scanContext: null, message: '', messageVars: {},
+        phase: '', format: getSavedDownloadOption('format', ['individual', 'combined'], 'individual'),
+        location: getSavedDownloadOption('location', ['panel', 'website'], 'panel'),
+        watchNative: false, nativeMutation: false, selectionChanged: false,
+        nativeExpected: null, requireNative: false,
     };
     let logExpanded = false;
     let currentLanguage = getSavedLanguage();
@@ -1213,7 +1255,14 @@
     }
 
     // Read the public history UI only. Selection is kept in the panel, so native
-    // selections (including off-page selections) never become download targets.
+    // selections become targets only in the explicitly chosen website mode.
+    function getSavedDownloadOption(name, values, fallback) {
+        try {
+            const value = localStorage.getItem(`${CONTAINER_ID}-download-${name}`);
+            return values.includes(value) ? value : fallback;
+        } catch (_) { return fallback; }
+    }
+
     function downloadVisible(node) {
         return Boolean(node?.isConnected && node.getClientRects().length &&
             getComputedStyle(node).visibility !== 'hidden');
@@ -1280,7 +1329,11 @@
 
     function checkDownloadActive() {
         if (downloadState.stop) throw makeStoppedError();
+        if (downloadState.selectionChanged) throw new Error(t('downloadNativeChanged'));
         if (downloadState.context !== getDownloadContext()) throw new Error(t('downloadContextChanged'));
+        if (downloadState.watchNative && downloadState.nativeExpected !== null && !downloadState.nativeMutation &&
+            !getDownloadHistory(true).loading &&
+            getNativeDownloadToolbar().count !== downloadState.nativeExpected) throw new Error(t('downloadNativeMismatch'));
     }
 
     async function downloadDelay(ms) {
@@ -1365,6 +1418,177 @@
         return page;
     }
 
+    function getNativeDownloadToolbar() {
+        const { root } = getDownloadHistory(true);
+        const buttons = Array.from(root.querySelectorAll('button.download-button')).filter(downloadVisible);
+        if (!buttons.length) return { count: 0, button: null, clear: null };
+        if (buttons.length !== 1) throw new Error(t('downloadNativeMissing'));
+        const button = buttons[0];
+        const row = button.closest('.row');
+        const match = /\b(\d+)\s+selected\b/i.exec(downloadText(row));
+        const clear = Array.from(row?.querySelectorAll('button') || []).find(node =>
+            node.querySelector('mat-icon')?.textContent.trim() === 'close');
+        if (!match || !clear) throw new Error(t('downloadNativeMissing'));
+        return { count: Number(match[1]), button, clear };
+    }
+
+    function nativeDownloadCheckbox(job) {
+        const input = job.row.querySelector('.mat-column-selected input[type="checkbox"], td:first-child input[type="checkbox"]');
+        // Material may make the actual input transparent; its host is visible.
+        if (!input || input.disabled || !downloadVisible(job.row)) throw new Error(t('downloadNativeMissing'));
+        return input;
+    }
+
+    function sameDownloadJob(job, target) {
+        return Boolean(job && target && job.key === target.key && job.modified === target.modified && job.name === target.name && job.day === target.day);
+    }
+
+    function mutateNativeSelection(action) {
+        downloadState.nativeMutation = true;
+        try { action(); } finally { downloadState.nativeMutation = false; }
+    }
+
+    document.addEventListener('change', event => {
+        if (downloadState.busy && downloadState.watchNative && !downloadState.nativeMutation &&
+            event.target.matches?.('input[type="checkbox"]') && event.target.closest('gdm-af-history')) {
+            downloadState.selectionChanged = true;
+        }
+    }, true);
+    document.addEventListener('click', event => {
+        if (!downloadState.busy || !downloadState.watchNative || downloadState.nativeMutation) return;
+        const history = event.target.closest?.('gdm-af-history');
+        if (!history) return;
+        const button = event.target.closest('button');
+        if (event.target.closest('.mat-column-selected, .select-all-checkbox') ||
+            (button && button.querySelector('mat-icon')?.textContent.trim() === 'close')) downloadState.selectionChanged = true;
+    }, true);
+
+    async function applyNativeDownloadSelection(records) {
+        const targets = new Map(records.map(job => [job.key, job]));
+        const initial = getNativeDownloadToolbar();
+        if (initial.count) {
+            if (!downloadButtonEnabled(initial.clear)) throw new Error(t('downloadNativeMissing'));
+            mutateNativeSelection(() => initial.clear.click());
+            await downloadDelay(70);
+            if (getNativeDownloadToolbar().count !== 0) throw new Error(t('downloadNativeMismatch'));
+        }
+        let page = await firstDownloadPage();
+        const visited = new Set();
+        let selected = 0;
+        while (targets.size) {
+            checkDownloadActive();
+            if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
+            visited.add(page.signature);
+            for (const job of page.jobs) {
+                const target = targets.get(job.key);
+                if (!target) continue;
+                const fresh = readDownloadPage().jobs.find(item => item.key === job.key);
+                if (!sameDownloadJob(fresh, target)) throw new Error(t('downloadMissing'));
+                const checkbox = nativeDownloadCheckbox(fresh);
+                if (checkbox.checked) throw new Error(t('downloadNativeMismatch'));
+                mutateNativeSelection(() => checkbox.click());
+                await downloadDelay(70);
+                const checked = readDownloadPage().jobs.find(item => item.key === job.key);
+                if (!sameDownloadJob(checked, target) || !nativeDownloadCheckbox(checked).checked) throw new Error(t('downloadMissing'));
+                selected++;
+                if (getNativeDownloadToolbar().count !== selected) throw new Error(t('downloadNativeMismatch'));
+                targets.delete(job.key);
+            }
+            if (!targets.size) break;
+            if (!downloadButtonEnabled(page.next)) throw new Error(t('downloadMissing'));
+            page = await moveDownloadPage(page.next, page.signature);
+        }
+        await firstDownloadPage();
+        if (getNativeDownloadToolbar().count !== records.length) throw new Error(t('downloadNativeMismatch'));
+    }
+
+    async function collectNativeDownloadSelection() {
+        const expected = getNativeDownloadToolbar().count;
+        if (!expected) throw new Error(t('downloadNoSelection'));
+        if (downloadState.format === 'combined' && expected > 50) throw new Error(t('downloadLimit'));
+        const records = [], identities = new Set(), visited = new Set();
+        let page = await firstDownloadPage();
+        while (true) {
+            checkDownloadActive();
+            if (getNativeDownloadToolbar().count !== expected) throw new Error(t('downloadNativeMismatch'));
+            if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
+            visited.add(page.signature);
+            for (const job of page.jobs) {
+                if (identities.has(job.key)) throw new Error(t(job.id ? 'downloadPageError' : 'downloadAmbiguous'));
+                identities.add(job.key);
+                if (nativeDownloadCheckbox(job).checked) {
+                    const { row, ...record } = job;
+                    records.push(record);
+                }
+            }
+            if (!downloadButtonEnabled(page.next)) break;
+            page = await moveDownloadPage(page.next, page.signature);
+        }
+        await firstDownloadPage();
+        if (records.length !== expected || getNativeDownloadToolbar().count !== expected) throw new Error(t('downloadNativeMismatch'));
+        return records;
+    }
+
+    function downloadReadiness() {
+        if (downloadState.busy) return { key: downloadState.phase === 'scan' ? 'downloadRunningScan' : downloadState.phase === 'apply' ? 'downloadRunningApply' : 'downloadRunning', color: '#fbbc04', ready: false };
+        if (isRunning) return { key: 'downloadSubmissionBusy', color: '#fbbc04', ready: false };
+        try {
+            const context = getDownloadContext();
+            if (downloadState.location === 'website') {
+                const { count } = getNativeDownloadToolbar();
+                if (downloadState.format === 'combined' && count > 50) return { key: 'downloadLimit', color: '#fbbc04', ready: false, count };
+                return { key: count ? 'downloadReadyWeb' : 'downloadReadySelect', vars: { count }, color: '#8ab4f8', ready: true, count };
+            }
+            if (downloadState.complete && context !== downloadState.scanContext) return { key: 'downloadContextChanged', color: '#fbbc04', ready: false };
+            if (downloadState.format === 'combined' && downloadState.selected.size > 50) return { key: 'downloadLimit', color: '#fbbc04', ready: true };
+            return { key: !downloadState.complete ? 'downloadReadyFind' : downloadState.selected.size ? 'downloadReady' : 'downloadReadySelect', color: '#81c995', ready: true };
+        } catch (_) { return { key: 'downloadStandby', color: '#f28b82', ready: false }; }
+    }
+
+    function updateDownloadReadiness() {
+        const state = downloadReadiness();
+        const message = t(state.key, state.vars);
+        const text = getUiElement('af3-download-ready-text');
+        if (text) { text.textContent = message; text.style.color = state.color; }
+        const light = getUiElement('af3-download-ready-light');
+        if (light) light.style.backgroundColor = state.color;
+        const bar = document.getElementById('af3-download-web-controls');
+        if (bar) {
+            const status = bar.querySelector('[data-web-status]');
+            status.textContent = message; status.style.color = state.color;
+            const button = bar.querySelector('#af3-download-web-run');
+            button.textContent = t('downloadWebRun');
+            button.disabled = !state.ready || !state.count;
+            const stop = bar.querySelector('#af3-download-web-stop');
+            stop.textContent = t('stopButton'); stop.hidden = !downloadState.busy;
+            stop.disabled = downloadState.stop;
+            bar.querySelector('[data-web-format]').textContent = t(downloadState.format === 'combined' ? 'downloadCombined' : 'downloadIndividual');
+            bar.querySelector('[data-web-note]').textContent = t('downloadWebNote');
+            bar.querySelector('[data-web-result]').textContent = getUiElement('af3-download-status')?.textContent || '';
+        }
+    }
+
+    function ensureDownloadWebControls() {
+        let bar = document.getElementById('af3-download-web-controls');
+        const histories = Array.from(document.querySelectorAll('gdm-af-history')).filter(downloadVisible);
+        if (downloadState.location !== 'website' || histories.length !== 1) { bar?.remove(); return; }
+        if (bar?.parentElement === histories[0]) return;
+        bar?.remove();
+        bar = document.createElement('div'); bar.id = 'af3-download-web-controls';
+        Object.assign(bar.style, { all: 'initial', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', boxSizing: 'border-box', padding: '12px', margin: '8px', border: '1px solid #5f6368', borderRadius: '8px', background: '#202124', color: '#fff', font: '13px Arial, sans-serif' });
+        const status = document.createElement('span'); status.dataset.webStatus = ''; status.setAttribute('role', 'status');
+        const format = document.createElement('span'); format.dataset.webFormat = ''; format.style.color = '#bdc1c6';
+        const button = document.createElement('button'); button.id = 'af3-download-web-run'; button.type = 'button';
+        Object.assign(button.style, { padding: '7px 12px', color: '#fff', background: '#137333', border: '0', borderRadius: '4px', cursor: 'pointer' });
+        button.onclick = () => runSelectedDownloads(true);
+        const stop = button.cloneNode(); stop.id = 'af3-download-web-stop'; stop.style.background = '#b3261e';
+        stop.onclick = () => { downloadState.stop = true; updateDownloadControls(); };
+        const note = document.createElement('span'); note.dataset.webNote = ''; Object.assign(note.style, { flexBasis: '100%', color: '#bdc1c6', overflowWrap: 'anywhere' });
+        const result = document.createElement('span'); result.dataset.webResult = ''; result.setAttribute('role', 'status');
+        Object.assign(result.style, { flexBasis: '100%', color: '#dfe1e5', overflowWrap: 'anywhere' });
+        bar.append(status, format, button, stop, note, result); histories[0].prepend(bar);
+    }
+
     function setDownloadMessage(key, vars = {}) {
         downloadState.message = key;
         downloadState.messageVars = vars;
@@ -1373,18 +1597,24 @@
 
     function updateDownloadControls() {
         const busy = downloadState.busy || isRunning;
-        for (const id of ['start', 'end', 'scan', 'all', 'clear']) {
+        for (const id of ['start', 'end', 'scan', 'all', 'clear', 'format', 'location']) {
             const control = getUiElement(`af3-download-${id}`);
             if (control) control.disabled = busy;
         }
         const run = getUiElement('af3-download-run');
-        if (run) run.disabled = busy || !downloadState.complete || downloadState.selected.size === 0;
+        if (run) {
+            run.textContent = t(downloadState.location === 'website' ? 'downloadApply' : 'downloadRun');
+            run.disabled = busy || !downloadState.complete || downloadState.selected.size === 0 ||
+                (downloadState.format === 'combined' && downloadState.selected.size > 50);
+        }
         const stop = getUiElement('af3-download-stop');
         if (stop) {
             stop.hidden = !downloadState.busy;
             stop.disabled = !downloadState.busy || downloadState.stop;
         }
         getUiElement('af3-download-results')?.querySelectorAll('input').forEach(input => { input.disabled = busy; });
+        ensureDownloadWebControls();
+        updateDownloadReadiness();
     }
 
     function renderDownloadSection() {
@@ -1462,10 +1692,13 @@
         }
         downloadState.busy = true;
         downloadState.stop = false;
+        downloadState.phase = 'scan';
+        downloadState.selectionChanged = false;
         checkSystemStatus();
         try {
             getDownloadHistory();
             downloadState.context = getDownloadContext();
+            downloadState.scanContext = downloadState.context;
             const visited = new Set(), identities = new Map(), matches = [];
             let page = await firstDownloadPage();
             while (true) {
@@ -1509,6 +1742,7 @@
             if (!current || current.row !== job.row || current.name !== job.name || current.modified !== job.modified) {
                 throw new Error(t('downloadMissing'));
             }
+            if (downloadState.requireNative && !nativeDownloadCheckbox(current).checked) throw new Error(t('downloadNativeChanged'));
         };
         assertFresh();
         const menu = Array.from(job.row.querySelectorAll('button')).filter(downloadVisible).find(button =>
@@ -1538,50 +1772,102 @@
         throw new Error(t('downloadMenuMissing'));
     }
 
-    async function runSelectedDownloads() {
+    async function runIndividualDownloads(records) {
+        const targets = new Map(records.map(job => [job.key, job]));
+        const total = targets.size;
+        let page = await firstDownloadPage();
+        const visited = new Set();
+        while (targets.size) {
+            checkDownloadActive();
+            if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
+            visited.add(page.signature);
+            for (const job of page.jobs) {
+                const target = targets.get(job.key);
+                if (!target) continue;
+                if (!sameDownloadJob(job, target)) throw new Error(t('downloadMissing'));
+                await clickNativeDownload(job);
+                targets.delete(job.key);
+                downloadState.selected.delete(job.key);
+                downloadState.initiated++;
+                setDownloadMessage('downloadProgress', { count: downloadState.initiated, total });
+                await downloadDelay(650);
+            }
+            if (!targets.size) break;
+            if (!downloadButtonEnabled(page.next)) throw new Error(t('downloadMissing'));
+            page = await moveDownloadPage(page.next, page.signature);
+        }
+        setDownloadMessage('downloadFinished', { count: downloadState.initiated });
+    }
+
+    async function runCombinedDownload(records, fromWebsite) {
+        if (records.length > 50) throw new Error(t('downloadLimit'));
+        if (!fromWebsite) {
+            await applyNativeDownloadSelection(records);
+            const verified = await collectNativeDownloadSelection();
+            const targets = new Map(records.map(job => [job.key, job]));
+            if (verified.length !== records.length || verified.some(job => !sameDownloadJob(job, targets.get(job.key)))) throw new Error(t('downloadNativeMismatch'));
+        }
+        downloadState.nativeExpected = records.length;
+        checkDownloadActive();
+        const toolbar = getNativeDownloadToolbar();
+        if (toolbar.count !== records.length || !downloadButtonEnabled(toolbar.button)) throw new Error(t('downloadNativeMissing'));
+        toolbar.button.click();
+        downloadState.initiated = 1;
+        records.forEach(job => downloadState.selected.delete(job.key));
+        setDownloadMessage('downloadCombinedDone', { count: records.length });
+    }
+
+    async function runSelectedDownloads(fromWebsite = false) {
+        fromWebsite = fromWebsite === true;
         if (isRunning || downloadState.busy) return;
-        if (!downloadState.complete || !downloadState.selected.size) { setDownloadMessage('downloadNoSelection'); return; }
+        const applyOnly = !fromWebsite && downloadState.location === 'website';
+        if (fromWebsite && downloadState.location !== 'website') return;
+        if (!fromWebsite && (!downloadState.complete || !downloadState.selected.size)) { setDownloadMessage('downloadNoSelection'); return; }
         downloadState.stop = false;
-        try { checkDownloadActive(); } catch (error) {
+        downloadState.selectionChanged = false;
+        downloadState.nativeExpected = null;
+        let records;
+        try {
+            if (fromWebsite) downloadState.context = getDownloadContext();
+            else { downloadState.context = downloadState.scanContext; checkDownloadActive(); }
+            const count = fromWebsite ? getNativeDownloadToolbar().count : downloadState.selected.size;
+            if (!count) throw new Error(t('downloadNoSelection'));
+            if (downloadState.format === 'combined' && count > 50) throw new Error(t('downloadLimit'));
+            const key = fromWebsite ? 'downloadWebConfirm' : applyOnly ? 'downloadApplyConfirm' : downloadState.format === 'combined' ? 'downloadCombinedConfirm' : 'downloadConfirm';
+            if (!confirm(t(key, { count, format: t(downloadState.format === 'combined' ? 'downloadCombined' : 'downloadIndividual') }))) return;
+            if (!fromWebsite) records = downloadState.jobs.filter(job => downloadState.selected.has(job.key));
+        } catch (error) {
             downloadState.complete = false;
             setDownloadMessage('downloadError', { count: downloadState.initiated, detail: error.message }); return;
         }
-        if (!confirm(t('downloadConfirm', { count: downloadState.selected.size }))) return;
         downloadState.busy = true;
-        downloadState.stop = false;
         downloadState.initiated = 0;
-        const targets = new Map(downloadState.jobs.filter(job => downloadState.selected.has(job.key)).map(job => [job.key, job]));
-        const total = targets.size;
+        downloadState.phase = applyOnly ? 'apply' : 'download';
+        downloadState.watchNative = fromWebsite || applyOnly || downloadState.format === 'combined';
+        downloadState.requireNative = fromWebsite;
         checkSystemStatus();
         renderDownloadSection();
         try {
-            let page = await firstDownloadPage();
-            const visited = new Set();
-            while (targets.size) {
-                checkDownloadActive();
-                if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
-                visited.add(page.signature);
-                for (const job of page.jobs) {
-                    const target = targets.get(job.key);
-                    if (!target) continue;
-                    if (job.modified !== target.modified || job.day !== target.day || job.name !== target.name) throw new Error(t('downloadMissing'));
-                    await clickNativeDownload(job);
-                    targets.delete(job.key);
-                    downloadState.selected.delete(job.key);
-                    downloadState.initiated++;
-                    setDownloadMessage('downloadProgress', { count: downloadState.initiated, total });
-                    await downloadDelay(650);
-                }
-                if (!targets.size) break;
-                if (!downloadButtonEnabled(page.next)) throw new Error(t('downloadMissing'));
-                page = await moveDownloadPage(page.next, page.signature);
+            if (fromWebsite) {
+                records = await collectNativeDownloadSelection();
+                downloadState.nativeExpected = records.length;
             }
-            setDownloadMessage('downloadFinished', { count: downloadState.initiated });
+            if (applyOnly) {
+                await applyNativeDownloadSelection(records);
+                setDownloadMessage('downloadApplied', { count: records.length });
+            } else if (downloadState.format === 'combined') {
+                await runCombinedDownload(records, fromWebsite);
+            } else {
+                await runIndividualDownloads(records);
+            }
         } catch (error) {
             if (!isUserStopError(error)) downloadState.complete = false;
             setDownloadMessage(isUserStopError(error) ? 'downloadStopped' : 'downloadError', { count: downloadState.initiated, detail: error.message });
         } finally {
             downloadState.busy = false;
+            downloadState.watchNative = false;
+            downloadState.requireNative = false;
+            downloadState.nativeExpected = null;
             const menu = downloadState.menuTrigger;
             if (menu?.isConnected && menu.getAttribute('aria-expanded') === 'true') menu.click();
             downloadState.menuTrigger = null;
@@ -1600,6 +1886,31 @@
         const summary = translated('summary', 'downloadTitle');
         Object.assign(summary.style, { cursor: 'pointer', color: '#8ab4f8', fontWeight: 'bold' });
         section.appendChild(summary);
+        const ready = document.createElement('div');
+        Object.assign(ready.style, { display: 'flex', gap: '6px', alignItems: 'center', marginTop: '8px' });
+        const light = document.createElement('span'); light.id = 'af3-download-ready-light';
+        Object.assign(light.style, { width: '8px', height: '8px', borderRadius: '50%', flexShrink: '0' });
+        const readyText = document.createElement('span'); readyText.id = 'af3-download-ready-text'; readyText.setAttribute('role', 'status');
+        ready.append(light, readyText); section.appendChild(ready);
+        for (const [id, key, options] of [
+            ['format', 'downloadFormat', [['individual', 'downloadIndividual'], ['combined', 'downloadCombined']]],
+            ['location', 'downloadLocation', [['panel', 'downloadPanel'], ['website', 'downloadWebsite']]],
+        ]) {
+            const label = document.createElement('label'); label.appendChild(translated('span', key));
+            Object.assign(label.style, { display: 'block', marginTop: '8px' });
+            const select = document.createElement('select'); select.id = `af3-download-${id}`;
+            Object.assign(select.style, { display: 'block', width: '100%', boxSizing: 'border-box', minWidth: '0', background: '#303134', color: '#fff', border: '1px solid #666', borderRadius: '4px', padding: '6px', marginTop: '3px', fontSize: '12px' });
+            for (const [value, text] of options) { const option = translated('option', text); option.value = value; select.appendChild(option); }
+            select.value = downloadState[id];
+            select.onchange = () => {
+                if (downloadState.busy || isRunning) { select.value = downloadState[id]; return; }
+                downloadState[id] = select.value;
+                try { localStorage.setItem(`${CONTAINER_ID}-download-${id}`, select.value); } catch (_) {}
+                setDownloadMessage(downloadState.complete ? 'downloadFound' : 'downloadIdle');
+                checkSystemStatus();
+            };
+            label.appendChild(select); section.appendChild(label);
+        }
         section.appendChild(translated('p', 'downloadNote'));
         const dates = document.createElement('div');
         Object.assign(dates.style, { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '8px' });
@@ -1621,7 +1932,7 @@
             ['scan', 'downloadScan', scanDownloadJobs],
             ['all', 'downloadAll', () => { if (downloadState.busy || isRunning) return; downloadState.selected = new Set(downloadState.jobs.map(job => job.key)); setDownloadMessage('downloadFound'); }],
             ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning) return; downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
-            ['run', 'downloadRun', runSelectedDownloads],
+            ['run', 'downloadRun', () => runSelectedDownloads(false)],
             ['stop', 'stopButton', () => { downloadState.stop = true; updateDownloadControls(); }],
         ]) {
             const button = translated('button', key); button.type = 'button'; button.id = `af3-download-${id}`;
@@ -1968,7 +2279,10 @@
         if (downloadState.busy) {
             btn.disabled = true;
             btn.style.cursor = 'not-allowed';
-            text.textContent = t('downloadBusy');
+            const state = downloadReadiness();
+            text.textContent = t(state.key); text.style.color = state.color;
+            light.style.backgroundColor = state.color;
+            light.style.boxShadow = `0 0 8px ${state.color}`;
             return;
         }
 
@@ -1986,6 +2300,17 @@
 
         const activeTab = document.querySelector('button[aria-selected="true"], div[aria-selected="true"]');
         const tabName = activeTab ? activeTab.textContent.toLowerCase() : "";
+
+        try {
+            getDownloadContext();
+            currentMode = 'NONE';
+            const state = downloadReadiness();
+            text.textContent = t(state.key, state.vars); text.style.color = state.color;
+            light.style.backgroundColor = state.color; light.style.boxShadow = `0 0 8px ${state.color}`;
+            footer.textContent = t('downloadReadyFooter');
+            btn.disabled = true; btn.style.backgroundColor = '#444'; btn.style.color = '#888'; btn.style.cursor = 'not-allowed';
+            return;
+        } catch (_) {}
 
         if (tabName.includes('draft')) {
             currentMode = 'DRAFT';
