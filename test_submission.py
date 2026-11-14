@@ -25,6 +25,8 @@ PAGE = r'''<!doctype html><meta charset="utf-8"><title>Local submission self-che
 <h1>Local synthetic tests — no AlphaFold access</h1><pre id="results">STARTING</pre><div id="frame"></div>
 <script>
 const scenarios = __SCENARIOS__;
+window.__af3GMValues = new Map();
+window.__af3GMListeners = new Set();
 const report = [];
 const results = document.getElementById('results');
 async function publish(state) {
@@ -70,13 +72,13 @@ mat-snack-bar-container{display:block}button,input{margin:4px}td{padding:8px}</s
 const id=new URLSearchParams(location.search).get('id');
 const accountsKey='af3-dev-panel-accounts-v1';
 const restored=new URLSearchParams(location.search).has('restore');
-if(id.startsWith('account-')&&!restored){localStorage.removeItem(accountsKey);localStorage.setItem('af3-dev-panel-language','zh')}
-if(id==='account-storage'){
-  localStorage.setItem(accountsKey,'{invalid');
+if(id.startsWith('account-')&&!restored){localStorage.removeItem(accountsKey);top.__af3GMValues.delete(accountsKey);localStorage.setItem('af3-dev-panel-language','zh')}
+if(id==='account-migration'&&!restored){
+  top.__af3GMValues.set(accountsKey,{version:1,accounts:[{email:'shared@example.com',note:'Shared note',quota:null}]});
+  localStorage.setItem(accountsKey,JSON.stringify({version:1,accounts:[{email:'legacy@example.com',note:'Imported note',quota:null},{email:'shared@example.com',note:'Legacy note',quota:null}]}));
 }
-if(id==='account-storage-blocked'){
-  const originalSet=Storage.prototype.setItem;
-  Storage.prototype.setItem=function(key,value){if(key===accountsKey)throw Error('Storage disabled');return originalSet.call(this,key,value)};
+if(id==='account-storage'){
+  top.__af3GMValues.set(accountsKey,'{invalid');
 }
 if(id==='account-switch-submission'||id==='account-switch-confirm')window.WIZ_global_data={oPEP7c:'first@example.com'};
 if(id==='startup-trusted-types')window.WIZ_global_data={oPEP7c:'strict.page@example.com'};
@@ -90,6 +92,23 @@ const assert=(value,message)=>{if(!value)throw Error(message)};
 async function until(read,timeout=75000){const end=Date.now()+timeout;while(Date.now()<end){if(read())return;await pause(50)}throw Error('Timed out: '+(ui('log-body')?.textContent||''))}
 const state={calls:0,names:[],summaries:[],errors:[],opened:[],pausedConfirmed:false,earlySuccess:false};
 window.__af3PrivateTabCalls=[];
+const cloneGMValue=value=>value===undefined?undefined:JSON.parse(JSON.stringify(value));
+window.GM_getValue=(key,defaultValue)=>top.__af3GMValues.has(key)?cloneGMValue(top.__af3GMValues.get(key)):defaultValue;
+window.GM_setValue=(key,value)=>{
+  if(id==='account-storage-blocked'&&key===accountsKey)throw Error('Tampermonkey storage disabled');
+  const oldValue=cloneGMValue(top.__af3GMValues.get(key));
+  const newValue=cloneGMValue(value);
+  top.__af3GMValues.set(key,newValue);
+  for(const listener of top.__af3GMListeners){
+    if(listener.key===key)listener.callback(key,cloneGMValue(oldValue),cloneGMValue(newValue),listener.source!==window);
+  }
+};
+window.GM_addValueChangeListener=(key,callback)=>{
+  const listener={key,callback,source:window};top.__af3GMListeners.add(listener);return listener;
+};
+window.addEventListener('pagehide',()=>{
+  for(const listener of top.__af3GMListeners){if(listener.source===window)top.__af3GMListeners.delete(listener)}
+});
 window.GM_openInTab=(url,options)=>{
   if(id==='account-login-unavailable')throw Error('InPrivate unavailable');
   window.__af3PrivateTabCalls.push({url,options});
@@ -289,7 +308,7 @@ async function checkAccountEmail(){
   await shown('bootstrap.account@example.com');
   window.WIZ_global_data={oPEP7c:''};await unknown();delete window.WIZ_global_data;
   bootstrap.textContent='window.WIZ_global_data = invalid';await unknown();bootstrap.remove();
-  const records=JSON.parse(localStorage.getItem(accountsKey)).accounts;
+  const records=GM_getValue(accountsKey).accounts;
   assert(records.some(item=>item.email==='bootstrap.account@example.com'),'Recognized account was not saved');
   assert(!records.some(item=>item.email==='job.owner@example.com'),'Task owner was saved as a signed-in account');
   assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account readback triggered a task or script error');
@@ -320,7 +339,7 @@ function assertAccountSwitchBlocked(){
   assert(window.__af3PrivateTabCalls.length===before,'Running task opened an InPrivate tab');
 }
 async function checkAccountManager(){
-  const records=()=>JSON.parse(localStorage.getItem(accountsKey)||'{"accounts":[]}').accounts;
+  const records=()=>GM_getValue(accountsKey,{version:1,accounts:[]}).accounts;
   const cards=()=>Array.from(ui('accounts-list').querySelectorAll('article'));
   const card=email=>cards().find(node=>node.dataset.email===email);
   const save=(email,note='')=>{ui('account-input').value=email;ui('account-note').value=note;ui('account-form').dispatchEvent(new Event('submit',{cancelable:true}))};
@@ -330,10 +349,10 @@ async function checkAccountManager(){
   const login=ui('account-login');
   if(id==='account-login'){
     save('saved@example.com','Keep this record');
-    const before=localStorage.getItem(accountsKey);
+    const before=JSON.stringify(GM_getValue(accountsKey));
     login.click();
     assertInPrivateSwitch(login);
-    assert(localStorage.getItem(accountsKey)===before,'Switch removed saved accounts or notes');
+    assert(JSON.stringify(GM_getValue(accountsKey))===before,'Switch removed saved accounts or notes');
     assert(ui('account-login-help').textContent.includes('InPrivate'),'Switch does not explain InPrivate behavior');
     assert(ui('accounts-message').textContent.includes('InPrivate'),'Switch did not report its result');
   }else if(id==='account-login-unavailable'){
@@ -344,7 +363,7 @@ async function checkAccountManager(){
     save('memory@example.com','first');save('another@example.com','second');
     assert(cards().length===2&&card('memory@example.com').textContent.includes('first'),'Unavailable storage lost in-page records');
     assert(ui('accounts-message').textContent.includes('当前页面有效'),'Unavailable storage did not report memory-only mode');
-    if(id==='account-storage')assert(localStorage.getItem(accountsKey)==='{invalid','Corrupt stored data was overwritten');
+    if(id==='account-storage')assert(GM_getValue(accountsKey)==='{invalid','Corrupt stored data was overwritten');
   }else if(id==='account-persistence'){
     if(!restored){save('saved@example.com','My work account');location.replace('/case?id='+id+'&restore=1');return false}
     assert(card('saved@example.com')?.textContent.includes('My work account'),'Reload lost account or note');
@@ -380,11 +399,20 @@ async function checkAccountManager(){
     save('original@example.com','original');
     const frame=document.createElement('iframe');frame.src='/case?id=storage-writer';frame.hidden=true;
     const loaded=new Promise(resolve=>frame.onload=resolve);document.body.append(frame);await loaded;
-    frame.contentWindow.localStorage.setItem(accountsKey,JSON.stringify({version:1,accounts:[{email:'original@example.com',note:'Other tab',quota:null},{email:'other@example.com',note:'Shared',quota:null}]}));
+    frame.contentWindow.GM_setValue(accountsKey,{version:1,accounts:[{email:'original@example.com',note:'Other tab',quota:null},{email:'other@example.com',note:'Shared',quota:null}]});
     await until(()=>card('other@example.com')&&card('original@example.com').textContent.includes('Other tab'),2500);
     save('third@example.com','third');assert(records().length===3,'Writing discarded another tab records');
-    frame.contentWindow.localStorage.removeItem(accountsKey);
+    assert(frame.contentWindow.GM_getValue(accountsKey).accounts.length===3,'Another tab did not see the shared account list');
+    frame.contentWindow.GM_setValue(accountsKey,{version:1,accounts:[]});
     await until(()=>cards().length===0,2500);frame.remove();
+  }else if(id==='account-migration'){
+    assert(cards().length===2&&card('legacy@example.com')?.textContent.includes('Imported note'),'Legacy browser records were not imported');
+    assert(card('shared@example.com')?.textContent.includes('Shared note'),'Migration overwrote the existing shared note');
+    assert(localStorage.getItem(accountsKey)===null,'Migrated legacy browser data was not cleared');
+    card('legacy@example.com').querySelector('[data-action="remove"]').click();await pause(1100);
+    save('new@example.com','new');
+    assert(records().length===2&&!card('legacy@example.com'),'A removed account was re-imported from stale legacy data');
+    assert(top.__af3GMValues.get(accountsKey).accounts.length===2,'Migrated accounts were not kept in shared local storage');
   }else{
     assert(cards().length===0,'Account list should start empty');
     save('invalid','bad');assert(!records().length&&ui('accounts-message').textContent.includes('有效邮箱'),'Invalid email was saved');
@@ -438,7 +466,7 @@ async function checkAccountManager(){
     parent.postMessage({type:'af3-case-result',result:{passed:true,message:'Trusted Types enforced: startup, navigation, account save and panel recovery; 0 submits'}},location.origin);return;
   }
   if(id==='account-email'){await until(()=>ui('v20-btn'),5000);await checkAccountEmail();return}
-  if(['account-manager','account-login','account-login-unavailable','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
+  if(['account-manager','account-login','account-login-unavailable','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab','account-migration'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
   if(id==='storage-writer')return;
   if(id==='panel-ui'){
     await until(()=>ui('v20-btn'),5000);
@@ -500,7 +528,7 @@ async function checkAccountManager(){
 
 SCENARIOS = [
     'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-unavailable', 'account-login-busy', 'account-quota', 'account-persistence',
-    'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-switch-submission', 'account-switch-confirm',
+    'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-migration', 'account-switch-submission', 'account-switch-confirm',
     'delayed-success', 'old-success', 'server-error', 'no-toast',
     'failed-success', 'failed-error', 'stop-in-flight', 'stale-row',
     'multi-success', 'paused-success',

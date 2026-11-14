@@ -1,14 +1,17 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.5
-// @description  3.0 开发版：账户管理可在 Edge InPrivate 中登录切换，本地保存账号、备注与额度记录；保留分区提交、按日期勾选下载、提交确认和可调面板。
+// @version      3.0.0-dev.6
+// @description  3.0 开发版：账户管理跨普通与 Edge InPrivate 本地保存账号、备注与额度记录；保留分区提交、按日期勾选下载、提交确认和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
 // @match        https://alphafoldserver.com/*
 // @match        https://www.alphafoldserver.com/*
 // @grant        GM_openInTab
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_addValueChangeListener
 // @sandbox      raw
 // @run-at       document-start
 // @noframes
@@ -20,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.5';
+    const SCRIPT_VERSION = '3.0.0-dev.6';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -668,32 +671,32 @@
     }
 
     const accountEnglish = {
-        tasksPage: 'Jobs', accountsPage: 'Accounts', accountsIntro: 'Accounts and quota records are saved in this browser. Only the signed-in account can update its quota; other accounts show historical records.',
+        tasksPage: 'Jobs', accountsPage: 'Accounts', accountsIntro: 'Accounts and quota records are saved locally in Tampermonkey. Only the signed-in account can update its quota; other accounts show historical records.',
         accountsCount: '{count} saved accounts', accountsEmpty: 'No saved accounts. Sign in to record the current account, or add an email below.',
         accountEmailLabel: 'Email', accountNoteLabel: 'Note (optional)', accountAdd: 'Save account', accountSave: 'Save changes', accountCancel: 'Cancel edit',
         accountCurrent: 'Current account', accountEdit: 'Edit', accountRemove: 'Remove', accountRemoveConfirm: 'Remove the local record for {email}? This does not delete the website account.',
         accountLiveQuota: 'Website quota: {count}', accountSavedQuota: 'Last recorded quota: {count}', accountNoQuota: 'Quota not recorded', accountRecordedAt: 'Recorded: {time}',
-        accountRefresh: 'Record current quota', accountLogin: 'Sign in / switch in InPrivate', accountLoginHelp: 'Opens Google account selection in Edge InPrivate and leaves this normal window signed in. Allow Tampermonkey in InPrivate. All InPrivate windows share one temporary session; close them all to start fresh. Notes and quota history there are separate and cleared when all InPrivate windows close.',
+        accountRefresh: 'Record current quota', accountLogin: 'Sign in / switch in InPrivate', accountLoginHelp: 'Opens Google account selection in Edge InPrivate and leaves this normal window signed in. Allow Tampermonkey in InPrivate, then set Tampermonkey Settings > Security > Store data in incognito mode to Permanent to share the local account list. InPrivate sign-in cookies remain temporary; close all InPrivate windows to start a fresh session.',
         accountPrivateOpened: 'Requested an InPrivate login tab. Check the account email there. If no tab appears, allow Tampermonkey in InPrivate and try again.',
         accountPrivateUnavailable: 'Could not open InPrivate. Allow Tampermonkey in Edge InPrivate settings, then retry; or open an InPrivate window manually.',
         accountSwitchBusy: 'Stop processing before switching accounts.',
         accountInvalid: 'Enter a valid email address.', accountSaved: 'Account saved.', accountRemoved: 'Local record removed.', accountUpdated: 'Current account quota recorded.',
         accountReadFailed: 'Current account or quota is unavailable. Check sign-in and the website quota display.',
-        accountStorageError: 'Local storage is unavailable or invalid. Changes are kept only on this page.', accountChanged: 'The signed-in account changed. Processing stopped; check the website account and history before reloading.',
+        accountStorageError: 'Account storage is unavailable or invalid. Changes are kept only on this page.', accountChanged: 'The signed-in account changed. Processing stopped; check the website account and history before reloading.',
     };
     const accountTranslations = {
         zh: {
-            tasksPage: '任务', accountsPage: '账户管理', accountsIntro: '账号与额度记录保存在当前浏览器。仅当前登录账号可更新额度，其他账号显示历史记录。',
+            tasksPage: '任务', accountsPage: '账户管理', accountsIntro: '账号与额度记录保存在 Tampermonkey 本机存储中。仅当前登录账号可更新额度，其他账号显示历史记录。',
             accountsCount: '已保存 {count} 个账号', accountsEmpty: '暂无账号。登录后会记录当前账号，也可在下方添加邮箱。',
             accountEmailLabel: '邮箱', accountNoteLabel: '备注（可选）', accountAdd: '保存账号', accountSave: '保存修改', accountCancel: '取消编辑',
             accountCurrent: '当前账号', accountEdit: '编辑', accountRemove: '移除', accountRemoveConfirm: '移除 {email} 的本地记录？不会删除官网账号。',
             accountLiveQuota: '官网当前额度：{count} 个', accountSavedQuota: '上次记录额度：{count} 个', accountNoQuota: '尚未记录额度', accountRecordedAt: '记录时间：{time}',
-            accountRefresh: '记录当前额度', accountLogin: '在 InPrivate 中登录 / 切换', accountLoginHelp: '在 Edge InPrivate 中打开 Google 账号选择，普通窗口保持原登录。需在 Edge 扩展详情中允许 Tampermonkey 在 InPrivate 中运行。所有 InPrivate 窗口共用临时登录；要从空会话登录，请先关闭全部 InPrivate 窗口。InPrivate 的账号备注和额度记录与普通窗口分开，关闭所有 InPrivate 窗口后会清除。',
+            accountRefresh: '记录当前额度', accountLogin: '在 InPrivate 中登录 / 切换', accountLoginHelp: '在 Edge InPrivate 中打开 Google 账号选择，普通窗口保持原登录。需在 Edge 扩展详情中允许 Tampermonkey 在 InPrivate 中运行，并在 Tampermonkey 设置 > Security 中将“Store data in incognito mode”设为 Permanent，账号、备注和额度记录才会与普通窗口共用并保存在本机。InPrivate 登录 Cookie 仍是独立临时会话；关闭全部 InPrivate 窗口后可从空会话开始。',
             accountPrivateOpened: '已请求在 InPrivate 中打开登录页，请核对该页面中的账号邮箱。若未打开，请确认已允许 Tampermonkey 在 InPrivate 中运行。',
             accountPrivateUnavailable: '无法打开 InPrivate。请在 Edge 扩展详情中允许 Tampermonkey 在 InPrivate 中运行后重试；也可手动打开 InPrivate 窗口。',
             accountSwitchBusy: '请先停止任务，再切换账号。',
             accountInvalid: '请输入有效邮箱。', accountSaved: '账号已保存。', accountRemoved: '本地记录已移除。', accountUpdated: '已记录当前账号的官网额度。',
-            accountReadFailed: '无法读取当前账号或额度，请检查登录状态与官网额度显示。', accountStorageError: '本地存储不可用或记录无效，改动仅在当前页面有效。',
+            accountReadFailed: '无法读取当前账号或额度，请检查登录状态与官网额度显示。', accountStorageError: '账号本地存储不可用或记录无效，改动仅在当前页面有效。',
             accountChanged: '登录账号已变化，已停止处理；请核对官网账号与历史记录后刷新页面。',
         },
         ja: { tasksPage: 'ジョブ', accountsPage: 'アカウント管理', accountEmailLabel: 'メール', accountNoteLabel: 'メモ（任意）', accountAdd: '保存', accountSave: '変更を保存', accountCancel: '編集を取消', accountCurrent: '現在のアカウント', accountEdit: '編集', accountRemove: '削除', accountRefresh: '現在の残り枠を記録', accountLogin: '公式サイトでログイン / 切替' },
@@ -975,26 +978,78 @@
         return email.length <= 254 && /^[A-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?)+$/i.test(email) ? email.toLowerCase() : '';
     }
 
-    function loadAccounts() {
+    function parseAccountRecords(value) {
+        const data = typeof value === 'string' ? JSON.parse(value) : value;
+        if (data?.version !== 1 || !Array.isArray(data.accounts)) throw new Error('Invalid account records');
+        const records = new Map();
+        for (const item of data.accounts) {
+            const email = normalizeAccountEmail(item?.email);
+            if (!email) continue;
+            const quota = item.quota;
+            records.set(email, {
+                email, note: typeof item.note === 'string' ? item.note.slice(0, 200) : '',
+                quota: Number.isSafeInteger(quota?.remaining) && quota.remaining >= 0 &&
+                    Number.isSafeInteger(quota.observedAt) && quota.observedAt > 0 && quota.observedAt <= Date.now() + 60000
+                    ? { remaining: quota.remaining, observedAt: quota.observedAt } : null,
+            });
+        }
+        return [...records.values()];
+    }
+
+    function readLegacyAccounts() {
         try {
             const raw = localStorage.getItem(ACCOUNTS_KEY);
-            if (!raw) { accountStorageError = false; return []; }
-            const data = JSON.parse(raw);
-            if (data?.version !== 1 || !Array.isArray(data.accounts)) throw new Error('Invalid account records');
-            const records = new Map();
-            for (const item of data.accounts) {
-                const email = normalizeAccountEmail(item?.email);
-                if (!email) continue;
-                const quota = item.quota;
-                records.set(email, {
-                    email, note: typeof item.note === 'string' ? item.note.slice(0, 200) : '',
-                    quota: Number.isSafeInteger(quota?.remaining) && quota.remaining >= 0 &&
-                        Number.isSafeInteger(quota.observedAt) && quota.observedAt > 0 && quota.observedAt <= Date.now() + 60000
-                        ? { remaining: quota.remaining, observedAt: quota.observedAt } : null,
-                });
+            return raw ? { found: true, records: parseAccountRecords(raw) } : { found: false, records: [] };
+        } catch (_) {
+            try {
+                if (localStorage.getItem(ACCOUNTS_KEY)) return { found: true, invalid: true, records: [] };
+            } catch (_) {}
+            return { found: false, unavailable: true, records: [] };
+        }
+    }
+
+    function mergeAccountRecords(current, imported) {
+        const records = new Map(current.map(item => [item.email, item]));
+        for (const item of imported) {
+            const existing = records.get(item.email);
+            if (!existing) {
+                records.set(item.email, item);
+                continue;
             }
+            const quota = (existing.quota?.observedAt || 0) >= (item.quota?.observedAt || 0)
+                ? existing.quota : item.quota;
+            records.set(item.email, { ...existing, note: existing.note || item.note, quota });
+        }
+        return [...records.values()];
+    }
+
+    function clearLegacyAccounts() {
+        try { localStorage.removeItem(ACCOUNTS_KEY); } catch (_) {}
+    }
+
+    function loadAccounts() {
+        try {
+            if (typeof GM_getValue === 'function' && typeof GM_setValue === 'function') {
+                const stored = GM_getValue(ACCOUNTS_KEY, null);
+                const hasSharedRecords = stored !== null;
+                const current = hasSharedRecords ? parseAccountRecords(stored) : [];
+                const legacy = readLegacyAccounts();
+                if (legacy.invalid && !hasSharedRecords) throw new Error('Invalid legacy account records');
+                let records = current;
+                if (legacy.found && !legacy.invalid) {
+                    records = mergeAccountRecords(current, legacy.records);
+                    if (!hasSharedRecords || records.length !== current.length ||
+                        JSON.stringify(records) !== JSON.stringify(current)) {
+                        GM_setValue(ACCOUNTS_KEY, { version: 1, accounts: records });
+                    }
+                    clearLegacyAccounts();
+                }
+                accountStorageError = false;
+                return records;
+            }
+            const raw = localStorage.getItem(ACCOUNTS_KEY);
             accountStorageError = false;
-            return [...records.values()];
+            return raw ? parseAccountRecords(raw) : [];
         } catch (_) { accountStorageError = true; return []; }
     }
 
@@ -1009,8 +1064,14 @@
         } else if (index >= 0) records.splice(index, 1);
         accountRecords = records;
         if (!accountStorageError) {
-            try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify({ version: 1, accounts: records })); }
-            catch (_) { accountStorageError = true; }
+            try {
+                if (typeof GM_setValue === 'function' && typeof GM_getValue === 'function') {
+                    GM_setValue(ACCOUNTS_KEY, { version: 1, accounts: records });
+                    clearLegacyAccounts();
+                } else {
+                    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify({ version: 1, accounts: records }));
+                }
+            } catch (_) { accountStorageError = true; }
         }
         renderAccountManager();
     }
@@ -2941,6 +3002,13 @@
             accountRecords = loadAccounts();
             renderAccountManager();
         });
+        if (typeof GM_addValueChangeListener === 'function') {
+            GM_addValueChangeListener(ACCOUNTS_KEY, (_key, _oldValue, _newValue, remote) => {
+                if (!remote) return;
+                accountRecords = loadAccounts();
+                renderAccountManager();
+            });
+        }
         document.addEventListener('visibilitychange', ensureUI);
     }
 
