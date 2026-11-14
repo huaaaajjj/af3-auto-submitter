@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.6
+// @version      3.0.0-dev.7
 // @description  3.0 开发版：账户管理跨普通与 Edge InPrivate 本地保存账号、备注与额度记录；保留分区提交、按日期勾选下载、提交确认和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.6';
+    const SCRIPT_VERSION = '3.0.0-dev.7';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -676,8 +676,8 @@
         accountEmailLabel: 'Email', accountNoteLabel: 'Note (optional)', accountAdd: 'Save account', accountSave: 'Save changes', accountCancel: 'Cancel edit',
         accountCurrent: 'Current account', accountEdit: 'Edit', accountRemove: 'Remove', accountRemoveConfirm: 'Remove the local record for {email}? This does not delete the website account.',
         accountLiveQuota: 'Website quota: {count}', accountSavedQuota: 'Last recorded quota: {count}', accountNoQuota: 'Quota not recorded', accountRecordedAt: 'Recorded: {time}',
-        accountRefresh: 'Record current quota', accountLogin: 'Sign in / switch in InPrivate', accountLoginHelp: 'Opens Google account selection in Edge InPrivate and leaves this normal window signed in. Allow Tampermonkey in InPrivate, then set Tampermonkey Settings > Security > Store data in incognito mode to Permanent to share the local account list. InPrivate sign-in cookies remain temporary; close all InPrivate windows to start a fresh session.',
-        accountPrivateOpened: 'Requested an InPrivate login tab. Check the account email there. If no tab appears, allow Tampermonkey in InPrivate and try again.',
+        accountRefresh: 'Record current quota', accountLogin: 'Sign in / switch in InPrivate', accountLoginHelp: 'Opens https://alphafoldserver.com/ in Edge InPrivate. Sign in on the website; this normal window stays signed in. Allow Tampermonkey in InPrivate, then set Tampermonkey Settings > Security > Store data in incognito mode to Permanent to share the local account list. InPrivate sign-in cookies remain temporary; close all InPrivate windows to start a fresh session.',
+        accountPrivateOpened: 'Requested the AlphaFold Server homepage in InPrivate. Sign in there and check the account email. If no tab appears, allow Tampermonkey in InPrivate and try again.',
         accountPrivateUnavailable: 'Could not open InPrivate. Allow Tampermonkey in Edge InPrivate settings, then retry; or open an InPrivate window manually.',
         accountSwitchBusy: 'Stop processing before switching accounts.',
         accountInvalid: 'Enter a valid email address.', accountSaved: 'Account saved.', accountRemoved: 'Local record removed.', accountUpdated: 'Current account quota recorded.',
@@ -691,8 +691,8 @@
             accountEmailLabel: '邮箱', accountNoteLabel: '备注（可选）', accountAdd: '保存账号', accountSave: '保存修改', accountCancel: '取消编辑',
             accountCurrent: '当前账号', accountEdit: '编辑', accountRemove: '移除', accountRemoveConfirm: '移除 {email} 的本地记录？不会删除官网账号。',
             accountLiveQuota: '官网当前额度：{count} 个', accountSavedQuota: '上次记录额度：{count} 个', accountNoQuota: '尚未记录额度', accountRecordedAt: '记录时间：{time}',
-            accountRefresh: '记录当前额度', accountLogin: '在 InPrivate 中登录 / 切换', accountLoginHelp: '在 Edge InPrivate 中打开 Google 账号选择，普通窗口保持原登录。需在 Edge 扩展详情中允许 Tampermonkey 在 InPrivate 中运行，并在 Tampermonkey 设置 > Security 中将“Store data in incognito mode”设为 Permanent，账号、备注和额度记录才会与普通窗口共用并保存在本机。InPrivate 登录 Cookie 仍是独立临时会话；关闭全部 InPrivate 窗口后可从空会话开始。',
-            accountPrivateOpened: '已请求在 InPrivate 中打开登录页，请核对该页面中的账号邮箱。若未打开，请确认已允许 Tampermonkey 在 InPrivate 中运行。',
+            accountRefresh: '记录当前额度', accountLogin: '在 InPrivate 中登录 / 切换', accountLoginHelp: '在 Edge InPrivate 中直接打开 https://alphafoldserver.com/，请在官网操作登录，普通窗口保持原登录。需在 Edge 扩展详情中允许 Tampermonkey 在 InPrivate 中运行，并在 Tampermonkey 设置 > Security 中将“Store data in incognito mode”设为 Permanent，账号、备注和额度记录才会与普通窗口共用并保存在本机。InPrivate 登录 Cookie 仍是独立临时会话；关闭全部 InPrivate 窗口后可从空会话开始。',
+            accountPrivateOpened: '已请求在 InPrivate 中打开 AlphaFold Server 首页，请在官网登录并核对账号邮箱。若未打开，请确认已允许 Tampermonkey 在 InPrivate 中运行。',
             accountPrivateUnavailable: '无法打开 InPrivate。请在 Edge 扩展详情中允许 Tampermonkey 在 InPrivate 中运行后重试；也可手动打开 InPrivate 窗口。',
             accountSwitchBusy: '请先停止任务，再切换账号。',
             accountInvalid: '请输入有效邮箱。', accountSaved: '账号已保存。', accountRemoved: '本地记录已移除。', accountUpdated: '已记录当前账号的官网额度。',
@@ -1137,25 +1137,6 @@
         }
     }
 
-    function getAccountSwitchUrl() {
-        const signin = new URL('/signin', location.origin).href;
-        // /signin starts a new default Google login when it has no site OSID.
-        // Give the chosen identity to Google's login entry first, so that login
-        // establishes its OSID before handing control back to the website.
-        const handoff = new URL('https://accounts.google.com/ServiceLogin');
-        handoff.searchParams.set('continue', signin);
-        handoff.searchParams.set('followup', signin);
-        handoff.searchParams.set('passive', '1209600');
-        handoff.searchParams.set('osid', '1');
-        const chooser = new URL('https://accounts.google.com/AccountChooser');
-        chooser.searchParams.set('continue', handoff.href);
-        // Use the same sign-out entry as the website's account menu. Going
-        // straight to /welcome keeps the existing site session signed in.
-        const logout = new URL('/accounts/ClearOSID', location.origin);
-        logout.searchParams.set('continue', chooser.href);
-        return logout.href;
-    }
-
     function openAccountSwitch() {
         if (isRunning || downloadState.busy) {
             updateAccountSwitchControl();
@@ -1163,7 +1144,7 @@
         }
         try {
             if (typeof GM_openInTab !== 'function') throw new Error('InPrivate tab API unavailable');
-            const tab = GM_openInTab(getAccountSwitchUrl(), { active: true, incognito: true });
+            const tab = GM_openInTab('https://alphafoldserver.com/', { active: true, incognito: true });
             if (!tab) throw new Error('InPrivate tab was not created');
             accountMessage = 'accountPrivateOpened';
         } catch (_) {

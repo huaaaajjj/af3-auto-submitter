@@ -314,22 +314,11 @@ async function checkAccountEmail(){
   assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account readback triggered a task or script error');
   parent.postMessage({type:'af3-case-result',result:{passed:true,message:'email readback, account changes, visible profile priority, unknown/logout, bootstrap, languages; 0 submits'}},location.origin);
 }
-function assertAccountSwitchUrl(url){
-  const logout=new URL(url);
-  assert(logout.origin===location.origin&&logout.pathname==='/accounts/ClearOSID','Switch must exit the existing website session before signing in');
-  const chooser=new URL(logout.searchParams.get('continue'));
-  assert(chooser.origin==='https://accounts.google.com'&&chooser.pathname==='/AccountChooser','Switch must show Google account selection');
-  const handoff=new URL(chooser.searchParams.get('continue'));
-  assert(handoff.origin==='https://accounts.google.com'&&handoff.pathname==='/ServiceLogin','Selected identity must complete Google login before returning to the website');
-  const signin=new URL(handoff.searchParams.get('continue'));
-  assert(signin.origin===location.origin&&signin.pathname==='/signin','Google login must return to the official sign-in entry');
-  assert(handoff.searchParams.get('osid')==='1'&&handoff.searchParams.get('followup')===signin.href,'Google login must retain the website sign-in handoff');
-}
 function assertInPrivateSwitch(login){
   assert(login.tagName==='BUTTON'&&!login.hasAttribute('href'),'Private account switch must not navigate the current page');
   const call=window.__af3PrivateTabCalls.at(-1);
   assert(call&&call.options?.incognito===true&&call.options?.active===true,'Switch did not request an active InPrivate tab');
-  assertAccountSwitchUrl(call.url);
+  assert(call.url==='https://alphafoldserver.com/','InPrivate must open the AlphaFold Server homepage directly');
 }
 function assertAccountSwitchBlocked(){
   const login=ui('account-login');

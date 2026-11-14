@@ -4,14 +4,14 @@
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 3.0.0-dev.6](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 3.0.0-dev.7](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 3.0 的账户管理、按日期勾选、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行，并在 Edge 扩展详情中开启“允许在 InPrivate 中使用”。
 3. 若要在普通窗口与 InPrivate 共用账号目录，在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `3.0.0-dev.6`。更新后至少在普通窗口打开一次官网，以导入普通窗口原有账户列表。网站控件与通知仍需使用英文。
+4. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `3.0.0-dev.7`。更新后至少在普通窗口打开一次官网，以导入普通窗口原有账户列表。网站控件与通知仍需使用英文。
 5. 在 History 中仅选中 `Saved draft` 才显示“就绪: 提交草稿”，仅选中 `Failed` 才显示失败重跑就绪；混选或未选标签时待机并禁用启动。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 6. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 7. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
@@ -25,6 +25,10 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 在 Tampermonkey 的脚本设置中启用检查更新即可接收后续开发版；也可以手动“检查更新”。
 
 ## 本轮改动
+
+### 3.0.0-dev.7 InPrivate 直接打开官网首页
+
+“在 InPrivate 中登录 / 切换”直接打开 `https://alphafoldserver.com/`，随后由用户在官网操作登录。账户列表继续使用 Tampermonkey 本机脚本存储。
 
 ### 3.0.0-dev.6 账户列表在普通窗口与 InPrivate 共用
 
@@ -58,12 +62,12 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 - 当前登录账号置顶并标记“当前账号”。支持编辑备注、取消编辑、确认后移除本地记录；移除不会删除官网账号。移除当前账号后，点击“记录当前额度”可重新保存。
 - 当前账号的额度只从官网请求页面的 `Remaining jobs` 读取，变更时自动保存，持续可读时最多每分钟更新记录时间；也可点击“记录当前额度”。预览弹窗的额度仍显示在任务页，不写入账户记录。
 - 其他账号显示“上次记录额度”和读取时间。未登录、无法识别或额度控件未更新时保留历史记录，不把历史记录当作实时额度。账号切换后，若额度节点仍未变化，会等待官网更新再归属新账号。
-- “在 InPrivate 中登录 / 切换”通过 Tampermonkey 打开官网登录流程，普通窗口保留原登录；面板重新读取邮箱与额度，请核对当前邮箱。任务处理中需先停止；脚本不保存密码或登录会话。
+- “在 InPrivate 中登录 / 切换”通过 Tampermonkey 直接打开 `https://alphafoldserver.com/`，由用户在官网操作登录；面板重新读取邮箱与额度，请核对当前邮箱。任务处理中需先停止；脚本不保存密码或登录会话。
 - 账号变化会使旧下载查找结果和逐个勾选队列失效；已识别账号在提交中变化时停止并锁定启动，需要核对官网账号与历史记录后刷新。
 
 邮箱、备注和额度记录保存在 Tampermonkey 的本机脚本存储中，同一浏览器配置内的标签页共用；不同浏览器配置不会共享记录。清除 Tampermonkey 扩展数据会删除记录。旧网站存储会在首次运行时合并导入；内容损坏时不会自动覆盖。手动添加账号只记录邮箱和备注，不支持免登录查询其他账号额度。
 
-### 按日期勾选，再用官网下载（DEV 3.0.0-dev.6）
+### 按日期勾选，再用官网下载（DEV 3.0.0-dev.7）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。面板会扫描当前搜索结果的所有分页，保留官网已有的复选框选中状态。
 2. 在面板下方常驻的“下载任务”区域，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。
