@@ -1,14 +1,15 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.4
-// @description  3.0 开发版：账户管理支持先退出官网再选择 Google 账号，本地保存账号、备注与额度记录；保留分区提交、按日期勾选下载、提交确认和可调面板。
+// @version      3.0.0-dev.5
+// @description  3.0 开发版：账户管理可在 Edge InPrivate 中登录切换，本地保存账号、备注与额度记录；保留分区提交、按日期勾选下载、提交确认和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
 // @match        https://alphafoldserver.com/*
 // @match        https://www.alphafoldserver.com/*
-// @grant        none
+// @grant        GM_openInTab
+// @sandbox      raw
 // @run-at       document-start
 // @noframes
 // @updateURL    https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js
@@ -19,7 +20,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.4';
+    const SCRIPT_VERSION = '3.0.0-dev.5';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -672,7 +673,9 @@
         accountEmailLabel: 'Email', accountNoteLabel: 'Note (optional)', accountAdd: 'Save account', accountSave: 'Save changes', accountCancel: 'Cancel edit',
         accountCurrent: 'Current account', accountEdit: 'Edit', accountRemove: 'Remove', accountRemoveConfirm: 'Remove the local record for {email}? This does not delete the website account.',
         accountLiveQuota: 'Website quota: {count}', accountSavedQuota: 'Last recorded quota: {count}', accountNoQuota: 'Quota not recorded', accountRecordedAt: 'Recorded: {time}',
-        accountRefresh: 'Record current quota', accountLogin: 'Website sign-in / switch', accountLoginHelp: 'This exits the current AlphaFold session and opens Google account selection in this tab. Choose another account or Use another account. Google completes sign-in before returning to the website; check the current email after returning.',
+        accountRefresh: 'Record current quota', accountLogin: 'Sign in / switch in InPrivate', accountLoginHelp: 'Opens Google account selection in Edge InPrivate and leaves this normal window signed in. Allow Tampermonkey in InPrivate. All InPrivate windows share one temporary session; close them all to start fresh. Notes and quota history there are separate and cleared when all InPrivate windows close.',
+        accountPrivateOpened: 'Requested an InPrivate login tab. Check the account email there. If no tab appears, allow Tampermonkey in InPrivate and try again.',
+        accountPrivateUnavailable: 'Could not open InPrivate. Allow Tampermonkey in Edge InPrivate settings, then retry; or open an InPrivate window manually.',
         accountSwitchBusy: 'Stop processing before switching accounts.',
         accountInvalid: 'Enter a valid email address.', accountSaved: 'Account saved.', accountRemoved: 'Local record removed.', accountUpdated: 'Current account quota recorded.',
         accountReadFailed: 'Current account or quota is unavailable. Check sign-in and the website quota display.',
@@ -685,7 +688,9 @@
             accountEmailLabel: '邮箱', accountNoteLabel: '备注（可选）', accountAdd: '保存账号', accountSave: '保存修改', accountCancel: '取消编辑',
             accountCurrent: '当前账号', accountEdit: '编辑', accountRemove: '移除', accountRemoveConfirm: '移除 {email} 的本地记录？不会删除官网账号。',
             accountLiveQuota: '官网当前额度：{count} 个', accountSavedQuota: '上次记录额度：{count} 个', accountNoQuota: '尚未记录额度', accountRecordedAt: '记录时间：{time}',
-            accountRefresh: '记录当前额度', accountLogin: '官网登录 / 切换', accountLoginHelp: '点击后会退出当前 AlphaFold 登录，在本页打开 Google 账号选择。请选择其他账号（或“使用其他账号”）；先完成 Google 登录交接再返回官网，请核对上方当前邮箱。',
+            accountRefresh: '记录当前额度', accountLogin: '在 InPrivate 中登录 / 切换', accountLoginHelp: '在 Edge InPrivate 中打开 Google 账号选择，普通窗口保持原登录。需在 Edge 扩展详情中允许 Tampermonkey 在 InPrivate 中运行。所有 InPrivate 窗口共用临时登录；要从空会话登录，请先关闭全部 InPrivate 窗口。InPrivate 的账号备注和额度记录与普通窗口分开，关闭所有 InPrivate 窗口后会清除。',
+            accountPrivateOpened: '已请求在 InPrivate 中打开登录页，请核对该页面中的账号邮箱。若未打开，请确认已允许 Tampermonkey 在 InPrivate 中运行。',
+            accountPrivateUnavailable: '无法打开 InPrivate。请在 Edge 扩展详情中允许 Tampermonkey 在 InPrivate 中运行后重试；也可手动打开 InPrivate 窗口。',
             accountSwitchBusy: '请先停止任务，再切换账号。',
             accountInvalid: '请输入有效邮箱。', accountSaved: '账号已保存。', accountRemoved: '本地记录已移除。', accountUpdated: '已记录当前账号的官网额度。',
             accountReadFailed: '无法读取当前账号或额度，请检查登录状态与官网额度显示。', accountStorageError: '本地存储不可用或记录无效，改动仅在当前页面有效。',
@@ -1090,15 +1095,30 @@
         return logout.href;
     }
 
+    function openAccountSwitch() {
+        if (isRunning || downloadState.busy) {
+            updateAccountSwitchControl();
+            return;
+        }
+        try {
+            if (typeof GM_openInTab !== 'function') throw new Error('InPrivate tab API unavailable');
+            const tab = GM_openInTab(getAccountSwitchUrl(), { active: true, incognito: true });
+            if (!tab) throw new Error('InPrivate tab was not created');
+            accountMessage = 'accountPrivateOpened';
+        } catch (_) {
+            accountMessage = 'accountPrivateUnavailable';
+        }
+        renderAccountManager();
+    }
+
     function updateAccountSwitchControl() {
         const login = getUiElement('af3-account-login');
         if (!login) return;
         const busy = isRunning || downloadState.busy;
+        login.disabled = busy;
         login.setAttribute('aria-disabled', String(busy));
         login.tabIndex = busy ? -1 : 0;
         login.title = t(busy ? 'accountSwitchBusy' : 'accountLoginHelp');
-        if (busy) login.removeAttribute('href');
-        else login.href = getAccountSwitchUrl();
         getUiElement('af3-account-login-help').textContent = t(busy ? 'accountSwitchBusy' : 'accountLoginHelp');
     }
 
@@ -1181,7 +1201,7 @@
         append(page, 'p', 'accounts-intro', { class: 'af3-account-help' });
         const actions = append(page, 'div', '', { class: 'af3-account-actions' });
         append(actions, 'button', 'account-refresh', { type: 'button' });
-        append(actions, 'a', 'account-login', { target: '_self' });
+        append(actions, 'button', 'account-login', { type: 'button' });
         append(page, 'p', 'account-login-help', { class: 'af3-account-help' });
         const form = append(page, 'form', 'account-form', { novalidate: '' });
         append(form, 'label', 'account-email-label', { for: 'af3-account-input' });
@@ -1195,13 +1215,7 @@
         append(page, 'h3', 'accounts-count');
         append(page, 'div', 'accounts-list');
         const login = page.querySelector('#af3-account-login');
-        login.href = getAccountSwitchUrl();
-        login.onclick = login.onauxclick = event => {
-            if (isRunning || downloadState.busy) {
-                event.preventDefault();
-                updateAccountSwitchControl();
-            }
-        };
+        login.onclick = openAccountSwitch;
         page.querySelector('#af3-account-form').onsubmit = event => {
             event.preventDefault();
             const email = normalizeAccountEmail(getUiElement('af3-account-input').value);

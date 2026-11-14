@@ -17,8 +17,7 @@ import tempfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from http.cookies import SimpleCookie
-from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
+from urllib.parse import urlsplit
 
 
 PAGE = r'''<!doctype html><meta charset="utf-8"><title>Local submission self-check</title>
@@ -80,7 +79,6 @@ if(id==='account-storage-blocked'){
   Storage.prototype.setItem=function(key,value){if(key===accountsKey)throw Error('Storage disabled');return originalSet.call(this,key,value)};
 }
 if(id==='account-switch-submission'||id==='account-switch-confirm')window.WIZ_global_data={oPEP7c:'first@example.com'};
-if(id==='account-login-return')window.WIZ_global_data={oPEP7c:document.cookie.includes('af3-fixture-osid=second')?'second@example.com':'first@example.com'};
 if(id==='startup-trusted-types')window.WIZ_global_data={oPEP7c:'strict.page@example.com'};
 // Leave room to grow in the 700px fixture, and verify existing saved sizes still work.
 if(id==='panel-ui'&&!new URLSearchParams(location.search).has('restore'))localStorage.setItem('af3-dev-panel-size',JSON.stringify({width:300,height:380}));
@@ -91,6 +89,12 @@ const ui=name=>root()?.getElementById('af3-'+name);
 const assert=(value,message)=>{if(!value)throw Error(message)};
 async function until(read,timeout=75000){const end=Date.now()+timeout;while(Date.now()<end){if(read())return;await pause(50)}throw Error('Timed out: '+(ui('log-body')?.textContent||''))}
 const state={calls:0,names:[],summaries:[],errors:[],opened:[],pausedConfirmed:false,earlySuccess:false};
+window.__af3PrivateTabCalls=[];
+window.GM_openInTab=(url,options)=>{
+  if(id==='account-login-unavailable')throw Error('InPrivate unavailable');
+  window.__af3PrivateTabCalls.push({url,options});
+  return {closed:false,close(){}};
+};
 const queue=['draft_0','draft_1','draft_2'];let current;
 window.confirm=()=>{if(id==='account-switch-confirm')window.WIZ_global_data.oPEP7c='second@example.com';return true};
 window.alert=message=>state.summaries.push(String(message));
@@ -291,8 +295,8 @@ async function checkAccountEmail(){
   assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account readback triggered a task or script error');
   parent.postMessage({type:'af3-case-result',result:{passed:true,message:'email readback, account changes, visible profile priority, unknown/logout, bootstrap, languages; 0 submits'}},location.origin);
 }
-function assertAccountSwitchUrl(login){
-  const logout=new URL(login.href);
+function assertAccountSwitchUrl(url){
+  const logout=new URL(url);
   assert(logout.origin===location.origin&&logout.pathname==='/accounts/ClearOSID','Switch must exit the existing website session before signing in');
   const chooser=new URL(logout.searchParams.get('continue'));
   assert(chooser.origin==='https://accounts.google.com'&&chooser.pathname==='/AccountChooser','Switch must show Google account selection');
@@ -301,19 +305,19 @@ function assertAccountSwitchUrl(login){
   const signin=new URL(handoff.searchParams.get('continue'));
   assert(signin.origin===location.origin&&signin.pathname==='/signin','Google login must return to the official sign-in entry');
   assert(handoff.searchParams.get('osid')==='1'&&handoff.searchParams.get('followup')===signin.href,'Google login must retain the website sign-in handoff');
-  assert(login.target==='_self','Switch must replace the old account page in the same tab');
+}
+function assertInPrivateSwitch(login){
+  assert(login.tagName==='BUTTON'&&!login.hasAttribute('href'),'Private account switch must not navigate the current page');
+  const call=window.__af3PrivateTabCalls.at(-1);
+  assert(call&&call.options?.incognito===true&&call.options?.active===true,'Switch did not request an active InPrivate tab');
+  assertAccountSwitchUrl(call.url);
 }
 function assertAccountSwitchBlocked(){
   const login=ui('account-login');
-  assert(login.getAttribute('aria-disabled')==='true'&&!login.hasAttribute('href')&&login.tabIndex===-1,'Running task left an actionable account switch');
-  for(const type of ['click','auxclick']){
-    // Even a stale link restored before the next render must not navigate.
-    login.href='/accounts/ClearOSID';
-    let blocked=false;
-    login.addEventListener(type,event=>{blocked=event.defaultPrevented;event.preventDefault()},{once:true});
-    login.dispatchEvent(new MouseEvent(type,{cancelable:true,button:type==='auxclick'?1:0}));
-    assert(blocked,'Running task allowed '+type+' to exit the website session');
-  }
+  assert(login.disabled&&login.getAttribute('aria-disabled')==='true'&&login.tabIndex===-1,'Running task left an actionable account switch');
+  const before=window.__af3PrivateTabCalls.length;
+  login.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+  assert(window.__af3PrivateTabCalls.length===before,'Running task opened an InPrivate tab');
 }
 async function checkAccountManager(){
   const records=()=>JSON.parse(localStorage.getItem(accountsKey)||'{"accounts":[]}').accounts;
@@ -324,21 +328,18 @@ async function checkAccountManager(){
   assert(ui('tasks-page').hidden&&!ui('accounts-page').hidden,'Account tab did not switch pages');
   assert(ui('accounts-tab').getAttribute('aria-selected')==='true','Account tab is not selected accessibly');
   const login=ui('account-login');
-  if(id!=='account-login-return')assertAccountSwitchUrl(login);
-  if(id==='account-login-return'){
-    if(!restored){save('first@example.com','Keep original account');login.click();return false}
-    assert(ui('account-email').textContent.includes('second@example.com'),'Selected identity was lost when the website restarted its default Google login');
-    assert(card('second@example.com')?.querySelector('.af3-account-current'),'Returned account was not recognized as current');
-    assert(card('first@example.com')?.textContent.includes('Keep original account'),'Round trip removed the original account record');
-  }else if(id==='account-login'){
+  if(id==='account-login'){
     save('saved@example.com','Keep this record');
     const before=localStorage.getItem(accountsKey);
-    let prevented=true;
-    login.addEventListener('click',event=>{prevented=event.defaultPrevented;event.preventDefault()},{once:true});
     login.click();
-    assert(!prevented,'Idle switch did not allow official navigation');
+    assertInPrivateSwitch(login);
     assert(localStorage.getItem(accountsKey)===before,'Switch removed saved accounts or notes');
-    assert(ui('account-login-help').textContent.includes('退出'),'Switch does not explain that it exits the current session');
+    assert(ui('account-login-help').textContent.includes('InPrivate'),'Switch does not explain InPrivate behavior');
+    assert(ui('accounts-message').textContent.includes('InPrivate'),'Switch did not report its result');
+  }else if(id==='account-login-unavailable'){
+    login.click();
+    assert(window.__af3PrivateTabCalls.length===0,'Unavailable InPrivate API still opened a tab');
+    assert(ui('accounts-message').textContent.includes('无法打开 InPrivate'),'Missing InPrivate permission was not reported');
   }else if(id==='account-storage'||id==='account-storage-blocked'){
     save('memory@example.com','first');save('another@example.com','second');
     assert(cards().length===2&&card('memory@example.com').textContent.includes('first'),'Unavailable storage lost in-page records');
@@ -408,7 +409,7 @@ async function checkAccountManager(){
     assert(ui('submission-section').getClientRects().length&&ui('download-section').getClientRects().length,'Tasks page lost expanded sections');
   }
   assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account management triggered a job or script error');
-  parent.postMessage({type:'af3-case-result',result:{passed:true,message:'account page, local records, quota source and manual login entry; 0 submits'}},location.origin);
+  parent.postMessage({type:'af3-case-result',result:{passed:true,message:'account page, local records, quota source and InPrivate login entry; 0 submits'}},location.origin);
   return true;
 }
 (async()=>{
@@ -424,7 +425,7 @@ async function checkAccountManager(){
     assert(ui('tasks-page').getClientRects().length,'Tasks page was not rendered under Trusted Types');
     ui('accounts-tab').click();
     assert(ui('accounts-page').getClientRects().length,'Account page was not rendered under Trusted Types');
-    assertAccountSwitchUrl(ui('account-login'));
+    ui('account-login').click();assertInPrivateSwitch(ui('account-login'));
     ui('account-input').value='manual@example.com';ui('account-note').value='Strict CSP note';
     ui('account-form').dispatchEvent(new Event('submit',{cancelable:true}));
     assert(ui('accounts-list').textContent.includes('Strict CSP note'),'Account save failed under Trusted Types');
@@ -437,7 +438,7 @@ async function checkAccountManager(){
     parent.postMessage({type:'af3-case-result',result:{passed:true,message:'Trusted Types enforced: startup, navigation, account save and panel recovery; 0 submits'}},location.origin);return;
   }
   if(id==='account-email'){await until(()=>ui('v20-btn'),5000);await checkAccountEmail();return}
-  if(['account-manager','account-login','account-login-return','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
+  if(['account-manager','account-login','account-login-unavailable','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
   if(id==='storage-writer')return;
   if(id==='panel-ui'){
     await until(()=>ui('v20-btn'),5000);
@@ -455,10 +456,10 @@ async function checkAccountManager(){
     assertAccountSwitchBlocked();
     ui('stop-btn').click();
     await until(()=>state.summaries.length>0);
-    assertAccountSwitchUrl(ui('account-login'));
+    ui('account-login').click();assertInPrivateSwitch(ui('account-login'));
     assert(ui('account-login').getAttribute('aria-disabled')==='false','Switch did not recover after stopping');
     assert(state.calls===0&&state.errors.length===0,'Switch during processing submitted a job or caused an error');
-    parent.postMessage({type:'af3-case-result',result:{passed:true,message:'switch blocked during submission, including stale click/auxclick; restored after stop; 0 submits'}},location.origin);return;
+    parent.postMessage({type:'af3-case-result',result:{passed:true,message:'switch blocked during submission; restored after stop; 0 submits'}},location.origin);return;
   }
   if(id==='account-switch-confirm'){
     ui('v20-btn').click();await pause(600);
@@ -498,7 +499,7 @@ async function checkAccountManager(){
 
 
 SCENARIOS = [
-    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-return', 'account-login-busy', 'account-quota', 'account-persistence',
+    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-unavailable', 'account-login-busy', 'account-quota', 'account-persistence',
     'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-switch-submission', 'account-switch-confirm',
     'delayed-success', 'old-success', 'server-error', 'no-toast',
     'failed-success', 'failed-error', 'stop-in-flight', 'stale-row',
@@ -531,42 +532,6 @@ def main():
         def do_GET(self):
             request = urlsplit(self.path)
             path = request.path
-            query = parse_qs(request.query)
-            # Local-only authentication model: the chooser forwards the selected
-            # identity to its continuation. A fresh site /signin request without
-            # an OSID restarts Google login with the default identity, as the
-            # real site's public redirect does. No Google session is used here.
-            if path in ('/accounts/ClearOSID', '/fixture-google-chooser', '/fixture-google-login', '/signin'):
-                cookie = SimpleCookie(self.headers.get('Cookie', ''))
-                osid = cookie.get('af3-fixture-osid')
-                set_cookie = None
-                if path == '/accounts/ClearOSID':
-                    chooser = urlsplit(query['continue'][0])
-                    target = '/fixture-google-chooser?' + chooser.query
-                    set_cookie = 'af3-fixture-osid=; Max-Age=0; Path=/'
-                elif path == '/fixture-google-chooser':
-                    selected = urlsplit(query['continue'][0])
-                    params = parse_qs(selected.query)
-                    params['authuser'] = ['1']
-                    selected_path = '/fixture-google-login' if selected.netloc == 'accounts.google.com' and selected.path == '/ServiceLogin' else selected.path
-                    target = urlunsplit(('', '', selected_path, urlencode(params, doseq=True), ''))
-                elif path == '/fixture-google-login':
-                    identity = 'second' if query.get('authuser') == ['1'] else 'first'
-                    set_cookie = f'af3-fixture-osid={identity}; Path=/'
-                    target = query['continue'][0]
-                elif osid:
-                    target = '/case?id=account-login-return&restore=1'
-                else:
-                    # The site does not forward the selected authuser into
-                    # Google's top-level login parameters (the dev.3 failure).
-                    signin = f'http://127.0.0.1:{server.server_port}/signin'
-                    target = '/fixture-google-login?' + urlencode({'continue': signin, 'followup': signin, 'osid': '1'})
-                self.send_response(302)
-                self.send_header('Location', target)
-                if set_cookie:
-                    self.send_header('Set-Cookie', set_cookie)
-                self.end_headers()
-                return
             if path not in ('/', '/case', '/script.js'):
                 self.send_error(404)
                 return

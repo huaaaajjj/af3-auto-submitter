@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 开发版 3.0.0-dev.4：继续修正选择其他 Google 账号后仍回到原账号的问题，先完成所选账号的登录交接再返回官网；账户管理保存多个账号、备注与额度记录。任务页提交在上、下载在下，常驻展开；下载由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">本 fork 开发版 3.0.0-dev.5：账号切换在 Edge InPrivate 中打开，保留普通窗口的原登录；需允许 Tampermonkey 在 InPrivate 中运行。InPrivate 的账号记录与普通窗口隔离。账户管理保存多个账号、备注与额度记录。任务页提交在上、下载在下，常驻展开；下载由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
             <p class="version-note">main 的 2.24.1 仍为旧行为基线，不包含这些 DEV 功能。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 3.0.0-dev.4</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 3.0.0-dev.5</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
@@ -295,10 +295,10 @@
         </section>
 
         <section>
-            <h2>✨ DEV 3.0.0-dev.4 更新重点</h2>
+            <h2>✨ DEV 3.0.0-dev.5 更新重点</h2>
             <ul class="release-list">
                 <li>修正 dev.3 选择其他 Google 账号后仍回到原账号的问题：所选账号先交给 Google 登录入口，完成 OSID 交接后再返回官网，避免官网重新发起默认账号登录。返回后请核对当前邮箱。</li>
-                <li>修复切换后仍是原账号：“官网登录 / 切换”先退出当前官网会话，再在本页打开 Google 账号选择；提交、查找和应用勾选期间禁用切换。本地账号记录保留，无需手动清理 Cookie。</li>
+                <li>账号切换改为通过 Tampermonkey 在 Edge InPrivate 中打开官网登录流程，普通窗口保留原账号。需允许 Tampermonkey 在 InPrivate 中运行；InPrivate 的 Cookie、账号备注和额度记录与普通窗口隔离。所有 InPrivate 窗口共用临时会话；关闭全部窗口可清除会话和本地记录。</li>
                 <li>修复 3.0.0-dev.1 更新后面板消失：账户页改用 DOM 节点构建，兼容官网 Trusted Types 限制。更新后刷新官网即可恢复，已有本地账户记录和面板设置保留。</li>
                 <li>新增账户管理页面：自动记录当前账号，也可手动添加邮箱、保存备注、编辑和移除本地记录；当前账号置顶标记。</li>
                 <li>额度变更时自动记录，持续可读时每分钟更新记录时间，也可手动“记录当前额度”。其他账号显示上次记录及时间，未知额度不记为零，预览额度不写入账户记录。</li>
@@ -421,7 +421,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 3.0.0-dev.4 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 3.0.0-dev.5 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -431,7 +431,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter DEV 3.0.0-dev.4 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter DEV 3.0.0-dev.5 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

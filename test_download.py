@@ -53,6 +53,8 @@ const ui=name=>root()?.getElementById('af3-'+name)||document.getElementById('af3
 const assert=(value,message)=>{if(!value)throw Error(message)};
 async function until(read,timeout=15000){const end=Date.now()+timeout;while(Date.now()<end){if(read())return;await pause(30)}throw Error('Timed out: '+(ui('download-status')?.textContent||''))}
 const state={page:0,pages:[],downloads:[],menus:[],bulkDownloads:[],rowOpens:0,submits:0,clones:0,deletes:0,confirms:0,nativeCheckboxClicks:0,nativeInputChanges:0,nativeClears:0,errors:[],transportCalls:[],selected:new Set(),visited:[],readiness:[],changes:0,stopTriggered:false,phase:'idle'};
+window.__af3PrivateTabCalls=[];
+window.GM_openInTab=(url,options)=>{window.__af3PrivateTabCalls.push({url,options});return {closed:false,close(){}}};
 let manualActions=0,manualRecords=0;
 window.confirm=()=>{state.confirms++;if(id==='download-confirm-context-change')setFilter('draft');return id!=='download-cancel-apply'};
 window.alert=()=>{};
@@ -184,11 +186,10 @@ function assertRemovedControls(){for(const name of ['download-run','download-web
 function setFormat(value){ui('download-format').value=value;ui('download-format').dispatchEvent(new Event('change',{bubbles:true}));assert(ui('download-format').value===value,'Download format was not selectable: '+value)}
 function assertAccountSwitchBlocked(){
  const login=ui('account-login');
- assert(login.getAttribute('aria-disabled')==='true'&&!login.hasAttribute('href'),'Scan/application left an actionable account switch');
- login.href='/accounts/ClearOSID';
- let blocked=false;
- login.addEventListener('click',event=>{blocked=event.defaultPrevented;event.preventDefault()},{once:true});
- login.click();assert(blocked,'Scan/application allowed a stale switch link to exit the session');
+ assert(login.disabled&&login.getAttribute('aria-disabled')==='true'&&!login.hasAttribute('href'),'Scan/application left an actionable account switch');
+ const before=window.__af3PrivateTabCalls.length;
+ login.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+ assert(window.__af3PrivateTabCalls.length===before,'Scan/application opened an InPrivate tab');
 }
 async function scan(start='2026-11-12',end='2026-11-13'){
  ui('download-start').value=start;ui('download-end').value=end;
@@ -374,9 +375,9 @@ async function checkIndividual(){
   if(['download-unknown-date','download-calendar-invalid','download-clock-invalid'].includes(id))assert(/无法|识别|未知|unknown|unreadable|invalid/i.test(ui('download-status').textContent),'Unrecognized date was not reported');
   if(id==='download-busy'){
    assert(state.confirms===0,'Submission bypassed exclusion during scan');
-   assert(ui('account-login').getAttribute('aria-disabled')==='false'&&ui('account-login').hasAttribute('href'),'Switch stayed disabled after scanning');
+   assert(!ui('account-login').disabled&&ui('account-login').getAttribute('aria-disabled')==='false','Switch stayed disabled after scanning');
    await apply();
-   assert(ui('account-login').getAttribute('aria-disabled')==='false'&&ui('account-login').hasAttribute('href'),'Switch stayed disabled after application');
+   assert(!ui('account-login').disabled&&ui('account-login').getAttribute('aria-disabled')==='false','Switch stayed disabled after application');
   }else if(id==='download-select'){
    ui('download-clear').click();assert(selectedReview().length===0&&ui('download-apply').disabled,'Clear selection stayed actionable');
    ui('download-all').click();assert(selectedReview().length===4,'Select all lost matches');
