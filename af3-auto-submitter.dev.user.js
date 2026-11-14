@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.1
+// @version      3.0.0-dev.2
 // @description  3.0 开发版：新增账户管理页面，本地保存账号、备注与额度记录，提供官网登录入口；保留分区提交、按日期勾选下载、提交确认和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -19,7 +19,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.1';
+    const SCRIPT_VERSION = '3.0.0-dev.2';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -1134,21 +1134,32 @@
     function createAccountPage() {
         const page = document.createElement('section'); page.id = 'af3-accounts-page'; page.className = 'af3-page';
         page.setAttribute('role', 'tabpanel'); page.setAttribute('aria-labelledby', 'af3-accounts-tab'); page.hidden = true;
-        // Only static markup goes through innerHTML; account data always uses textContent.
-        page.innerHTML = `
-            <h2 id="af3-accounts-title"></h2><p id="af3-accounts-intro" class="af3-account-help"></p>
-            <div class="af3-account-actions"><button id="af3-account-refresh" type="button"></button>
-            <a id="af3-account-login" target="_blank" rel="noopener noreferrer"></a></div>
-            <p id="af3-account-login-help" class="af3-account-help"></p>
-            <form id="af3-account-form" novalidate>
-                <label for="af3-account-input" id="af3-account-email-label"></label>
-                <input id="af3-account-input" type="email" maxlength="254" autocomplete="off" required>
-                <label for="af3-account-note" id="af3-account-note-label"></label>
-                <input id="af3-account-note" type="text" maxlength="200" autocomplete="off">
-                <div class="af3-account-actions"><button id="af3-account-save" type="submit"></button><button id="af3-account-cancel" type="button" hidden></button></div>
-            </form>
-            <p id="af3-accounts-message" role="status" aria-live="polite"></p><h3 id="af3-accounts-count"></h3>
-            <div id="af3-accounts-list"></div>`;
+        // The real website enforces Trusted Types. Build the panel with DOM
+        // nodes so creating it never requires an HTML string or a site policy.
+        const append = (parent, tag, id, attributes = {}) => {
+            const node = document.createElement(tag);
+            if (id) node.id = `af3-${id}`;
+            for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
+            parent.appendChild(node);
+            return node;
+        };
+        append(page, 'h2', 'accounts-title');
+        append(page, 'p', 'accounts-intro', { class: 'af3-account-help' });
+        const actions = append(page, 'div', '', { class: 'af3-account-actions' });
+        append(actions, 'button', 'account-refresh', { type: 'button' });
+        append(actions, 'a', 'account-login', { target: '_blank', rel: 'noopener noreferrer' });
+        append(page, 'p', 'account-login-help', { class: 'af3-account-help' });
+        const form = append(page, 'form', 'account-form', { novalidate: '' });
+        append(form, 'label', 'account-email-label', { for: 'af3-account-input' });
+        append(form, 'input', 'account-input', { type: 'email', maxlength: '254', autocomplete: 'off', required: '' });
+        append(form, 'label', 'account-note-label', { for: 'af3-account-note' });
+        append(form, 'input', 'account-note', { type: 'text', maxlength: '200', autocomplete: 'off' });
+        const formActions = append(form, 'div', '', { class: 'af3-account-actions' });
+        append(formActions, 'button', 'account-save', { type: 'submit' });
+        append(formActions, 'button', 'account-cancel', { type: 'button', hidden: '' });
+        append(page, 'p', 'accounts-message', { role: 'status', 'aria-live': 'polite' });
+        append(page, 'h3', 'accounts-count');
+        append(page, 'div', 'accounts-list');
         page.querySelector('#af3-account-login').href = new URL('/welcome', location.origin).href;
         page.querySelector('#af3-account-form').onsubmit = event => {
             event.preventDefault();

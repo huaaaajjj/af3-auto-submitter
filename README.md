@@ -4,13 +4,13 @@
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 3.0.0-dev.1](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 3.0.0-dev.2](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 3.0 的账户管理、按日期勾选、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。Edge InPrivate 还需允许扩展在 InPrivate 中使用。
-3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `3.0.0-dev.1`。网站控件与通知仍需使用英文。
+3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `3.0.0-dev.2`。网站控件与通知仍需使用英文。
 4. 在 History 中仅选中 `Saved draft` 才显示“就绪: 提交草稿”，仅选中 `Failed` 才显示失败重跑就绪；混选或未选标签时待机并禁用启动。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 5. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 6. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
@@ -25,6 +25,10 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 ## 本轮改动
 
+### 3.0.0-dev.2 面板启动修复
+
+修复 3.0.0-dev.1 更新后官网不显示面板的问题：官网强制 Trusted Types，账户页的 HTML 模板写入被拦截，导致面板初始化中断。账户页改用 DOM 节点构建，并新增同样限制下的启动、页面切换、保存账号和面板重建检查。更新后刷新官网即可恢复，已有账户记录、位置和尺寸继续保留。
+
 ### 3.0 账户管理页面
 
 面板顶部增加“任务 / 账户管理”导航。默认打开任务页，保留上下常驻的提交和下载区域；切换页面不会启动或暂停任务，可随时返回任务页操作暂停、停止。导航支持方向键及 Home / End。
@@ -38,7 +42,7 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 邮箱、备注和额度记录保存在当前浏览器、当前官网域名的本地存储中；同一域名的标签页同步更新。不同浏览器或浏览器配置不会共享记录，清除网站数据会删除记录。本地存储不可用或内容损坏时明确提示，当前页仍能管理记录；损坏的数据不会自动覆盖。手动添加账号只记录邮箱和备注，不支持免登录查询其他账号额度。
 
-### 按日期勾选，再用官网下载（DEV 3.0.0-dev.1）
+### 按日期勾选，再用官网下载（DEV 3.0.0-dev.2）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。面板会扫描当前搜索结果的所有分页，保留官网已有的复选框选中状态。
 2. 在面板下方常驻的“下载任务”区域，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。

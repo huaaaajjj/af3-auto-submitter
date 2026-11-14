@@ -78,6 +78,7 @@ if(id==='account-storage-blocked'){
   Storage.prototype.setItem=function(key,value){if(key===accountsKey)throw Error('Storage disabled');return originalSet.call(this,key,value)};
 }
 if(id==='account-switch-submission'||id==='account-switch-confirm')window.WIZ_global_data={oPEP7c:'first@example.com'};
+if(id==='startup-trusted-types')window.WIZ_global_data={oPEP7c:'strict.page@example.com'};
 // Leave room to grow in the 700px fixture, and verify existing saved sizes still work.
 if(id==='panel-ui'&&!new URLSearchParams(location.search).has('restore'))localStorage.setItem('af3-dev-panel-size',JSON.stringify({width:300,height:380}));
 const failed=id.startsWith('failed-');
@@ -370,8 +371,29 @@ async function checkAccountManager(){
   return true;
 }
 (async()=>{
-  const script=document.createElement('script');script.src='/script.js';
+  const script=document.createElement('script');
+  // The fixture authorizes only its script URL; it must not create a default
+  // TrustedHTML policy that would hide unsafe HTML writes inside the userscript.
+  const scriptPolicy=id==='startup-trusted-types'?trustedTypes.createPolicy('af3-fixture-script',{createScriptURL:value=>value}):null;
+  script.src=scriptPolicy?scriptPolicy.createScriptURL('/script.js'):'/script.js';
   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Cannot load userscript'));document.head.append(script)});
+  if(id==='startup-trusted-types'){
+    assert(state.errors.length===0,'Startup error under the website CSP: '+state.errors.join('; '));
+    await until(()=>ui('v20-btn')&&ui('accounts-tab'),5000);
+    assert(ui('tasks-page').getClientRects().length,'Tasks page was not rendered under Trusted Types');
+    ui('accounts-tab').click();
+    assert(ui('accounts-page').getClientRects().length,'Account page was not rendered under Trusted Types');
+    ui('account-input').value='manual@example.com';ui('account-note').value='Strict CSP note';
+    ui('account-form').dispatchEvent(new Event('submit',{cancelable:true}));
+    assert(ui('accounts-list').textContent.includes('Strict CSP note'),'Account save failed under Trusted Types');
+    document.getElementById('af3-dev-panel').remove();
+    await until(()=>ui('accounts-tab'),5000);
+    assert(ui('accounts-page').getClientRects().length,'Panel recovery failed under Trusted Types');
+    ui('tasks-tab').click();
+    assert(ui('submission-section').getClientRects().length&&ui('download-section').getClientRects().length,'Panel recovery lost task sections');
+    assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Strict CSP rendering caused a task action or script error');
+    parent.postMessage({type:'af3-case-result',result:{passed:true,message:'Trusted Types enforced: startup, navigation, account save and panel recovery; 0 submits'}},location.origin);return;
+  }
   if(id==='account-email'){await until(()=>ui('v20-btn'),5000);await checkAccountEmail();return}
   if(['account-manager','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
   if(id==='storage-writer')return;
@@ -424,7 +446,7 @@ async function checkAccountManager(){
 
 
 SCENARIOS = [
-    'panel-ui', 'account-email', 'account-manager', 'account-quota', 'account-persistence',
+    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-quota', 'account-persistence',
     'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-switch-submission', 'account-switch-confirm',
     'delayed-success', 'old-success', 'server-error', 'no-toast',
     'failed-success', 'failed-error', 'stop-in-flight', 'stale-row',
@@ -461,6 +483,8 @@ def main():
                 return
             self.send_response(200)
             self.send_header('Content-Type', 'application/javascript; charset=utf-8' if path == '/script.js' else 'text/html; charset=utf-8')
+            if path == '/case' and self.path.split('?', 1)[-1] == 'id=startup-trusted-types':
+                self.send_header('Content-Security-Policy', "require-trusted-types-for 'script'")
             self.end_headers()
             self.wfile.write(script if path == '/script.js' else CASE.encode('utf-8') if path == '/case' else page)
 
