@@ -17,6 +17,8 @@ import tempfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.cookies import SimpleCookie
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 
 PAGE = r'''<!doctype html><meta charset="utf-8"><title>Local submission self-check</title>
@@ -78,6 +80,7 @@ if(id==='account-storage-blocked'){
   Storage.prototype.setItem=function(key,value){if(key===accountsKey)throw Error('Storage disabled');return originalSet.call(this,key,value)};
 }
 if(id==='account-switch-submission'||id==='account-switch-confirm')window.WIZ_global_data={oPEP7c:'first@example.com'};
+if(id==='account-login-return')window.WIZ_global_data={oPEP7c:document.cookie.includes('af3-fixture-osid=second')?'second@example.com':'first@example.com'};
 if(id==='startup-trusted-types')window.WIZ_global_data={oPEP7c:'strict.page@example.com'};
 // Leave room to grow in the 700px fixture, and verify existing saved sizes still work.
 if(id==='panel-ui'&&!new URLSearchParams(location.search).has('restore'))localStorage.setItem('af3-dev-panel-size',JSON.stringify({width:300,height:380}));
@@ -293,9 +296,11 @@ function assertAccountSwitchUrl(login){
   assert(logout.origin===location.origin&&logout.pathname==='/accounts/ClearOSID','Switch must exit the existing website session before signing in');
   const chooser=new URL(logout.searchParams.get('continue'));
   assert(chooser.origin==='https://accounts.google.com'&&chooser.pathname==='/AccountChooser','Switch must show Google account selection');
-  const signin=new URL(chooser.searchParams.get('continue'));
-  assert(signin.origin===location.origin&&signin.pathname==='/signin','Account selection must return to the official sign-in entry');
-  assert(chooser.searchParams.get('osid')==='1'&&chooser.searchParams.get('followup')===signin.href,'Account selection must retain the website sign-in handoff');
+  const handoff=new URL(chooser.searchParams.get('continue'));
+  assert(handoff.origin==='https://accounts.google.com'&&handoff.pathname==='/ServiceLogin','Selected identity must complete Google login before returning to the website');
+  const signin=new URL(handoff.searchParams.get('continue'));
+  assert(signin.origin===location.origin&&signin.pathname==='/signin','Google login must return to the official sign-in entry');
+  assert(handoff.searchParams.get('osid')==='1'&&handoff.searchParams.get('followup')===signin.href,'Google login must retain the website sign-in handoff');
   assert(login.target==='_self','Switch must replace the old account page in the same tab');
 }
 function assertAccountSwitchBlocked(){
@@ -319,8 +324,13 @@ async function checkAccountManager(){
   assert(ui('tasks-page').hidden&&!ui('accounts-page').hidden,'Account tab did not switch pages');
   assert(ui('accounts-tab').getAttribute('aria-selected')==='true','Account tab is not selected accessibly');
   const login=ui('account-login');
-  assertAccountSwitchUrl(login);
-  if(id==='account-login'){
+  if(id!=='account-login-return')assertAccountSwitchUrl(login);
+  if(id==='account-login-return'){
+    if(!restored){save('first@example.com','Keep original account');login.click();return false}
+    assert(ui('account-email').textContent.includes('second@example.com'),'Selected identity was lost when the website restarted its default Google login');
+    assert(card('second@example.com')?.querySelector('.af3-account-current'),'Returned account was not recognized as current');
+    assert(card('first@example.com')?.textContent.includes('Keep original account'),'Round trip removed the original account record');
+  }else if(id==='account-login'){
     save('saved@example.com','Keep this record');
     const before=localStorage.getItem(accountsKey);
     let prevented=true;
@@ -427,7 +437,7 @@ async function checkAccountManager(){
     parent.postMessage({type:'af3-case-result',result:{passed:true,message:'Trusted Types enforced: startup, navigation, account save and panel recovery; 0 submits'}},location.origin);return;
   }
   if(id==='account-email'){await until(()=>ui('v20-btn'),5000);await checkAccountEmail();return}
-  if(['account-manager','account-login','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
+  if(['account-manager','account-login','account-login-return','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
   if(id==='storage-writer')return;
   if(id==='panel-ui'){
     await until(()=>ui('v20-btn'),5000);
@@ -488,7 +498,7 @@ async function checkAccountManager(){
 
 
 SCENARIOS = [
-    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-busy', 'account-quota', 'account-persistence',
+    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-return', 'account-login-busy', 'account-quota', 'account-persistence',
     'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-switch-submission', 'account-switch-confirm',
     'delayed-success', 'old-success', 'server-error', 'no-toast',
     'failed-success', 'failed-error', 'stop-in-flight', 'stale-row',
@@ -519,7 +529,44 @@ def main():
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            path = self.path.split('?', 1)[0]
+            request = urlsplit(self.path)
+            path = request.path
+            query = parse_qs(request.query)
+            # Local-only authentication model: the chooser forwards the selected
+            # identity to its continuation. A fresh site /signin request without
+            # an OSID restarts Google login with the default identity, as the
+            # real site's public redirect does. No Google session is used here.
+            if path in ('/accounts/ClearOSID', '/fixture-google-chooser', '/fixture-google-login', '/signin'):
+                cookie = SimpleCookie(self.headers.get('Cookie', ''))
+                osid = cookie.get('af3-fixture-osid')
+                set_cookie = None
+                if path == '/accounts/ClearOSID':
+                    chooser = urlsplit(query['continue'][0])
+                    target = '/fixture-google-chooser?' + chooser.query
+                    set_cookie = 'af3-fixture-osid=; Max-Age=0; Path=/'
+                elif path == '/fixture-google-chooser':
+                    selected = urlsplit(query['continue'][0])
+                    params = parse_qs(selected.query)
+                    params['authuser'] = ['1']
+                    selected_path = '/fixture-google-login' if selected.netloc == 'accounts.google.com' and selected.path == '/ServiceLogin' else selected.path
+                    target = urlunsplit(('', '', selected_path, urlencode(params, doseq=True), ''))
+                elif path == '/fixture-google-login':
+                    identity = 'second' if query.get('authuser') == ['1'] else 'first'
+                    set_cookie = f'af3-fixture-osid={identity}; Path=/'
+                    target = query['continue'][0]
+                elif osid:
+                    target = '/case?id=account-login-return&restore=1'
+                else:
+                    # The site does not forward the selected authuser into
+                    # Google's top-level login parameters (the dev.3 failure).
+                    signin = f'http://127.0.0.1:{server.server_port}/signin'
+                    target = '/fixture-google-login?' + urlencode({'continue': signin, 'followup': signin, 'osid': '1'})
+                self.send_response(302)
+                self.send_header('Location', target)
+                if set_cookie:
+                    self.send_header('Set-Cookie', set_cookie)
+                self.end_headers()
+                return
             if path not in ('/', '/case', '/script.js'):
                 self.send_error(404)
                 return

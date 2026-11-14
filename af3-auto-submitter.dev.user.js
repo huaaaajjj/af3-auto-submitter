@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.3
+// @version      3.0.0-dev.4
 // @description  3.0 开发版：账户管理支持先退出官网再选择 Google 账号，本地保存账号、备注与额度记录；保留分区提交、按日期勾选下载、提交确认和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -19,7 +19,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.3';
+    const SCRIPT_VERSION = '3.0.0-dev.4';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -672,7 +672,7 @@
         accountEmailLabel: 'Email', accountNoteLabel: 'Note (optional)', accountAdd: 'Save account', accountSave: 'Save changes', accountCancel: 'Cancel edit',
         accountCurrent: 'Current account', accountEdit: 'Edit', accountRemove: 'Remove', accountRemoveConfirm: 'Remove the local record for {email}? This does not delete the website account.',
         accountLiveQuota: 'Website quota: {count}', accountSavedQuota: 'Last recorded quota: {count}', accountNoQuota: 'Quota not recorded', accountRecordedAt: 'Recorded: {time}',
-        accountRefresh: 'Record current quota', accountLogin: 'Website sign-in / switch', accountLoginHelp: 'This exits the current AlphaFold session and opens Google account selection in this tab. Choose another account or Use another account. After signing in, the panel reads the email and quota again.',
+        accountRefresh: 'Record current quota', accountLogin: 'Website sign-in / switch', accountLoginHelp: 'This exits the current AlphaFold session and opens Google account selection in this tab. Choose another account or Use another account. Google completes sign-in before returning to the website; check the current email after returning.',
         accountSwitchBusy: 'Stop processing before switching accounts.',
         accountInvalid: 'Enter a valid email address.', accountSaved: 'Account saved.', accountRemoved: 'Local record removed.', accountUpdated: 'Current account quota recorded.',
         accountReadFailed: 'Current account or quota is unavailable. Check sign-in and the website quota display.',
@@ -685,7 +685,7 @@
             accountEmailLabel: '邮箱', accountNoteLabel: '备注（可选）', accountAdd: '保存账号', accountSave: '保存修改', accountCancel: '取消编辑',
             accountCurrent: '当前账号', accountEdit: '编辑', accountRemove: '移除', accountRemoveConfirm: '移除 {email} 的本地记录？不会删除官网账号。',
             accountLiveQuota: '官网当前额度：{count} 个', accountSavedQuota: '上次记录额度：{count} 个', accountNoQuota: '尚未记录额度', accountRecordedAt: '记录时间：{time}',
-            accountRefresh: '记录当前额度', accountLogin: '官网登录 / 切换', accountLoginHelp: '点击后会退出当前 AlphaFold 登录，在本页打开 Google 账号选择。请选择其他账号（或“使用其他账号”）；登录后面板会重新读取邮箱与额度。',
+            accountRefresh: '记录当前额度', accountLogin: '官网登录 / 切换', accountLoginHelp: '点击后会退出当前 AlphaFold 登录，在本页打开 Google 账号选择。请选择其他账号（或“使用其他账号”）；先完成 Google 登录交接再返回官网，请核对上方当前邮箱。',
             accountSwitchBusy: '请先停止任务，再切换账号。',
             accountInvalid: '请输入有效邮箱。', accountSaved: '账号已保存。', accountRemoved: '本地记录已移除。', accountUpdated: '已记录当前账号的官网额度。',
             accountReadFailed: '无法读取当前账号或额度，请检查登录状态与官网额度显示。', accountStorageError: '本地存储不可用或记录无效，改动仅在当前页面有效。',
@@ -1073,12 +1073,16 @@
 
     function getAccountSwitchUrl() {
         const signin = new URL('/signin', location.origin).href;
+        // /signin starts a new default Google login when it has no site OSID.
+        // Give the chosen identity to Google's login entry first, so that login
+        // establishes its OSID before handing control back to the website.
+        const handoff = new URL('https://accounts.google.com/ServiceLogin');
+        handoff.searchParams.set('continue', signin);
+        handoff.searchParams.set('followup', signin);
+        handoff.searchParams.set('passive', '1209600');
+        handoff.searchParams.set('osid', '1');
         const chooser = new URL('https://accounts.google.com/AccountChooser');
-        chooser.searchParams.set('continue', signin);
-        // Keep the OSID handoff used by the website's own Google sign-in,
-        // so the chosen identity can establish the new website session.
-        chooser.searchParams.set('followup', signin);
-        chooser.searchParams.set('osid', '1');
+        chooser.searchParams.set('continue', handoff.href);
         // Use the same sign-out entry as the website's account menu. Going
         // straight to /welcome keeps the existing site session signed in.
         const logout = new URL('/accounts/ClearOSID', location.origin);
