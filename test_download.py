@@ -42,6 +42,7 @@ button,input{margin:4px}td,th{padding:8px}mat-icon{display:inline-block}
 <script>
 'use strict';
 const id=new URLSearchParams(location.search).get('id');
+if(id==='download-account-change'||id==='download-account-queue')window.WIZ_global_data={oPEP7c:'first@example.com'};
 const restore=new URLSearchParams(location.search).get('restore');
 const formatKey='af3-dev-panel-download-format';
 if(id==='download-format-default')localStorage.setItem(formatKey,'unsupported-format');
@@ -326,6 +327,19 @@ async function checkIndividual(){
    ui('v20-btn').click();
    assert(state.rowOpens===0,'Filter change during confirmation started a different submission mode');
   }
+ }else if(id==='download-account-change'||id==='download-account-queue'){
+  if(id==='download-account-queue')setFormat('individual');
+  await scan();assert(reviewChecks().length===4,'Account fixture did not scan expected jobs');
+  if(id==='download-account-queue'){await apply();assertQueueAt(1,4)}
+  const changes=state.nativeInputChanges,clears=state.nativeClears;
+  window.WIZ_global_data.oPEP7c='second@example.com';
+  if(id==='download-account-change')await apply();
+  await pause(600);
+  assert(ui('download-apply').disabled&&ui('download-next').disabled,'Account switch retained an actionable scan or queue');
+  assert(reviewChecks().length===0,'Previous account results remained after switching');
+  ui('download-apply').disabled=false;await apply();
+  if(id==='download-account-queue')await assertInvalidNext();
+  assert(state.nativeInputChanges===changes&&state.nativeClears===clears,'Account change applied previous account selection');
  }else if(id.startsWith('download-individual-')){
   await checkIndividual();
  }else if(id==='download-invalid-range'){
@@ -422,6 +436,7 @@ async function checkIndividual(){
 
 SCENARIOS = [
     'panel-sections',
+    'download-account-change', 'download-account-queue',
     'history-status-filters', 'history-status-click',
     'download-range', 'download-reset-first', 'download-single-day', 'download-select',
     'download-day-selection', 'download-zero', 'download-invalid-range',

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      2.25.0-dev.11
-// @description  开发版：显示当前账号邮箱与官网额度，上下分开展示提交与下载；按天筛选，合并或逐个勾选后手动使用官网 Download 下载；保留提交确认和可调面板。
+// @version      3.0.0-dev.1
+// @description  3.0 开发版：新增账户管理页面，本地保存账号、备注与额度记录，提供官网登录入口；保留分区提交、按日期勾选下载、提交确认和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -19,13 +19,14 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '2.25.0-dev.11';
+    const SCRIPT_VERSION = '3.0.0-dev.1';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
     const PANEL_SIZE_KEY = `${CONTAINER_ID}-size`;
     const LANGUAGE_KEY = `${CONTAINER_ID}-language`;
     const DOWNLOAD_FORMAT_KEY = `${CONTAINER_ID}-download-format`;
+    const ACCOUNTS_KEY = `${CONTAINER_ID}-accounts-v1`;
     const WAIT_FOR_MODAL = 2000;
     const WAIT_FOR_PAGE_LOAD = 3000; // 跳转等待时间
     const SUBMISSION_TIMEOUT = 60000;
@@ -665,6 +666,38 @@
         Object.assign(I18N[language], downloadEnglish, downloadTranslations[language] || {});
     }
 
+    const accountEnglish = {
+        tasksPage: 'Jobs', accountsPage: 'Accounts', accountsIntro: 'Accounts and quota records are saved in this browser. Only the signed-in account can update its quota; other accounts show historical records.',
+        accountsCount: '{count} saved accounts', accountsEmpty: 'No saved accounts. Sign in to record the current account, or add an email below.',
+        accountEmailLabel: 'Email', accountNoteLabel: 'Note (optional)', accountAdd: 'Save account', accountSave: 'Save changes', accountCancel: 'Cancel edit',
+        accountCurrent: 'Current account', accountEdit: 'Edit', accountRemove: 'Remove', accountRemoveConfirm: 'Remove the local record for {email}? This does not delete the website account.',
+        accountLiveQuota: 'Website quota: {count}', accountSavedQuota: 'Last recorded quota: {count}', accountNoQuota: 'Quota not recorded', accountRecordedAt: 'Recorded: {time}',
+        accountRefresh: 'Record current quota', accountLogin: 'Website sign-in / switch', accountLoginHelp: 'Open the website account menu, sign out, then use Continue with Google to choose an account. Refresh this panel after signing in.',
+        accountInvalid: 'Enter a valid email address.', accountSaved: 'Account saved.', accountRemoved: 'Local record removed.', accountUpdated: 'Current account quota recorded.',
+        accountReadFailed: 'Current account or quota is unavailable. Check sign-in and the website quota display.',
+        accountStorageError: 'Local storage is unavailable or invalid. Changes are kept only on this page.', accountChanged: 'The signed-in account changed. Processing stopped; check the website account and history before reloading.',
+    };
+    const accountTranslations = {
+        zh: {
+            tasksPage: '任务', accountsPage: '账户管理', accountsIntro: '账号与额度记录保存在当前浏览器。仅当前登录账号可更新额度，其他账号显示历史记录。',
+            accountsCount: '已保存 {count} 个账号', accountsEmpty: '暂无账号。登录后会记录当前账号，也可在下方添加邮箱。',
+            accountEmailLabel: '邮箱', accountNoteLabel: '备注（可选）', accountAdd: '保存账号', accountSave: '保存修改', accountCancel: '取消编辑',
+            accountCurrent: '当前账号', accountEdit: '编辑', accountRemove: '移除', accountRemoveConfirm: '移除 {email} 的本地记录？不会删除官网账号。',
+            accountLiveQuota: '官网当前额度：{count} 个', accountSavedQuota: '上次记录额度：{count} 个', accountNoQuota: '尚未记录额度', accountRecordedAt: '记录时间：{time}',
+            accountRefresh: '记录当前额度', accountLogin: '官网登录 / 切换', accountLoginHelp: '在官网账号菜单退出，再用 Continue with Google 选择账号；登录后刷新面板。',
+            accountInvalid: '请输入有效邮箱。', accountSaved: '账号已保存。', accountRemoved: '本地记录已移除。', accountUpdated: '已记录当前账号的官网额度。',
+            accountReadFailed: '无法读取当前账号或额度，请检查登录状态与官网额度显示。', accountStorageError: '本地存储不可用或记录无效，改动仅在当前页面有效。',
+            accountChanged: '登录账号已变化，已停止处理；请核对官网账号与历史记录后刷新页面。',
+        },
+        ja: { tasksPage: 'ジョブ', accountsPage: 'アカウント管理', accountEmailLabel: 'メール', accountNoteLabel: 'メモ（任意）', accountAdd: '保存', accountSave: '変更を保存', accountCancel: '編集を取消', accountCurrent: '現在のアカウント', accountEdit: '編集', accountRemove: '削除', accountRefresh: '現在の残り枠を記録', accountLogin: '公式サイトでログイン / 切替' },
+        ko: { tasksPage: '작업', accountsPage: '계정 관리', accountEmailLabel: '이메일', accountNoteLabel: '메모 (선택)', accountAdd: '계정 저장', accountSave: '변경 저장', accountCancel: '편집 취소', accountCurrent: '현재 계정', accountEdit: '편집', accountRemove: '삭제', accountRefresh: '현재 할당량 기록', accountLogin: '웹사이트 로그인 / 전환' },
+        es: { tasksPage: 'Tareas', accountsPage: 'Cuentas', accountEmailLabel: 'Correo', accountNoteLabel: 'Nota (opcional)', accountAdd: 'Guardar cuenta', accountSave: 'Guardar cambios', accountCancel: 'Cancelar edición', accountCurrent: 'Cuenta actual', accountEdit: 'Editar', accountRemove: 'Eliminar', accountRefresh: 'Registrar cuota actual', accountLogin: 'Iniciar sesión / cambiar' },
+        fr: { tasksPage: 'Tâches', accountsPage: 'Comptes', accountEmailLabel: 'E-mail', accountNoteLabel: 'Note (facultatif)', accountAdd: 'Enregistrer', accountSave: 'Enregistrer les modifications', accountCancel: 'Annuler', accountCurrent: 'Compte actuel', accountEdit: 'Modifier', accountRemove: 'Supprimer', accountRefresh: 'Enregistrer le quota actuel', accountLogin: 'Connexion / changer de compte' },
+    };
+    for (const language of Object.keys(I18N)) {
+        Object.assign(I18N[language], accountEnglish, accountTranslations[language] || {});
+    }
+
     if (window.__af3AutoSubmitterDevLoaded) return;
     window.__af3AutoSubmitterDevLoaded = true;
 
@@ -677,6 +710,17 @@
     let isDraggingPanel = false;
     let isResizingPanel = false;
     let panelSize = null;
+    let activePage = 'tasks';
+    let editingAccount = '';
+    let accountMessage = '';
+    let accountStorageError = false;
+    let accountRecords = loadAccounts();
+    let accountRenderSignature = '';
+    let observedAccountEmail;
+    let hasObservedAccount = false;
+    let accountQuotaBinding = null;
+    let accountLiveQuota = null;
+    let batchAccountEmail = null;
     const downloadState = {
         busy: false, stop: false, complete: false, jobs: [], selected: new Set(),
         unknown: 0, context: null, scanContext: null, message: '', messageVars: {}, phase: '',
@@ -759,6 +803,8 @@
         }
         updateQuota();
         updateAccountEmail();
+        renderAccountManager(true);
+        renderPanelPages();
         renderDownloadSection();
         renderLogPanel();
         updateRunControls();
@@ -914,6 +960,217 @@
         const email = readAccountEmail();
         const message = email ? t('accountEmail', { email }) : t('accountUnknown');
         if (target.textContent !== message) target.textContent = message;
+        syncAccountManager(normalizeAccountEmail(email));
+    }
+
+    function normalizeAccountEmail(value) {
+        const email = typeof value === 'string' ? value.trim() : '';
+        return email.length <= 254 && /^[A-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?)+$/i.test(email) ? email.toLowerCase() : '';
+    }
+
+    function loadAccounts() {
+        try {
+            const raw = localStorage.getItem(ACCOUNTS_KEY);
+            if (!raw) { accountStorageError = false; return []; }
+            const data = JSON.parse(raw);
+            if (data?.version !== 1 || !Array.isArray(data.accounts)) throw new Error('Invalid account records');
+            const records = new Map();
+            for (const item of data.accounts) {
+                const email = normalizeAccountEmail(item?.email);
+                if (!email) continue;
+                const quota = item.quota;
+                records.set(email, {
+                    email, note: typeof item.note === 'string' ? item.note.slice(0, 200) : '',
+                    quota: Number.isSafeInteger(quota?.remaining) && quota.remaining >= 0 &&
+                        Number.isSafeInteger(quota.observedAt) && quota.observedAt > 0 && quota.observedAt <= Date.now() + 60000
+                        ? { remaining: quota.remaining, observedAt: quota.observedAt } : null,
+                });
+            }
+            accountStorageError = false;
+            return [...records.values()];
+        } catch (_) { accountStorageError = true; return []; }
+    }
+
+    function changeAccountRecord(email, change) {
+        // Read the latest records before each write so tabs preserve each other's edits.
+        const latest = accountStorageError ? [...accountRecords] : loadAccounts();
+        const records = accountStorageError ? [...accountRecords] : latest;
+        const index = records.findIndex(item => item.email === email);
+        const result = change(index < 0 ? null : records[index]);
+        if (result) {
+            if (index < 0) records.push(result); else records[index] = result;
+        } else if (index >= 0) records.splice(index, 1);
+        accountRecords = records;
+        if (!accountStorageError) {
+            try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify({ version: 1, accounts: records })); }
+            catch (_) { accountStorageError = true; }
+        }
+        renderAccountManager();
+    }
+
+    function syncAccountManager(email, force = false) {
+        const sources = Array.from(document.querySelectorAll('gdm-af-request .points')).filter(downloadVisible);
+        const node = sources.length === 1 ? sources[0] : null;
+        const text = node?.textContent || '';
+        if (email !== observedAccountEmail) {
+            const previous = accountQuotaBinding;
+            const changed = observedAccountEmail !== undefined;
+            observedAccountEmail = email;
+            // A profile may change before the old quota DOM disappears. Wait for a
+            // new node/value before associating that quota with another account.
+            accountQuotaBinding = {
+                node: previous?.node || node, text: previous?.text ?? text,
+                ready: Boolean(email && (!hasObservedAccount || node !== previous?.node || text !== previous?.text)),
+            };
+            if (email) {
+                hasObservedAccount = true;
+                if (!accountRecords.some(item => item.email === email)) {
+                    changeAccountRecord(email, () => ({ email, note: '', quota: null }));
+                }
+            }
+            if (changed) {
+                downloadState.stop = downloadState.busy;
+                downloadState.complete = false;
+                downloadState.jobs = [];
+                downloadState.selected.clear();
+                downloadState.queue = null;
+                if (isRunning && batchAccountEmail && email !== batchAccountEmail) {
+                    submissionBlockReason = t('accountChanged');
+                    requestStop();
+                }
+                renderDownloadSection();
+            }
+        }
+        if (email && !accountQuotaBinding.ready &&
+            (node !== accountQuotaBinding.node || text !== accountQuotaBinding.text)) accountQuotaBinding.ready = true;
+        accountLiveQuota = email && accountQuotaBinding?.ready ? readQuota(node) : null;
+        if (accountQuotaBinding?.ready) Object.assign(accountQuotaBinding, { node, text });
+        const record = accountRecords.find(item => item.email === email);
+        // Preview values stay on the Jobs page; records only use the request page.
+        if (record && accountLiveQuota !== null && (force || !record.quota ||
+            record.quota.remaining !== accountLiveQuota || Date.now() - record.quota.observedAt >= 60000)) {
+            const quota = { remaining: accountLiveQuota, observedAt: Date.now() };
+            changeAccountRecord(email, existing => ({ ...(existing || { email, note: '' }), quota }));
+        }
+        renderAccountManager();
+    }
+
+    function renderPanelPages() {
+        for (const page of ['tasks', 'accounts']) {
+            const selected = activePage === page;
+            const tab = getUiElement(`af3-${page}-tab`);
+            const panel = getUiElement(`af3-${page}-page`);
+            if (tab) {
+                tab.textContent = t(page === 'tasks' ? 'tasksPage' : 'accountsPage');
+                tab.setAttribute('aria-selected', String(selected));
+                tab.tabIndex = selected ? 0 : -1;
+            }
+            if (panel) panel.hidden = !selected;
+        }
+    }
+
+    function renderAccountManager(force = false) {
+        const list = getUiElement('af3-accounts-list');
+        if (!list) return;
+        for (const [id, key] of [['accounts-title', 'accountsPage'], ['accounts-intro', 'accountsIntro'],
+            ['account-email-label', 'accountEmailLabel'], ['account-note-label', 'accountNoteLabel'],
+            ['account-cancel', 'accountCancel'], ['account-refresh', 'accountRefresh'], ['account-login', 'accountLogin'],
+            ['account-login-help', 'accountLoginHelp']]) getUiElement(`af3-${id}`).textContent = t(key);
+        getUiElement('af3-account-save').textContent = t(editingAccount ? 'accountSave' : 'accountAdd');
+        getUiElement('af3-account-cancel').hidden = !editingAccount;
+        getUiElement('af3-account-refresh').disabled = !observedAccountEmail || accountLiveQuota === null;
+        getUiElement('af3-accounts-count').textContent = t('accountsCount', { count: accountRecords.length });
+        getUiElement('af3-accounts-message').textContent = accountStorageError ? t('accountStorageError') : accountMessage ? t(accountMessage) : '';
+        const signature = JSON.stringify([currentLanguage, observedAccountEmail, accountLiveQuota, accountRecords]);
+        if (!force && signature === accountRenderSignature) return;
+        accountRenderSignature = signature;
+        list.replaceChildren();
+        if (!accountRecords.length) {
+            const empty = document.createElement('p'); empty.textContent = t('accountsEmpty'); list.append(empty);
+        }
+        const records = [...accountRecords].sort((a, b) => Number(b.email === observedAccountEmail) - Number(a.email === observedAccountEmail));
+        for (const record of records) {
+            const card = document.createElement('article'); card.className = 'af3-account-card'; card.dataset.email = record.email;
+            const email = document.createElement('strong'); email.textContent = record.email; card.append(email);
+            if (record.email === observedAccountEmail) {
+                const current = document.createElement('span'); current.className = 'af3-account-current'; current.textContent = t('accountCurrent'); card.append(current);
+            }
+            if (record.note) { const note = document.createElement('p'); note.textContent = record.note; card.append(note); }
+            const quota = document.createElement('p');
+            const live = record.email === observedAccountEmail && accountLiveQuota !== null;
+            quota.textContent = t(live ? 'accountLiveQuota' : record.quota ? 'accountSavedQuota' : 'accountNoQuota', { count: live ? accountLiveQuota : record.quota?.remaining });
+            quota.className = live ? 'af3-account-live' : 'af3-account-history'; card.append(quota);
+            if (record.quota) {
+                const time = document.createElement('time'); time.dateTime = new Date(record.quota.observedAt).toISOString();
+                time.textContent = t('accountRecordedAt', { time: new Date(record.quota.observedAt).toLocaleString(currentLanguage, { hour12: false }) }); card.append(time);
+            }
+            const actions = document.createElement('div'); actions.className = 'af3-account-actions';
+            const edit = document.createElement('button'); edit.type = 'button'; edit.textContent = t('accountEdit'); edit.dataset.action = 'edit';
+            edit.onclick = () => {
+                editingAccount = record.email;
+                getUiElement('af3-account-input').value = record.email;
+                getUiElement('af3-account-input').readOnly = true;
+                getUiElement('af3-account-note').value = record.note;
+                getUiElement('af3-account-note').focus(); renderAccountManager();
+            };
+            const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = t('accountRemove'); remove.dataset.action = 'remove';
+            remove.onclick = () => {
+                if (!confirm(t('accountRemoveConfirm', { email: record.email }))) return;
+                if (editingAccount === record.email) resetAccountForm();
+                accountMessage = 'accountRemoved';
+                changeAccountRecord(record.email, () => null);
+            };
+            actions.append(edit, remove); card.append(actions); list.append(card);
+        }
+    }
+
+    function resetAccountForm() {
+        editingAccount = '';
+        getUiElement('af3-account-form').reset();
+        getUiElement('af3-account-input').readOnly = false;
+        renderAccountManager();
+    }
+
+    function createAccountPage() {
+        const page = document.createElement('section'); page.id = 'af3-accounts-page'; page.className = 'af3-page';
+        page.setAttribute('role', 'tabpanel'); page.setAttribute('aria-labelledby', 'af3-accounts-tab'); page.hidden = true;
+        // Only static markup goes through innerHTML; account data always uses textContent.
+        page.innerHTML = `
+            <h2 id="af3-accounts-title"></h2><p id="af3-accounts-intro" class="af3-account-help"></p>
+            <div class="af3-account-actions"><button id="af3-account-refresh" type="button"></button>
+            <a id="af3-account-login" target="_blank" rel="noopener noreferrer"></a></div>
+            <p id="af3-account-login-help" class="af3-account-help"></p>
+            <form id="af3-account-form" novalidate>
+                <label for="af3-account-input" id="af3-account-email-label"></label>
+                <input id="af3-account-input" type="email" maxlength="254" autocomplete="off" required>
+                <label for="af3-account-note" id="af3-account-note-label"></label>
+                <input id="af3-account-note" type="text" maxlength="200" autocomplete="off">
+                <div class="af3-account-actions"><button id="af3-account-save" type="submit"></button><button id="af3-account-cancel" type="button" hidden></button></div>
+            </form>
+            <p id="af3-accounts-message" role="status" aria-live="polite"></p><h3 id="af3-accounts-count"></h3>
+            <div id="af3-accounts-list"></div>`;
+        page.querySelector('#af3-account-login').href = new URL('/welcome', location.origin).href;
+        page.querySelector('#af3-account-form').onsubmit = event => {
+            event.preventDefault();
+            const email = normalizeAccountEmail(getUiElement('af3-account-input').value);
+            if (!email) { accountMessage = 'accountInvalid'; renderAccountManager(); return; }
+            const note = getUiElement('af3-account-note').value.trim().slice(0, 200);
+            accountMessage = 'accountSaved';
+            changeAccountRecord(email, existing => ({ email, note, quota: existing?.quota || null }));
+            resetAccountForm();
+        };
+        page.querySelector('#af3-account-cancel').onclick = resetAccountForm;
+        page.querySelector('#af3-account-refresh').onclick = () => {
+            const email = normalizeAccountEmail(readAccountEmail());
+            syncAccountManager(email, true);
+            if (email && accountLiveQuota !== null) {
+                // Also restores a current account record the user previously removed.
+                changeAccountRecord(email, existing => ({ email, note: existing?.note || '', quota: { remaining: accountLiveQuota, observedAt: Date.now() } }));
+                accountMessage = 'accountUpdated';
+            } else accountMessage = 'accountReadFailed';
+            renderAccountManager();
+        };
+        return page;
     }
 
     function updateQuota() {
@@ -1053,7 +1310,16 @@
         updateRunControls();
     }
 
+    function checkBatchAccount() {
+        if (isRunning && batchAccountEmail && normalizeAccountEmail(readAccountEmail()) !== batchAccountEmail) {
+            submissionBlockReason = t('accountChanged');
+            shouldStop = true;
+            throw makeStoppedError();
+        }
+    }
+
     function checkStop() {
+        checkBatchAccount();
         if (shouldStop) throw makeStoppedError();
     }
 
@@ -1153,6 +1419,7 @@
                     throw result;
                 }
                 if (result === true) {
+                    checkBatchAccount();
                     submissionBlockReason = '';
                     return;
                 }
@@ -1378,7 +1645,7 @@
         const search = root.querySelector('input[placeholder="Search History"], input[aria-label="Search History"]');
         const sort = loading ? previous?.sort || [] : Array.from(table?.querySelectorAll('th[aria-sort]') || []).map(node => [downloadText(node), node.getAttribute('aria-sort')]);
         const pageSize = root.querySelector('mat-paginator .mat-mdc-select-value, mat-paginator select');
-        return JSON.stringify({ url: location.href, selected, search: search?.value || '', sort, pageSize: pageSize?.value || pageSize?.textContent || (loading ? previous?.pageSize || '' : '') });
+        return JSON.stringify({ url: location.href, account: normalizeAccountEmail(readAccountEmail()), selected, search: search?.value || '', sort, pageSize: pageSize?.value || pageSize?.textContent || (loading ? previous?.pageSize || '' : '') });
     }
 
     function checkDownloadActive() {
@@ -2033,6 +2300,33 @@
         applyHostStyle(host);
 
         const shadow = host.attachShadow({ mode: 'open' });
+        const styles = document.createElement('style');
+        styles.textContent = `
+            [hidden] { display: none !important; }
+            .af3-page { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex-shrink: 0; }
+            .af3-tabs { display: flex; gap: 6px; }
+            .af3-tabs button, #af3-accounts-page button, #af3-account-login { box-sizing: border-box; font: inherit; font-size: 14px; border: 1px solid #5f6368; border-radius: 6px; padding: 7px 9px; background: #303134; color: #e8eaed; cursor: pointer; overflow-wrap: anywhere; }
+            .af3-tabs button[aria-selected="true"], #af3-accounts-page #af3-account-save { background: #1a73e8; border-color: #1a73e8; color: white; }
+            #af3-accounts-page button:disabled { opacity: .5; cursor: not-allowed; }
+            .af3-tabs button:focus-visible, #af3-accounts-page :focus-visible { outline: 2px solid #8ab4f8; outline-offset: 2px; }
+            #af3-accounts-page h2, #af3-accounts-page h3 { margin: 0; font-size: 14px; color: #8ab4f8; }
+            #af3-accounts-page p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+            .af3-account-help, .af3-account-card time { font-size: 13px; color: #bdc1c6; line-height: 1.5; }
+            .af3-account-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+            #af3-account-login { text-decoration: none; display: inline-block; }
+            #af3-account-form { display: grid; gap: 7px; margin: 0; padding: 10px; border: 1px solid #5f6368; border-radius: 8px; }
+            #af3-account-form input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: 7px; border: 1px solid #5f6368; border-radius: 5px; color: #e8eaed; background: #292a2d; }
+            #af3-account-input[readonly] { color: #bdc1c6; }
+            #af3-accounts-message:empty { display: none; }
+            #af3-accounts-message { color: #fdd663; }
+            #af3-accounts-list { display: grid; gap: 10px; }
+            .af3-account-card { display: grid; gap: 6px; padding: 11px; border: 1px solid #5f6368; border-radius: 8px; min-width: 0; overflow-wrap: anywhere; }
+            .af3-account-card strong { font-size: 14px; }
+            .af3-account-current, .af3-account-live { color: #81c995; }
+            .af3-account-current { font-size: 13px; }
+            .af3-account-history { color: #bdc1c6; }
+        `;
+        shadow.appendChild(styles);
         const container = document.createElement('div');
         container.id = PANEL_ROOT_ID;
         Object.assign(container.style, {
@@ -2067,10 +2361,27 @@
         const languageRow = document.createElement('div');
         Object.assign(languageRow.style, {
             display: 'flex',
-            justifyContent: 'flex-end',
+            justifyContent: 'space-between',
+            alignItems: 'center', gap: '8px', flexWrap: 'wrap', flexShrink: '0',
             marginTop: '-4px',
             marginBottom: '-2px'
         });
+        const tabs = document.createElement('nav');
+        tabs.className = 'af3-tabs'; tabs.setAttribute('role', 'tablist');
+        for (const page of ['tasks', 'accounts']) {
+            const tab = document.createElement('button');
+            tab.id = `af3-${page}-tab`; tab.type = 'button'; tab.setAttribute('role', 'tab');
+            tab.setAttribute('aria-controls', `af3-${page}-page`);
+            tab.onclick = () => { activePage = page; renderPanelPages(); };
+            tab.onkeydown = event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                activePage = event.key === 'Home' ? 'tasks' : event.key === 'End' ? 'accounts' : activePage === 'tasks' ? 'accounts' : 'tasks';
+                renderPanelPages(); getUiElement(`af3-${activePage}-tab`).focus();
+            };
+            tabs.append(tab);
+        }
+        languageRow.appendChild(tabs);
         const languageSelect = document.createElement('select');
         languageSelect.id = 'af3-language-select';
         languageSelect.title = t('languageTitle');
@@ -2225,10 +2536,11 @@
         logPanel.appendChild(logBody);
 
         container.appendChild(header); container.appendChild(languageRow); container.appendChild(account);
+        const tasksPage = document.createElement('div'); tasksPage.id = 'af3-tasks-page'; tasksPage.className = 'af3-page';
+        tasksPage.setAttribute('role', 'tabpanel'); tasksPage.setAttribute('aria-labelledby', 'af3-tasks-tab');
         submission.append(submissionTitle, statusRow, quota, controls, runControls, footer);
-        container.appendChild(submission);
-        container.appendChild(createDownloadSection());
-        container.appendChild(logPanel);
+        tasksPage.append(submission, createDownloadSection(), logPanel);
+        container.append(tasksPage, createAccountPage());
         shadow.appendChild(container);
         const resizeHandle = document.createElement('span');
         resizeHandle.id = 'af3-resize-handle';
@@ -2310,6 +2622,7 @@
         if (isRunning || downloadState.busy || submissionBlockReason) return;
         checkSystemStatus();
         const mode = currentMode;
+        const account = normalizeAccountEmail(readAccountEmail());
         if (mode !== 'DRAFT' && mode !== 'FAILED') return;
 
         const countInput = getUiElement('af3-v20-count');
@@ -2317,7 +2630,7 @@
         const maxJobs = confirmStart(requestedJobs);
         if (!maxJobs) return;
         checkSystemStatus();
-        if (currentMode !== mode) return;
+        if (currentMode !== mode || normalizeAccountEmail(readAccountEmail()) !== account) return;
 
         if (mode === 'DRAFT') {
             await runDraftSubmission(maxJobs);
@@ -2495,6 +2808,7 @@
     // --- 辅助状态管理 ---
     function setRunningState(state) {
         isRunning = state;
+        batchAccountEmail = state ? normalizeAccountEmail(readAccountEmail()) : null;
         shouldStop = false;
         isPaused = false;
         const btn = getUiElement('af3-v20-btn');
@@ -2553,6 +2867,11 @@
 
         window.addEventListener('resize', () => applyHostStyle(getPanelHost()));
         window.addEventListener('pageshow', ensureUI);
+        window.addEventListener('storage', event => {
+            if (event.key !== ACCOUNTS_KEY && event.key !== null) return;
+            accountRecords = loadAccounts();
+            renderAccountManager();
+        });
         document.addEventListener('visibilitychange', ensureUI);
     }
 

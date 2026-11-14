@@ -67,6 +67,17 @@ mat-snack-bar-container{display:block}button,input{margin:4px}td{padding:8px}</s
 <script>
 'use strict';
 const id=new URLSearchParams(location.search).get('id');
+const accountsKey='af3-dev-panel-accounts-v1';
+const restored=new URLSearchParams(location.search).has('restore');
+if(id.startsWith('account-')&&!restored){localStorage.removeItem(accountsKey);localStorage.setItem('af3-dev-panel-language','zh')}
+if(id==='account-storage'){
+  localStorage.setItem(accountsKey,'{invalid');
+}
+if(id==='account-storage-blocked'){
+  const originalSet=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(key,value){if(key===accountsKey)throw Error('Storage disabled');return originalSet.call(this,key,value)};
+}
+if(id==='account-switch-submission'||id==='account-switch-confirm')window.WIZ_global_data={oPEP7c:'first@example.com'};
 // Leave room to grow in the 700px fixture, and verify existing saved sizes still work.
 if(id==='panel-ui'&&!new URLSearchParams(location.search).has('restore'))localStorage.setItem('af3-dev-panel-size',JSON.stringify({width:300,height:380}));
 const failed=id.startsWith('failed-');
@@ -77,7 +88,7 @@ const assert=(value,message)=>{if(!value)throw Error(message)};
 async function until(read,timeout=75000){const end=Date.now()+timeout;while(Date.now()<end){if(read())return;await pause(50)}throw Error('Timed out: '+(ui('log-body')?.textContent||''))}
 const state={calls:0,names:[],summaries:[],errors:[],opened:[],pausedConfirmed:false,earlySuccess:false};
 const queue=['draft_0','draft_1','draft_2'];let current;
-window.confirm=()=>true;
+window.confirm=()=>{if(id==='account-switch-confirm')window.WIZ_global_data.oPEP7c='second@example.com';return true};
 window.alert=message=>state.summaries.push(String(message));
 window.addEventListener('error',event=>state.errors.push(event.message));
 window.addEventListener('unhandledrejection',event=>state.errors.push(String(event.reason)));
@@ -89,6 +100,7 @@ function toast(message){
 }
 function showContinue(name){
   current=name;state.opened.push(name);
+  if(id==='account-switch-submission')window.WIZ_global_data.oPEP7c='second@example.com';
   document.getElementById('overlay').replaceChildren();
   const button=document.createElement('button');button.textContent='Continue and preview job';
   button.onclick=()=>showPreview(name);
@@ -269,14 +281,100 @@ async function checkAccountEmail(){
   await shown('bootstrap.account@example.com');
   window.WIZ_global_data={oPEP7c:''};await unknown();delete window.WIZ_global_data;
   bootstrap.textContent='window.WIZ_global_data = invalid';await unknown();bootstrap.remove();
-  assert(!Object.values(localStorage).some(value=>value.includes('@example.com')),'Account email was persisted');
+  const records=JSON.parse(localStorage.getItem(accountsKey)).accounts;
+  assert(records.some(item=>item.email==='bootstrap.account@example.com'),'Recognized account was not saved');
+  assert(!records.some(item=>item.email==='job.owner@example.com'),'Task owner was saved as a signed-in account');
   assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account readback triggered a task or script error');
   parent.postMessage({type:'af3-case-result',result:{passed:true,message:'email readback, account changes, visible profile priority, unknown/logout, bootstrap, languages; 0 submits'}},location.origin);
+}
+async function checkAccountManager(){
+  const records=()=>JSON.parse(localStorage.getItem(accountsKey)||'{"accounts":[]}').accounts;
+  const cards=()=>Array.from(ui('accounts-list').querySelectorAll('article'));
+  const card=email=>cards().find(node=>node.dataset.email===email);
+  const save=(email,note='')=>{ui('account-input').value=email;ui('account-note').value=note;ui('account-form').dispatchEvent(new Event('submit',{cancelable:true}))};
+  ui('accounts-tab').click();
+  assert(ui('tasks-page').hidden&&!ui('accounts-page').hidden,'Account tab did not switch pages');
+  assert(ui('accounts-tab').getAttribute('aria-selected')==='true','Account tab is not selected accessibly');
+  const login=ui('account-login');
+  assert(new URL(login.href).origin===location.origin&&new URL(login.href).pathname==='/welcome'&&login.target==='_blank'&&login.rel.includes('noopener'),'Login must open the official welcome page');
+  if(id==='account-storage'||id==='account-storage-blocked'){
+    save('memory@example.com','first');save('another@example.com','second');
+    assert(cards().length===2&&card('memory@example.com').textContent.includes('first'),'Unavailable storage lost in-page records');
+    assert(ui('accounts-message').textContent.includes('当前页面有效'),'Unavailable storage did not report memory-only mode');
+    if(id==='account-storage')assert(localStorage.getItem(accountsKey)==='{invalid','Corrupt stored data was overwritten');
+  }else if(id==='account-persistence'){
+    if(!restored){save('saved@example.com','My work account');location.replace('/case?id='+id+'&restore=1');return false}
+    assert(card('saved@example.com')?.textContent.includes('My work account'),'Reload lost account or note');
+    assert(ui('account-input').value==='','Reload retained an unfinished edit');
+  }else if(id==='account-quota'){
+    const points=document.querySelector('gdm-af-request .points');
+    window.WIZ_global_data={oPEP7c:'first@example.com'};
+    await until(()=>records().find(item=>item.email==='first@example.com')?.quota?.remaining===30,3000);
+    const before=records()[0].quota.observedAt;await pause(1100);
+    assert(records()[0].quota.observedAt===before,'Quota wrote storage on every polling tick');
+    card('first@example.com').querySelector('[data-action="remove"]').click();await pause(600);
+    assert(!card('first@example.com'),'Removed current account was re-added by polling');
+    ui('account-refresh').click();
+    assert(records().find(item=>item.email==='first@example.com')?.quota?.remaining===30,'Manual record did not restore a removed current account');
+    const preview=document.createElement('gdm-af-preview-dialog');preview.textContent='Remaining jobs: 99';document.body.append(preview);
+    await pause(600);assert(records()[0].quota.remaining===30,'Preview quota overwrote the account record');preview.remove();
+    window.WIZ_global_data.oPEP7c='second@example.com';
+    await until(()=>card('second@example.com'),2500);
+    assert(records().find(item=>item.email==='second@example.com').quota===null,'Old quota was assigned to a newly selected account');
+    assert(!card('first@example.com').querySelector('.af3-account-current')&&card('first@example.com').textContent.includes('上次记录额度'),'Previous account was marked current or live');
+    assert(card('second@example.com').textContent.includes('尚未记录额度'),'New account displayed old quota');
+    points.textContent='Remaining jobs: 0';
+    await until(()=>records().find(item=>item.email==='second@example.com')?.quota?.remaining===0,2500);
+    assert(card('second@example.com').textContent.includes('官网当前额度：0'),'Zero quota was treated as unknown');
+    const recorded=records().find(item=>item.email==='second@example.com').quota.observedAt;
+    points.textContent='Unavailable';
+    await until(()=>ui('account-refresh').disabled,2500);
+    assert(card('second@example.com').textContent.includes('上次记录额度：0'),'Unknown quota was shown as live or lost');
+    assert(records().find(item=>item.email==='second@example.com').quota.observedAt===recorded,'Unknown quota changed the record timestamp');
+    window.WIZ_global_data.oPEP7c='';await until(()=>!cards().some(node=>node.querySelector('.af3-account-current')),2500);
+    assert(records().length===2,'Sign-out deleted saved accounts');
+  }else if(id==='account-cross-tab'){
+    save('original@example.com','original');
+    const frame=document.createElement('iframe');frame.src='/case?id=storage-writer';frame.hidden=true;
+    const loaded=new Promise(resolve=>frame.onload=resolve);document.body.append(frame);await loaded;
+    frame.contentWindow.localStorage.setItem(accountsKey,JSON.stringify({version:1,accounts:[{email:'original@example.com',note:'Other tab',quota:null},{email:'other@example.com',note:'Shared',quota:null}]}));
+    await until(()=>card('other@example.com')&&card('original@example.com').textContent.includes('Other tab'),2500);
+    save('third@example.com','third');assert(records().length===3,'Writing discarded another tab records');
+    frame.contentWindow.localStorage.removeItem(accountsKey);
+    await until(()=>cards().length===0,2500);frame.remove();
+  }else{
+    assert(cards().length===0,'Account list should start empty');
+    save('invalid','bad');assert(!records().length&&ui('accounts-message').textContent.includes('有效邮箱'),'Invalid email was saved');
+    save(' Research.Account@Example.com ','Lab account');
+    assert(records().length===1&&records()[0].email==='research.account@example.com','Email normalization failed');
+    assert(card('research.account@example.com').textContent.includes('尚未记录额度'),'Manually added email invented a quota');
+    save('research.account@example.com','<img src=x onerror="throw Error(1)">');
+    assert(records().length===1&&!ui('accounts-list').querySelector('img'),'Duplicate email or note HTML was inserted');
+    card('research.account@example.com').querySelector('[data-action="edit"]').click();
+    assert(ui('account-input').readOnly,'Editing a note allowed rewriting account identity');
+    ui('account-note').value='Edited note';await pause(1100);assert(ui('account-note').value==='Edited note','Polling replaced an active edit');
+    ui('account-form').dispatchEvent(new Event('submit',{cancelable:true}));
+    assert(records()[0].note==='Edited note','Note edit was not saved');
+    card('research.account@example.com').querySelector('[data-action="edit"]').click();ui('account-cancel').click();
+    assert(!ui('account-input').readOnly&&ui('account-input').value==='','Cancel edit did not reset the form');
+    window.confirm=()=>false;card('research.account@example.com').querySelector('[data-action="remove"]').click();assert(records().length===1,'Cancelled removal deleted record');
+    window.confirm=()=>true;card('research.account@example.com').querySelector('[data-action="remove"]').click();assert(!records().length,'Confirmed removal did not delete record');
+    ui('language-select').value='en';ui('language-select').dispatchEvent(new Event('change'));
+    assert(ui('accounts-tab').textContent==='Accounts'&&ui('account-save').textContent==='Save account','Account page labels did not translate');
+    ui('accounts-tab').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}));
+    assert(!ui('tasks-page').hidden&&ui('accounts-page').hidden,'Keyboard navigation did not return to Jobs');
+    assert(ui('submission-section').getClientRects().length&&ui('download-section').getClientRects().length,'Tasks page lost expanded sections');
+  }
+  assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account management triggered a job or script error');
+  parent.postMessage({type:'af3-case-result',result:{passed:true,message:'account page, local records, quota source and manual login entry; 0 submits'}},location.origin);
+  return true;
 }
 (async()=>{
   const script=document.createElement('script');script.src='/script.js';
   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Cannot load userscript'));document.head.append(script)});
   if(id==='account-email'){await until(()=>ui('v20-btn'),5000);await checkAccountEmail();return}
+  if(['account-manager','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
+  if(id==='storage-writer')return;
   if(id==='panel-ui'){
     await until(()=>ui('v20-btn'),5000);
     const saved=JSON.parse(localStorage.getItem('af3-dev-panel-size')||'null');
@@ -288,6 +386,11 @@ async function checkAccountEmail(){
     await checkPanelUi();return;
   }
   await until(()=>ui('v20-btn')&&!ui('v20-btn').disabled,5000);
+  if(id==='account-switch-confirm'){
+    ui('v20-btn').click();await pause(600);
+    assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account change during confirmation started a batch');
+    parent.postMessage({type:'af3-case-result',result:{passed:true,message:'account changed in confirmation; 0 task opens or submits'}},location.origin);return;
+  }
   ui('v20-count').value=['multi-success','stale-row','server-error','failed-error'].includes(id)?2:1;
   ui('v20-btn').click();
   await until(()=>state.summaries.length>0);
@@ -295,7 +398,11 @@ async function checkAccountEmail(){
   await pause(1100);
   const successes=successCount();
   assert(state.errors.length===0,state.errors.join('; '));
-  if(['delayed-success','failed-success','paused-success'].includes(id)){
+  if(id==='account-switch-submission'){
+    assert(state.calls===0,'Account switch during a batch still clicked Confirm');
+    assert(ui('v20-btn').disabled,'Account change did not lock Start');
+    assert(ui('footer-msg').textContent.includes('账号已变化'),'Account change did not explain why processing stopped');
+  }else if(['delayed-success','failed-success','paused-success'].includes(id)){
     assert(state.calls===1,'Confirm clicked '+state.calls+' times; expected exactly once');
     assert(successes===1,'Expected one confirmed launch: '+state.summaries.at(-1));
     assert(!ui('v20-btn').disabled,'Confirmed run cannot start a later batch');
@@ -317,7 +424,8 @@ async function checkAccountEmail(){
 
 
 SCENARIOS = [
-    'panel-ui', 'account-email',
+    'panel-ui', 'account-email', 'account-manager', 'account-quota', 'account-persistence',
+    'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-switch-submission', 'account-switch-confirm',
     'delayed-success', 'old-success', 'server-error', 'no-toast',
     'failed-success', 'failed-error', 'stop-in-flight', 'stale-row',
     'multi-success', 'paused-success',
