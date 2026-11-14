@@ -1,16 +1,16 @@
 # AF3 Auto Submitter
 
-本仓库是 [siyuanj/af3-auto-submitter](https://github.com/siyuanj/af3-auto-submitter) 的开发 fork，保留原作者 Jiang Siyuan 的署名和 [MIT 许可证](LICENSE)。脚本用于 AlphaFold Server 的 Saved Drafts 批量提交、Failed jobs 克隆重提，以及按日期筛选已完成任务后批量下载结果。
+本仓库是 [siyuanj/af3-auto-submitter](https://github.com/siyuanj/af3-auto-submitter) 的开发 fork，保留原作者 Jiang Siyuan 的署名和 [MIT 许可证](LICENSE)。脚本用于 AlphaFold Server 的 Saved Drafts 批量提交、Failed jobs 克隆重提，以及按日期筛选已完成任务并应用到官网勾选。结果由用户点击官网原生 `Download` 下载。
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 2.25.0-dev.5](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 2.25.0-dev.6](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
-本轮按日期下载、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
+本轮按日期勾选、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。Edge InPrivate 还需允许扩展在 InPrivate 中使用。
-3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.5`。网站控件与通知仍需使用英文。
+3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.6`。网站控件与通知仍需使用英文。
 4. 进入 Saved Drafts 或 Failed jobs 列表。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 5. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 6. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
@@ -25,24 +25,19 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 ## 本轮改动
 
-### 按日期批量下载（DEV 2.25.0-dev.5）
+### 按日期勾选，再用官网下载（DEV 2.25.0-dev.6）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。面板会扫描当前搜索结果的所有分页，保留官网已有的复选框选中状态。
-2. 展开面板的“按日期批量下载”，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。
+2. 展开面板的“按日期选择任务”，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。
 3. 查找完成后，按天或逐个任务核对勾选，也可用“全选”“清空选择”。日期无法识别的任务不纳入结果；若出现同名且显示的 Modified 时间也相同、无法唯一识别的任务，请缩小官网搜索范围后重新查找。
-4. 选择打包方式和操作位置。默认在面板内发起；也可切换到网页手动勾选，按下表操作。
+4. 点击“应用到官网勾选”，确认替换提示。脚本会先清空官网已有选择，再跨页勾选本次核对过的任务，**只应用勾选，不发起下载**。完成后可在官网继续调整选择。
+5. 需要合并一个 ZIP 时，手动点击官网原生批量 `Download`；需要每个任务一个 ZIP 时，手动使用各任务行的 `Download`。也可直接在官网勾选并下载，无需先按日期查找。
 
-| 操作位置与打包方式 | 如何下载 |
-| --- | --- |
-| 面板内：每个任务独立 ZIP | 点击面板“下载所选”并确认，逐个执行任务行的官网 `Download`，保留官网已有勾选。 |
-| 面板内：合并成一个 ZIP | 点击面板“下载所选”并确认，替换官网已有勾选，跨页勾选本次核对过的任务，再执行一次官网批量下载。 |
-| 网页手动：任选打包方式 | 点击面板“在网页中勾选”，将日期结果中已核对的选择写入官网复选框，**此步不下载**。可在官网继续调整勾选，最后点击脚本添加的网页工具条“下载所选”，按当前打包方式下载。也可以直接勾选官网任务并使用该工具条，无需先按日期查找。 |
+**“应用到官网勾选”会替换官网原有选择。** 可以应用超过 50 个任务，但官网合并 ZIP 每次最多 **50 个任务**；应用时会提示此限制，请自行减少官网勾选后再下载。脚本不自动拆批或在本地打包，也没有下载按钮、打包方式或下载位置选项，不会点击官网的行下载或批量下载控件。
 
-**合并下载和“在网页中勾选”会先清空官网原有选择，再写入本次选择。** 合并为一个 ZIP 使用官网批量下载，每次最多 **50 个任务**；超过时会停止，不会自动拆成多批。请减少选择后再操作。
+日期区域显示“待机 / 就绪 / 运行中”状态；仅选中 Completed 时，顶部状态也会提示可进行日期勾选。点击“停止”会停止查找或应用选择。应用过程中停止或出错可能留下部分勾选，不会自动恢复旧选择；请先核对官网复选框，再决定是否下载。
 
-下载区域和网页工具条均显示“待机 / 就绪 / 运行中”状态；仅选中 Completed 时，顶部状态也会提示可下载。点击“停止”会阻止后续操作，已发起的下载仍由浏览器处理。**“已发起下载”不表示文件已保存成功**，请在浏览器下载列表核对；逐任务下载时，浏览器询问后请允许此站点下载多个文件。
-
-查找、应用选择和下载期间保持页面打开，不要更改官网搜索、筛选、排序或每页数量；需要调整时先停止，再重新查找。网页手动模式下，可在应用选择完成后调整官网复选框。
+查找和应用选择期间保持页面打开，不要更改官网搜索、筛选、排序或每页数量；需要调整时先停止，再重新查找。文件是否保存成功，请在手动下载后查看浏览器下载列表；浏览器询问时，按需允许官网的多个文件下载。
 
 ### 提交结果确认
 
@@ -70,7 +65,7 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 ## `main` 分支与旧行为基线
 
-`main` 的 `2.24.1` 仅整理了本 fork 的发布元数据；它仍是旧行为基线，**不包含 DEV 的按日期下载、提交确认、尺寸调整和实时额度功能**。需要这些改动请使用上面的 DEV 安装链接。
+`main` 的 `2.24.1` 仅整理了本 fork 的发布元数据；它仍是旧行为基线，**不包含 DEV 的按日期勾选、提交确认、尺寸调整和实时额度功能**。需要这些改动请使用上面的 DEV 安装链接。
 
 - [旧行为基线源码 2.24.1（需手动安装）](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.js)
 - [旧行为基线的更新元数据](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.meta.js)
@@ -96,7 +91,7 @@ git diff --check
 
 - `af3-auto-submitter.dev.user.js`：本 fork 的 DEV 安装入口，开发分支为 `dev/confirmed-submission`。
 - `test_submission.py`：完整 DEV 的本地提交与面板检查。
-- `test_download.py`：按日期扫描、勾选及下载流程的本地合成页面检查。
+- `test_download.py`：按日期扫描和应用官网勾选的本地合成页面检查，验证脚本不触发下载。
 - `af3-auto-submitter.js`、`af3-auto-submitter.meta.js`：`main` 的旧行为基线与发布元数据。
 - `index.html`：本 fork 的中文安装说明。
 - `init.png`、`saved_draft.png`、`failed.png`：上游界面参考截图，不代表当前 DEV 的版本或新增功能。

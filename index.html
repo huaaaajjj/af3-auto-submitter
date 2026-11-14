@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 开发版 2.25.0-dev.5：按日期选择任务，可逐任务下载或合并 ZIP，支持面板操作与网页手动勾选。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">本 fork 开发版 2.25.0-dev.6：按日期查找、核对并应用到官网勾选；由你手动点击官网原生 Download 下载。功能仍在开发分支，尚未合并 main。</p>
             <p class="version-note">main 的 2.24.1 仍为旧行为基线，不包含这些 DEV 功能。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.5</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.6</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
@@ -256,8 +256,8 @@
             <h2>🚀 核心功能</h2>
             <div class="features-grid">
                 <div class="feature-card">
-                    <h3>📅 按日期批量下载</h3>
-                    <p>按 Modified 日期扫描当前 Completed 搜索结果的所有分页；可选每任务独立 ZIP 或合并一个 ZIP，也可在网页勾选后手动下载。</p>
+                    <h3>📅 按日期应用勾选</h3>
+                    <p>按 Modified 日期扫描当前 Completed 搜索结果的所有分页，按天或逐项核对后应用到官网复选框。下载使用官网原生控件，由你手动点击。</p>
                 </div>
                 <div class="feature-card">
                     <h3>🖐️ 可移动、可调尺寸</h3>
@@ -295,11 +295,12 @@
         </section>
 
         <section>
-            <h2>✨ DEV 2.25.0-dev.5 更新重点</h2>
+            <h2>✨ DEV 2.25.0-dev.6 更新重点</h2>
             <ul class="release-list">
-                <li>新增按日期批量下载：起止日期均包含当天，同一天可单独筛选；下载前可按天或逐项勾选。</li>
-                <li>打包方式可选每任务独立 ZIP 或合并一个 ZIP；合并下载每次最多 50 个，不自动拆批。</li>
-                <li>默认面板操作，也可将选择应用到官网复选框，再在网页工具条手动下载；下载区域与网页工具条显示待机、就绪或运行中。</li>
+                <li>按日期查找任务：起止日期均包含当天，同一天可单独筛选；可按天或逐项核对，再应用到官网勾选。</li>
+                <li>脚本只辅助勾选；由用户点击官网原生批量 Download 合并 ZIP，或手动使用各任务行的 Download。</li>
+                <li>应用选择会替换官网已有勾选；官网合并 ZIP 最多 50 个任务，超过时需自行调整，不自动拆批。</li>
+                <li>日期区域显示待机、就绪或运行中；可停止查找或应用选择。</li>
                 <li>默认中文界面，并提供 6 种语言选择。</li>
                 <li>拖动标题栏移动面板，拖动右下角手柄调整尺寸；位置与尺寸会在本地保存。</li>
                 <li>实时显示官网 Remaining jobs，预览时优先读取预览额度；无法识别时明确提示。</li>
@@ -365,18 +366,18 @@
                 <li><strong>查看结果：</strong> 结束后会弹出完成汇总；如果有跳过或失败，可以展开日志查看原因。</li>
             </ol>
 
-            <h3>3. 按日期下载已完成任务</h3>
+            <h3>3. 按日期勾选，再用官网下载</h3>
             <ol>
                 <li>在官网 History 中<strong>仅选中 Completed</strong>，按需填写 <code>Search History</code>。查找会遍历当前搜索结果的所有分页，并保留官网已有的复选框选中状态。</li>
-                <li>展开面板“按日期批量下载”，选择开始、结束日期，再点<strong>查找任务</strong>。按官网 <code>Modified</code> 显示日期筛选，包含起止当天；填写同一天即可选择一天。</li>
+                <li>展开面板“按日期选择任务”，选择开始、结束日期，再点<strong>查找任务</strong>。按官网 <code>Modified</code> 显示日期筛选，包含起止当天；填写同一天即可选择一天。</li>
                 <li>核对结果，按天或逐个任务勾选，也可点<strong>全选</strong>或<strong>清空选择</strong>。日期无法识别的任务不纳入结果；任务名称及显示的 Modified 时间均相同、无法区分时，请缩小官网搜索范围后重新查找。</li>
-                <li>选择打包方式与操作位置。默认在面板内操作：每任务独立 ZIP 会逐个执行官网 <code>Download</code> 并保留官网已有勾选；合并一个 ZIP 会跨页替换勾选，再执行一次官网批量下载。</li>
-                <li>选择网页手动操作时，点面板<strong>在网页中勾选</strong>，只将已核对的选择写入官网复选框，此步不下载。可继续调整官网勾选，最后点脚本添加的网页工具条<strong>下载所选</strong>，按当前打包方式下载。也可直接在官网勾选后使用该工具条，无需先按日期查找。</li>
-                <li>下载区域和网页工具条均显示<strong>待机 / 就绪 / 运行中</strong>；仅选中 Completed 时，顶部也提示可下载。点<strong>停止</strong>会阻止后续操作，已发起的下载仍由浏览器处理。</li>
-                <li>“已发起下载”不表示文件已保存成功，请在浏览器下载列表核对。逐任务下载时，浏览器询问后请允许此站点下载多个文件。</li>
+                <li>点击<strong>应用到官网勾选</strong>并确认替换提示。脚本清空官网已有选择，跨页勾选本次核对过的任务，<strong>只应用勾选，不发起下载</strong>；完成后可在官网继续调整勾选。</li>
+                <li>需要合并 ZIP 时，手动点击官网原生批量 <code>Download</code>；需要每个任务一个 ZIP 时，手动使用各任务行的 <code>Download</code>。也可直接在官网勾选并下载，无需先按日期查找。</li>
+                <li>日期区域显示<strong>待机 / 就绪 / 运行中</strong>；仅选中 Completed 时，顶部也提示可进行日期勾选。点<strong>停止</strong>会停止查找或应用选择；应用中停止或出错可能留下部分勾选，不会自动恢复旧选择，请先核对官网复选框。</li>
+                <li>手动下载后，请在浏览器下载列表核对文件保存情况。浏览器询问时，按需允许官网的多个文件下载。</li>
             </ol>
-            <p><strong>合并下载和“在网页中勾选”会先清空官网原有选择，再写入本次选择。</strong>合并一个 ZIP 使用官网批量下载，每次最多 <strong>50 个任务</strong>；超过时停止，不自动拆批，请减少选择后再操作。</p>
-            <p>查找、应用选择和下载期间保持页面打开，不要修改官网搜索、筛选、排序或每页数量；需要调整时先停止，再重新查找。网页手动模式下，可在应用选择完成后调整官网复选框。</p>
+            <p><strong>“应用到官网勾选”会替换官网原有选择。</strong>可以应用超过 50 个任务，但官网合并 ZIP 每次最多 <strong>50 个任务</strong>；应用时会提示此限制，请自行减少官网勾选后再下载。脚本没有下载按钮、打包方式或下载位置选项，不点击行下载或批量下载，也不自动拆批或在本地打包。</p>
+            <p>查找和应用选择期间保持页面打开，不要修改官网搜索、筛选、排序或每页数量；需要调整时先停止，再重新查找。应用完成后，可在官网调整勾选并手动下载。</p>
 
             <!-- 上游界面参考截图 -->
             <div class="screenshot-gallery">
@@ -409,7 +410,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.5 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.6 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -419,7 +420,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter DEV 2.25.0-dev.5 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter DEV 2.25.0-dev.6 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 
