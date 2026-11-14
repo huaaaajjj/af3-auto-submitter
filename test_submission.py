@@ -155,7 +155,9 @@ async function checkPanelUi(){
   const rect=()=>host().getBoundingClientRect();
   const quota=()=>ui('quota')?.textContent||'';
   assert(ui('quota'),'Quota display is missing');
-  assert(ui('header').textContent.includes('2.25.0-dev.3'),'Panel release version is missing');
+  const source=await fetch('/script.js').then(response=>response.text());
+  const version=source.match(/^\/\/ @version\s+(\S+)/m)?.[1];
+  assert(version&&ui('header').textContent.includes(version),'Panel release version differs from userscript metadata');
   const handle=ui('resize-handle');
   assert(handle,'Panel resize handle is missing');
   assert(handle.getAttribute('role')==='button'&&handle.tabIndex===0,'Resize handle is not keyboard accessible');

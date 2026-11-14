@@ -243,9 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 开发版 2.25.0-dev.3：明确提交确认、可调尺寸面板与当前账号实时额度。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">本 fork 开发版 2.25.0-dev.4：新增按日期筛选、勾选并批量下载已完成任务，保留提交确认、可调尺寸面板和实时额度。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">main 的 2.24.1 仍为旧行为基线，不包含这些 DEV 功能。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.3</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.4</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
@@ -254,6 +255,10 @@
         <section>
             <h2>🚀 核心功能</h2>
             <div class="features-grid">
+                <div class="feature-card">
+                    <h3>📅 按日期批量下载</h3>
+                    <p>扫描当前 Completed 搜索结果的所有分页，按 Modified 日期筛选，再按天或逐项勾选下载。</p>
+                </div>
                 <div class="feature-card">
                     <h3>🖐️ 可移动、可调尺寸</h3>
                     <p>拖动标题栏移动，拖动右下角手柄调节大小；刷新后恢复位置和尺寸，窄屏或缩放时约束在视口内。</p>
@@ -290,8 +295,9 @@
         </section>
 
         <section>
-            <h2>✨ DEV 2.25.0-dev.3 更新重点</h2>
+            <h2>✨ DEV 2.25.0-dev.4 更新重点</h2>
             <ul class="release-list">
+                <li>新增按日期批量下载：起止日期均包含当天，同一天可单独筛选；下载前可按天或逐项勾选。</li>
                 <li>默认中文界面，并提供 6 种语言选择。</li>
                 <li>拖动标题栏移动面板，拖动右下角手柄调整尺寸；位置与尺寸会在本地保存。</li>
                 <li>实时显示官网 Remaining jobs，预览时优先读取预览额度；无法识别时明确提示。</li>
@@ -356,7 +362,17 @@
                 <li><strong>查看结果：</strong> 结束后会弹出完成汇总；如果有跳过或失败，可以展开日志查看原因。</li>
             </ol>
 
-            <!-- 替换此处 -->
+            <h3>3. 按日期下载已完成任务</h3>
+            <ol>
+                <li>在官网 History 中<strong>仅选中 Completed</strong>，按需填写 <code>Search History</code>。查找会遍历当前搜索结果的所有分页，并保留官网已有的复选框选中状态。</li>
+                <li>展开面板“按日期批量下载”，选择开始、结束日期，再点<strong>查找任务</strong>。按官网 <code>Modified</code> 显示日期筛选，包含起止当天；填写同一天即可选择一天。</li>
+                <li>核对结果，按天或逐个任务勾选，也可点<strong>全选</strong>或<strong>清空选择</strong>。日期无法识别的任务不纳入结果；任务名称及显示的 Modified 时间均相同、无法区分时，请缩小官网搜索范围后重新查找。</li>
+                <li>点击<strong>下载所选</strong>并确认。脚本逐个执行任务行的官网 <code>Download</code>；点<strong>停止</strong>会阻止后续操作。</li>
+                <li>“已发起下载”不表示文件已保存成功，请在浏览器下载列表核对。浏览器询问时，请允许此站点下载多个文件。</li>
+            </ol>
+            <p>面板勾选独立于官网复选框，仅处理面板中确认选择的任务。查找和下载期间保持页面打开，不要修改官网搜索、筛选、排序或每页数量；需要调整时先停止，再重新查找。停止不会撤回浏览器已经开始的下载。</p>
+
+            <!-- 上游界面参考截图 -->
             <div class="screenshot-gallery">
                 <div class="gallery-item">
                     <img src="./init.png" alt="待机初始状态">
@@ -375,6 +391,11 @@
 
         <section>
             <h2>⚠️ 免责声明 & 常见问题</h2>
+            <p>维护者本地验证：以下合成页面检查不使用登录资料，也不访问 AlphaFold 或下载真实任务结果。</p>
+            <pre><code>node --check af3-auto-submitter.dev.user.js
+python -I -X utf8 test_submission.py
+python -I -X utf8 test_download.py
+git diff --check</code></pre>
             <div class="alert">
                 <strong>配额不足：</strong> 额度以官网为准；不足时停止，无法识别时不当作 0。请先核对官网状态，不要靠反复启动解决。
             </div>
@@ -382,7 +403,7 @@
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.3 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.4 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -392,7 +413,7 @@
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter DEV 2.25.0-dev.3 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter DEV 2.25.0-dev.4 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

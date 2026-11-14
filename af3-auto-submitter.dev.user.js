@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      2.25.0-dev.3
-// @description  开发版：可调整面板大小、实时显示官网剩余额度；明确成功才计数，未确认结果时停止并锁定启动。
+// @version      2.25.0-dev.4
+// @description  开发版：按天选择已完成任务并批量下载，可调整面板大小、显示官网剩余额度；明确成功才计数。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -19,7 +19,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '2.25.0-dev.3';
+    const SCRIPT_VERSION = '2.25.0-dev.4';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -558,6 +558,68 @@
         }
     };
 
+    const downloadEnglish = {
+        downloadTitle: 'Download by day', downloadStart: 'From', downloadEnd: 'Through',
+        downloadNote: 'Modified date, including both days. Scan all pages of the current Completed search results.',
+        downloadScan: 'Find jobs', downloadAll: 'Select all', downloadClear: 'Clear selection',
+        downloadRun: 'Download selected', downloadIdle: 'Choose dates, find jobs, then review your selection.',
+        downloadScanning: 'Scanning page {page}… {count} matches',
+        downloadFound: '{count} matches; {selected} selected. Unknown dates skipped: {unknown}.',
+        downloadHint: 'One results ZIP per job. Allow multiple downloads for this site if your browser asks.',
+        downloadProgress: 'Download actions started: {count} / {total}',
+        downloadFinished: 'Download actions started: {count}. Check your browser downloads for saved files.',
+        downloadStopped: 'Stopped. Download actions already started: {count}.',
+        downloadError: 'Download actions already started: {count}. {detail}',
+        downloadInvalidRange: 'Enter valid start and end dates; the start must not be after the end.',
+        downloadNeedCompleted: 'In the website history, select only Completed before finding jobs.',
+        downloadNoHistory: 'Cannot identify one history table with Name and Modified columns.',
+        downloadPageError: 'Pagination did not finish or repeated a page. Find jobs again after checking the website.',
+        downloadContextChanged: 'The history filters, search, order, or page size changed. Find jobs again.',
+        downloadAmbiguous: 'Some jobs have the same name and Modified time and cannot be distinguished. Narrow the website search.',
+        downloadNoSelection: 'Select at least one job from a completed scan.',
+        downloadConfirm: 'Start downloading {count} selected Completed jobs? Each job uses the website Download action.',
+        downloadMissing: 'A selected job changed or could not be found. Stopped before requesting further downloads.',
+        downloadMenuMissing: 'The row Download action is unavailable. Check the website and try finding jobs again.',
+        downloadBusy: 'A date scan or download is running.',
+        downloadIncomplete: 'Scan stopped or incomplete. Find jobs again before downloading.',
+        downloadDay: '{day} · {count} jobs', downloadUnknown: 'Unknown date',
+    };
+    const downloadTranslations = {
+        zh: {
+            downloadTitle: '按日期批量下载', downloadStart: '开始日期', downloadEnd: '结束日期',
+            downloadNote: '按官网 Modified 日期，包含起止当天。扫描当前 Completed 搜索结果的所有分页。',
+            downloadScan: '查找任务', downloadAll: '全选', downloadClear: '清空选择',
+            downloadRun: '下载所选', downloadIdle: '先选择日期并查找任务，核对勾选后再下载。',
+            downloadScanning: '正在扫描第 {page} 页…已找到 {count} 个',
+            downloadFound: '匹配 {count} 个，已选 {selected} 个；日期无法识别、未纳入 {unknown} 个。',
+            downloadHint: '每个任务一个结果 ZIP。浏览器询问时，请允许此站点下载多个文件。',
+            downloadProgress: '已发起下载：{count} / {total}',
+            downloadFinished: '已发起 {count} 个下载，请在浏览器下载列表核对文件保存情况。',
+            downloadStopped: '已停止；此前已发起 {count} 个下载。',
+            downloadError: '此前已发起 {count} 个下载。{detail}',
+            downloadInvalidRange: '请填写有效的起止日期，开始日期不能晚于结束日期。',
+            downloadNeedCompleted: '请先在官网历史列表中仅选中 Completed，再查找任务。',
+            downloadNoHistory: '未能识别唯一的 Name / Modified 历史列表。',
+            downloadPageError: '分页未完成或重复，请核对官网后重新查找任务。',
+            downloadContextChanged: '官网的筛选、搜索、排序或每页数量已变化，请重新查找任务。',
+            downloadAmbiguous: '有任务的名称和 Modified 时间完全相同，无法唯一识别。请缩小官网搜索范围。',
+            downloadNoSelection: '请先完成查找，并至少勾选一个任务。',
+            downloadConfirm: '为已选的 {count} 个 Completed 任务发起下载？每个任务分别使用官网 Download 操作。',
+            downloadMissing: '所选任务已变化或未找到，已停止后续下载。',
+            downloadMenuMissing: '任务行的 Download 操作不可用，请核对官网后重新查找。',
+            downloadBusy: '正在查找或下载任务。',
+            downloadIncomplete: '查找已停止或未完成，请重新查找后再下载。',
+            downloadDay: '{day} · {count} 个', downloadUnknown: '日期无法识别',
+        },
+        ja: { downloadTitle: '日付で一括ダウンロード', downloadStart: '開始日', downloadEnd: '終了日', downloadScan: 'ジョブを検索', downloadAll: '全選択', downloadClear: '選択解除', downloadRun: '選択をダウンロード' },
+        ko: { downloadTitle: '날짜별 일괄 다운로드', downloadStart: '시작일', downloadEnd: '종료일', downloadScan: '작업 찾기', downloadAll: '전체 선택', downloadClear: '선택 해제', downloadRun: '선택 다운로드' },
+        es: { downloadTitle: 'Descargar por día', downloadStart: 'Desde', downloadEnd: 'Hasta', downloadScan: 'Buscar tareas', downloadAll: 'Seleccionar todo', downloadClear: 'Borrar selección', downloadRun: 'Descargar selección' },
+        fr: { downloadTitle: 'Télécharger par jour', downloadStart: 'Du', downloadEnd: 'Au', downloadScan: 'Rechercher', downloadAll: 'Tout sélectionner', downloadClear: 'Tout désélectionner', downloadRun: 'Télécharger la sélection' },
+    };
+    for (const language of Object.keys(I18N)) {
+        Object.assign(I18N[language], downloadEnglish, downloadTranslations[language] || {});
+    }
+
     if (window.__af3AutoSubmitterDevLoaded) return;
     window.__af3AutoSubmitterDevLoaded = true;
 
@@ -570,6 +632,10 @@
     let isDraggingPanel = false;
     let isResizingPanel = false;
     let panelSize = null;
+    const downloadState = {
+        busy: false, stop: false, complete: false, jobs: [], selected: new Set(),
+        unknown: 0, initiated: 0, context: null, message: '', messageVars: {},
+    };
     let logExpanded = false;
     let currentLanguage = getSavedLanguage();
     let runProgress = {
@@ -638,6 +704,7 @@
             resizeHandle.setAttribute('aria-label', t('resizePanel'));
         }
         updateQuota();
+        renderDownloadSection();
         renderLogPanel();
         updateRunControls();
 
@@ -1145,6 +1212,431 @@
         return false;
     }
 
+    // Read the public history UI only. Selection is kept in the panel, so native
+    // selections (including off-page selections) never become download targets.
+    function downloadVisible(node) {
+        return Boolean(node?.isConnected && node.getClientRects().length &&
+            getComputedStyle(node).visibility !== 'hidden');
+    }
+
+    function downloadText(node) {
+        if (!node) return '';
+        const copy = node.cloneNode(true);
+        copy.querySelectorAll('mat-icon, svg, input').forEach(child => child.remove());
+        return copy.textContent.replace(/\s+/g, ' ').trim();
+    }
+
+    function validDownloadDay(value) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+        if (!match) return false;
+        const [, year, month, day] = match.map(Number);
+        const date = new Date(0);
+        date.setUTCFullYear(year, month - 1, day);
+        return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+    }
+
+    function downloadHistoryLoading(root = document) {
+        return Array.from(root.querySelectorAll('mat-spinner, mat-progress-bar, mat-progress-spinner, [aria-busy="true"]')).some(downloadVisible);
+    }
+
+    function getDownloadHistory(allowLoading = false) {
+        const histories = Array.from(document.querySelectorAll('table')).filter(downloadVisible).map(table => {
+            const headers = Array.from(table.querySelectorAll('thead th, tr th, [role="columnheader"]'));
+            const labels = headers.map(downloadText);
+            return { table, root: table.closest('gdm-af-history') || document, nameIndex: labels.indexOf('Name'), dateIndex: labels.indexOf('Modified') };
+        }).filter(history => history.nameIndex >= 0 && history.dateIndex >= 0);
+        if (!histories.length) {
+            const empty = Array.from(document.querySelectorAll('gdm-af-history')).filter(downloadVisible).filter(root =>
+                Array.from(root.querySelectorAll('.no-results')).some(node => downloadVisible(node) &&
+                    /^No jobs found with (?:this search term|filters specified)$/.test(downloadText(node))));
+            if (empty.length === 1) return { table: null, root: empty[0], nameIndex: -1, dateIndex: -1 };
+            if (allowLoading) {
+                const loading = Array.from(document.querySelectorAll('gdm-af-history')).filter(downloadVisible).filter(downloadHistoryLoading);
+                if (loading.length === 1) return { table: null, root: loading[0], loading: true, nameIndex: -1, dateIndex: -1 };
+            }
+        }
+        if (histories.length !== 1) throw new Error(t('downloadNoHistory'));
+        return { ...histories[0], loading: allowLoading && downloadHistoryLoading(histories[0].root) };
+    }
+
+    function getDownloadContext() {
+        const { table, root, loading } = getDownloadHistory(true);
+        const previous = loading && downloadState.context ? JSON.parse(downloadState.context) : null;
+        const chips = root.querySelectorAll('mat-chip-option');
+        const filters = Array.from(chips.length ? chips : root.querySelectorAll('[role="tab"], [role="option"]'))
+            .filter(downloadVisible).map(node => ({
+                name: downloadText(node),
+                selected: ['aria-selected', 'aria-pressed', 'aria-checked'].some(attr => node.getAttribute(attr) === 'true') ||
+                    Boolean(node.querySelector('[aria-selected="true"], [aria-pressed="true"], [aria-checked="true"]')) ||
+                    node.classList.contains('mat-mdc-chip-selected') || node.classList.contains('mdc-evolution-chip--selected'),
+            })).filter(item => /^(Completed|Saved draft|In progress|Examples|Failed)$/i.test(item.name));
+        const selected = [...new Set(filters.filter(item => item.selected).map(item => item.name.toLowerCase()))].sort();
+        if (selected.length !== 1 || selected[0] !== 'completed') throw new Error(t('downloadNeedCompleted'));
+        const search = root.querySelector('input[placeholder="Search History"], input[aria-label="Search History"]');
+        const sort = loading ? previous?.sort || [] : Array.from(table?.querySelectorAll('th[aria-sort]') || []).map(node => [downloadText(node), node.getAttribute('aria-sort')]);
+        const pageSize = root.querySelector('mat-paginator .mat-mdc-select-value, mat-paginator select');
+        return JSON.stringify({ url: location.href, selected, search: search?.value || '', sort, pageSize: pageSize?.value || pageSize?.textContent || (loading ? previous?.pageSize || '' : '') });
+    }
+
+    function checkDownloadActive() {
+        if (downloadState.stop) throw makeStoppedError();
+        if (downloadState.context !== getDownloadContext()) throw new Error(t('downloadContextChanged'));
+    }
+
+    async function downloadDelay(ms) {
+        const until = Date.now() + ms;
+        do {
+            checkDownloadActive();
+            await sleep(Math.min(60, Math.max(0, until - Date.now())));
+        } while (Date.now() < until);
+        checkDownloadActive();
+    }
+
+    function readDownloadPage() {
+        const { table, root, nameIndex, dateIndex } = getDownloadHistory();
+        const rows = Array.from(table?.querySelectorAll('tbody tr, tr.mat-mdc-row, tr[mat-row]') || []).filter(downloadVisible);
+        const jobs = rows.map(row => {
+            const cells = Array.from(row.querySelectorAll('td'));
+            const name = downloadText(cells[nameIndex]);
+            const modified = downloadText(cells[dateIndex]);
+            const match = /^(\d{4}-\d{2}-\d{2})(?:\s+(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?)?$/.exec(modified);
+            const day = match && validDownloadDay(match[1]) ? match[1] : null;
+            // Use a native public job link/ID when present. Otherwise require a
+            // unique name and full displayed Modified time throughout the scan.
+            const link = Array.from(row.querySelectorAll('a[href]')).map(a => a.getAttribute('href'))
+                .find(href => /^\/(?:job|jobs|fold)\//.test(href));
+            const id = row.getAttribute('data-job-id') || link;
+            if (!name) throw new Error(t('downloadNoHistory'));
+            return { key: id ? `id:${id}` : `row:${JSON.stringify([name, modified])}`, id: Boolean(id), name, modified, day, row };
+        });
+        const keys = new Set();
+        for (const job of jobs) {
+            if (keys.has(job.key)) throw new Error(t(job.id ? 'downloadPageError' : 'downloadAmbiguous'));
+            keys.add(job.key);
+        }
+        const paginators = Array.from(root.querySelectorAll('mat-paginator')).filter(downloadVisible);
+        if (paginators.length > 1) throw new Error(t('downloadPageError'));
+        const paginator = paginators[0] || null;
+        const control = (className, label) => paginator?.querySelector(`button.${className}, button[aria-label="${label}"]`) || null;
+        const first = control('mat-mdc-paginator-navigation-first', 'First page');
+        const previous = control('mat-mdc-paginator-navigation-previous', 'Previous page');
+        const next = control('mat-mdc-paginator-navigation-next', 'Next page');
+        if (paginator && (!previous || !next)) throw new Error(t('downloadPageError'));
+        const range = paginator?.querySelector('.mat-mdc-paginator-range-label')?.textContent?.trim() || '';
+        return { jobs, first, previous, next, signature: JSON.stringify([range, jobs.map(job => [job.key, job.modified])]) };
+    }
+
+    function downloadButtonEnabled(button) {
+        return downloadVisible(button) && !button.disabled && button.getAttribute('aria-disabled') !== 'true';
+    }
+
+    async function waitDownloadPage(before = null) {
+        const deadline = Date.now() + 8000;
+        let stable = '', stableSince = 0;
+        while (Date.now() < deadline) {
+            await downloadDelay(70);
+            const { root } = getDownloadHistory(true);
+            if (downloadHistoryLoading(root)) { stable = ''; continue; }
+            const page = readDownloadPage();
+            if (before === null || page.signature !== before) {
+                if (stable === page.signature && Date.now() - stableSince >= 200) return page;
+                if (stable !== page.signature) { stable = page.signature; stableSince = Date.now(); }
+            } else { stable = ''; }
+        }
+        throw new Error(t('downloadPageError'));
+    }
+
+    async function moveDownloadPage(button, before) {
+        checkDownloadActive();
+        if (!downloadButtonEnabled(button)) throw new Error(t('downloadPageError'));
+        button.click();
+        return waitDownloadPage(before);
+    }
+
+    async function firstDownloadPage() {
+        let page = await waitDownloadPage();
+        if (downloadButtonEnabled(page.first)) return moveDownloadPage(page.first, page.signature);
+        const visited = new Set();
+        while (downloadButtonEnabled(page.previous)) {
+            if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
+            visited.add(page.signature);
+            page = await moveDownloadPage(page.previous, page.signature);
+        }
+        return page;
+    }
+
+    function setDownloadMessage(key, vars = {}) {
+        downloadState.message = key;
+        downloadState.messageVars = vars;
+        renderDownloadSection();
+    }
+
+    function updateDownloadControls() {
+        const busy = downloadState.busy || isRunning;
+        for (const id of ['start', 'end', 'scan', 'all', 'clear']) {
+            const control = getUiElement(`af3-download-${id}`);
+            if (control) control.disabled = busy;
+        }
+        const run = getUiElement('af3-download-run');
+        if (run) run.disabled = busy || !downloadState.complete || downloadState.selected.size === 0;
+        const stop = getUiElement('af3-download-stop');
+        if (stop) {
+            stop.hidden = !downloadState.busy;
+            stop.disabled = !downloadState.busy || downloadState.stop;
+        }
+        getUiElement('af3-download-results')?.querySelectorAll('input').forEach(input => { input.disabled = busy; });
+    }
+
+    function renderDownloadSection() {
+        const section = getUiElement('af3-download-section');
+        if (!section) return;
+        section.querySelectorAll('[data-download-i18n]').forEach(node => { node.textContent = t(node.dataset.downloadI18n); });
+        const status = getUiElement('af3-download-status');
+        if (status) {
+            const key = downloadState.message || 'downloadIdle';
+            const vars = key === 'downloadFound' ? { count: downloadState.jobs.length, selected: downloadState.selected.size, unknown: downloadState.unknown } : downloadState.messageVars;
+            status.textContent = key === 'error' ? downloadState.messageVars.detail : t(key, vars);
+        }
+        const list = getUiElement('af3-download-results');
+        if (list && (downloadState.renderedJobs !== downloadState.jobs || downloadState.renderedList !== list || downloadState.renderedLanguage !== currentLanguage)) {
+            list.replaceChildren();
+            const groups = new Map();
+            for (const job of downloadState.jobs) {
+                if (!groups.has(job.day)) groups.set(job.day, []);
+                groups.get(job.day).push(job);
+            }
+            for (const [day, jobs] of [...groups].sort((a, b) => b[0].localeCompare(a[0]))) {
+                const group = document.createElement('details');
+                const summary = document.createElement('summary');
+                const master = document.createElement('input');
+                master.type = 'checkbox'; master.dataset.day = day;
+                master.setAttribute('aria-label', t('downloadDay', { day, count: jobs.length }));
+                master.onclick = event => event.stopPropagation();
+                master.onchange = () => {
+                    if (downloadState.busy || isRunning) return;
+                    for (const job of jobs) master.checked ? downloadState.selected.add(job.key) : downloadState.selected.delete(job.key);
+                    renderDownloadSection();
+                };
+                summary.append(master, document.createTextNode(' ' + t('downloadDay', { day, count: jobs.length })));
+                group.appendChild(summary);
+                for (const job of jobs) {
+                    const label = document.createElement('label');
+                    Object.assign(label.style, { display: 'flex', gap: '6px', alignItems: 'start', padding: '5px 2px', overflowWrap: 'anywhere' });
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox'; checkbox.dataset.jobKey = job.key;
+                    checkbox.onchange = () => {
+                        if (downloadState.busy || isRunning) return;
+                        checkbox.checked ? downloadState.selected.add(job.key) : downloadState.selected.delete(job.key);
+                        renderDownloadSection();
+                    };
+                    const text = document.createElement('span'); text.textContent = `${job.name} · ${job.modified}`;
+                    label.append(checkbox, text); group.appendChild(label);
+                }
+                list.appendChild(group);
+            }
+            downloadState.renderedJobs = downloadState.jobs;
+            downloadState.renderedList = list;
+            downloadState.renderedLanguage = currentLanguage;
+        }
+        list?.querySelectorAll('input[data-job-key]').forEach(input => { input.checked = downloadState.selected.has(input.dataset.jobKey); });
+        list?.querySelectorAll('input[data-day]').forEach(input => {
+            const jobs = downloadState.jobs.filter(job => job.day === input.dataset.day);
+            const count = jobs.filter(job => downloadState.selected.has(job.key)).length;
+            input.checked = count === jobs.length;
+            input.indeterminate = count > 0 && count < jobs.length;
+        });
+        updateDownloadControls();
+    }
+
+    async function scanDownloadJobs() {
+        if (isRunning || downloadState.busy) return;
+        const start = getUiElement('af3-download-start')?.value;
+        const end = getUiElement('af3-download-end')?.value;
+        downloadState.complete = false;
+        downloadState.jobs = [];
+        downloadState.selected.clear();
+        downloadState.unknown = 0;
+        downloadState.initiated = 0;
+        if (!validDownloadDay(start) || !validDownloadDay(end) || start > end) {
+            setDownloadMessage('downloadInvalidRange'); return;
+        }
+        downloadState.busy = true;
+        downloadState.stop = false;
+        checkSystemStatus();
+        try {
+            getDownloadHistory();
+            downloadState.context = getDownloadContext();
+            const visited = new Set(), identities = new Map(), matches = [];
+            let page = await firstDownloadPage();
+            while (true) {
+                checkDownloadActive();
+                if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
+                visited.add(page.signature);
+                for (const job of page.jobs) {
+                    if (identities.has(job.key)) {
+                        throw new Error(t(job.id ? 'downloadPageError' : 'downloadAmbiguous'));
+                    }
+                    identities.set(job.key, job);
+                    if (!job.day) { downloadState.unknown++; continue; }
+                    if (job.day >= start && job.day <= end) {
+                        const { row, ...record } = job;
+                        matches.push(record);
+                    }
+                }
+                setDownloadMessage('downloadScanning', { page: visited.size, count: matches.length });
+                if (!downloadButtonEnabled(page.next)) break;
+                page = await moveDownloadPage(page.next, page.signature);
+            }
+            await firstDownloadPage();
+            checkDownloadActive();
+            downloadState.jobs = matches;
+            downloadState.selected = new Set(matches.map(job => job.key));
+            downloadState.complete = true;
+            setDownloadMessage('downloadFound');
+        } catch (error) {
+            setDownloadMessage(isUserStopError(error) ? 'downloadIncomplete' : 'error', { detail: error.message });
+        } finally {
+            downloadState.busy = false;
+            renderDownloadSection();
+            checkSystemStatus();
+        }
+    }
+
+    async function clickNativeDownload(job) {
+        checkDownloadActive();
+        const assertFresh = () => {
+            const current = readDownloadPage().jobs.find(item => item.key === job.key);
+            if (!current || current.row !== job.row || current.name !== job.name || current.modified !== job.modified) {
+                throw new Error(t('downloadMissing'));
+            }
+        };
+        assertFresh();
+        const menu = Array.from(job.row.querySelectorAll('button')).filter(downloadVisible).find(button =>
+            button.matches('.mat-mdc-menu-trigger, [aria-haspopup="menu"]') ||
+            button.querySelector('mat-icon')?.textContent.trim() === 'more_vert');
+        if (!downloadButtonEnabled(menu)) throw new Error(t('downloadMenuMissing'));
+        const previousPanels = new Set(Array.from(document.querySelectorAll('[role="menu"], .mat-mdc-menu-panel')).filter(downloadVisible));
+        downloadState.menuTrigger = menu;
+        menu.click();
+        const deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+            await downloadDelay(70);
+            const controls = menu.getAttribute('aria-controls');
+            const opened = controls ? [document.getElementById(controls)].filter(downloadVisible) :
+                Array.from(document.querySelectorAll('[role="menu"], .mat-mdc-menu-panel')).filter(downloadVisible).filter(panel => !previousPanels.has(panel));
+            const panel = opened.length === 1 && menu.getAttribute('aria-expanded') !== 'false' ? opened[0] : null;
+            const options = Array.from(panel?.querySelectorAll('[role="menuitem"], .mat-mdc-menu-item') || []).filter(downloadVisible)
+                .filter(node => /^(Download|Download results)$/i.test(downloadText(node)));
+            if (options.length === 1 && downloadButtonEnabled(options[0])) {
+                checkDownloadActive();
+                assertFresh();
+                if (options[0].tagName === 'A' && !options[0].getAttribute('href')) throw new Error(t('downloadMenuMissing'));
+                options[0].click();
+                return;
+            }
+        }
+        throw new Error(t('downloadMenuMissing'));
+    }
+
+    async function runSelectedDownloads() {
+        if (isRunning || downloadState.busy) return;
+        if (!downloadState.complete || !downloadState.selected.size) { setDownloadMessage('downloadNoSelection'); return; }
+        downloadState.stop = false;
+        try { checkDownloadActive(); } catch (error) {
+            downloadState.complete = false;
+            setDownloadMessage('downloadError', { count: downloadState.initiated, detail: error.message }); return;
+        }
+        if (!confirm(t('downloadConfirm', { count: downloadState.selected.size }))) return;
+        downloadState.busy = true;
+        downloadState.stop = false;
+        downloadState.initiated = 0;
+        const targets = new Map(downloadState.jobs.filter(job => downloadState.selected.has(job.key)).map(job => [job.key, job]));
+        const total = targets.size;
+        checkSystemStatus();
+        renderDownloadSection();
+        try {
+            let page = await firstDownloadPage();
+            const visited = new Set();
+            while (targets.size) {
+                checkDownloadActive();
+                if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
+                visited.add(page.signature);
+                for (const job of page.jobs) {
+                    const target = targets.get(job.key);
+                    if (!target) continue;
+                    if (job.modified !== target.modified || job.day !== target.day || job.name !== target.name) throw new Error(t('downloadMissing'));
+                    await clickNativeDownload(job);
+                    targets.delete(job.key);
+                    downloadState.selected.delete(job.key);
+                    downloadState.initiated++;
+                    setDownloadMessage('downloadProgress', { count: downloadState.initiated, total });
+                    await downloadDelay(650);
+                }
+                if (!targets.size) break;
+                if (!downloadButtonEnabled(page.next)) throw new Error(t('downloadMissing'));
+                page = await moveDownloadPage(page.next, page.signature);
+            }
+            setDownloadMessage('downloadFinished', { count: downloadState.initiated });
+        } catch (error) {
+            if (!isUserStopError(error)) downloadState.complete = false;
+            setDownloadMessage(isUserStopError(error) ? 'downloadStopped' : 'downloadError', { count: downloadState.initiated, detail: error.message });
+        } finally {
+            downloadState.busy = false;
+            const menu = downloadState.menuTrigger;
+            if (menu?.isConnected && menu.getAttribute('aria-expanded') === 'true') menu.click();
+            downloadState.menuTrigger = null;
+            renderDownloadSection();
+            checkSystemStatus();
+        }
+    }
+
+    function createDownloadSection() {
+        const section = document.createElement('details');
+        section.id = 'af3-download-section';
+        Object.assign(section.style, { borderTop: '1px solid #555', paddingTop: '8px', flexShrink: '0', fontSize: '12px', lineHeight: '1.5' });
+        const translated = (tag, key) => {
+            const node = document.createElement(tag); node.dataset.downloadI18n = key; node.textContent = t(key); return node;
+        };
+        const summary = translated('summary', 'downloadTitle');
+        Object.assign(summary.style, { cursor: 'pointer', color: '#8ab4f8', fontWeight: 'bold' });
+        section.appendChild(summary);
+        section.appendChild(translated('p', 'downloadNote'));
+        const dates = document.createElement('div');
+        Object.assign(dates.style, { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '8px' });
+        const today = new Date();
+        const day = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        for (const [id, key] of [['start', 'downloadStart'], ['end', 'downloadEnd']]) {
+            const label = document.createElement('label'); label.appendChild(translated('span', key));
+            const input = document.createElement('input'); input.type = 'date'; input.id = `af3-download-${id}`; input.value = day;
+            Object.assign(input.style, { display: 'block', boxSizing: 'border-box', width: '100%', minWidth: '0', padding: '6px 2px', border: '1px solid #666', borderRadius: '4px', background: '#303134', color: '#fff', fontSize: '11px', colorScheme: 'dark' });
+            input.onchange = () => {
+                downloadState.complete = false; downloadState.jobs = []; downloadState.selected.clear(); setDownloadMessage('downloadIdle');
+            };
+            label.appendChild(input); dates.appendChild(label);
+        }
+        section.appendChild(dates);
+        const actions = document.createElement('div');
+        Object.assign(actions.style, { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' });
+        for (const [id, key, action] of [
+            ['scan', 'downloadScan', scanDownloadJobs],
+            ['all', 'downloadAll', () => { if (downloadState.busy || isRunning) return; downloadState.selected = new Set(downloadState.jobs.map(job => job.key)); setDownloadMessage('downloadFound'); }],
+            ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning) return; downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
+            ['run', 'downloadRun', runSelectedDownloads],
+            ['stop', 'stopButton', () => { downloadState.stop = true; updateDownloadControls(); }],
+        ]) {
+            const button = translated('button', key); button.type = 'button'; button.id = `af3-download-${id}`;
+            stylePanelButton(button, id === 'stop' ? '#b3261e' : id === 'run' ? '#137333' : '#3c4043');
+            button.style.fontSize = '11px'; button.onclick = action; actions.appendChild(button);
+        }
+        section.appendChild(actions);
+        const status = document.createElement('p'); status.id = 'af3-download-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+        Object.assign(status.style, { overflowWrap: 'anywhere', color: '#dfe1e5', margin: '8px 0' }); section.appendChild(status);
+        const list = document.createElement('div'); list.id = 'af3-download-results';
+        Object.assign(list.style, { maxHeight: '240px', overflow: 'auto' }); section.appendChild(list);
+        const hint = translated('p', 'downloadHint'); hint.style.color = '#bdc1c6'; section.appendChild(hint);
+        return section;
+    }
+
     // --- UI 拖拽 ---
     function makeDraggable(element, handle) {
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
@@ -1435,6 +1927,7 @@
         container.appendChild(header); container.appendChild(languageRow); container.appendChild(statusRow);
         container.appendChild(quota);
         container.appendChild(controls); container.appendChild(runControls);
+        container.appendChild(createDownloadSection());
         container.appendChild(footer); container.appendChild(logPanel);
         shadow.appendChild(container);
         const resizeHandle = document.createElement('span');
@@ -1464,12 +1957,20 @@
 
     function checkSystemStatus() {
         updateQuota();
+        updateDownloadControls();
         const btn = getUiElement('af3-v20-btn');
         const light = getUiElement('af3-status-light');
         const text = getUiElement('af3-status-text');
         const footer = getUiElement('af3-footer-msg');
 
         if (!btn || !light || !text || isRunning) return;
+
+        if (downloadState.busy) {
+            btn.disabled = true;
+            btn.style.cursor = 'not-allowed';
+            text.textContent = t('downloadBusy');
+            return;
+        }
 
         if (submissionBlockReason) {
             btn.disabled = true;
@@ -1512,7 +2013,7 @@
 
     // --- 主入口 ---
     async function mainProcess() {
-        if (isRunning || submissionBlockReason) return;
+        if (isRunning || downloadState.busy || submissionBlockReason) return;
 
         const countInput = getUiElement('af3-v20-count');
         const requestedJobs = parseInt(countInput.value, 10) || 10;
