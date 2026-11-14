@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 开发版 2.25.0-dev.8：恢复合并 ZIP / 分开下载两种选择方式，面板正文与主要控件放大到 14px；由你手动点击官网原生 Download 下载。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">本 fork 开发版 2.25.0-dev.9：修复混选标签时误显示提交就绪；保留合并 ZIP / 分开下载两种选择方式，由你手动点击官网原生 Download 下载。功能仍在开发分支，尚未合并 main。</p>
             <p class="version-note">main 的 2.24.1 仍为旧行为基线，不包含这些 DEV 功能。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.8</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.9</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
@@ -295,8 +295,9 @@
         </section>
 
         <section>
-            <h2>✨ DEV 2.25.0-dev.8 更新重点</h2>
+            <h2>✨ DEV 2.25.0-dev.9 更新重点</h2>
             <ul class="release-list">
+                <li>仅选中 Saved draft 才显示草稿提交就绪，仅选中 Failed 才显示失败重跑就绪；混选或未选标签时待机并禁用启动，点击启动和确认后均重新核对标签。</li>
                 <li>按日期查找任务：起止日期均包含当天，同一天可单独筛选；可按天或逐项核对，再应用到官网勾选。</li>
                 <li>保留合并 ZIP / 分开下载两种方式：合并时一次应用全部勾选；分开时每次只选一个任务，并提供“下一任务”。下载均由用户点击官网原生 Download。</li>
                 <li>应用选择会替换官网已有勾选；官网合并 ZIP 最多 50 个任务，超过时需自行调整，不自动拆批。</li>
@@ -324,9 +325,9 @@
                     <span style="color: #ef5350; font-weight: bold;">😴 待机中</span>
                     <div class="status-desc">
                         👈 <strong>请操作：</strong><br>
-                        点击网页左侧菜单的<br>
-                        "Saved Drafts" (草稿)<br>
-                        或 "Failed jobs" (失败)；<br>
+                        在 History 中仅选中<br>
+                        "Saved draft" (草稿)<br>
+                        或 "Failed" (失败)；<br>
                         下载时仅选中 "Completed"
                     </div>
                 </div>
@@ -337,7 +338,7 @@
                     <span style="color: var(--success); font-weight: bold;">🟢 提交草稿</span>
                     <div class="status-desc">
                         ✅ <strong>就绪：</strong><br>
-                        当前在草稿列表。<br>
+                        仅选中 Saved draft。<br>
                         点击启动将批量提交。
                     </div>
                 </div>
@@ -348,7 +349,7 @@
                     <span style="color: var(--info); font-weight: bold;">🔵 失败重跑</span>
                     <div class="status-desc">
                         ✅ <strong>就绪：</strong><br>
-                        当前在失败列表。<br>
+                        仅选中 Failed。<br>
                         点击启动将自动<br><strong>Clone 并重试</strong>。
                     </div>
                 </div>
@@ -356,7 +357,7 @@
 
             <h3>2. 运行流程</h3>
             <ol>
-                <li><strong>进入列表页：</strong> 根据你的需求，点击 AF3 左侧菜单进入 <code>Saved Drafts</code> 或 <code>Failed jobs</code>。</li>
+                <li><strong>选择状态：</strong> 根据你的需求，在 History 中仅选中 <code>Saved draft</code> 或 <code>Failed</code>；混选或未选标签时无法启动。</li>
                 <li><strong>调整每页显示：</strong> 建议在页面底部将 <code>Rows per page</code> 设置为 <strong>100</strong>，以减少翻页烦恼。</li>
                 <li><strong>选择语言：</strong> 如果需要，可以在面板顶部切换界面语言；默认是中文。</li>
                 <li><strong>设置数量：</strong> 在黑色面板输入框中，输入想要连续处理的任务数量（例如 10）。</li>
@@ -411,7 +412,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.8 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.9 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -421,7 +422,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter DEV 2.25.0-dev.8 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter DEV 2.25.0-dev.9 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

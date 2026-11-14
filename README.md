@@ -4,14 +4,14 @@
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 2.25.0-dev.8](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 2.25.0-dev.9](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 本轮按日期勾选、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。Edge InPrivate 还需允许扩展在 InPrivate 中使用。
-3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.8`。网站控件与通知仍需使用英文。
-4. 进入 Saved Drafts 或 Failed jobs 列表。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
+3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.9`。网站控件与通知仍需使用英文。
+4. 在 History 中仅选中 `Saved draft` 才显示“就绪: 提交草稿”，仅选中 `Failed` 才显示失败重跑就绪；混选或未选标签时待机并禁用启动。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 5. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 6. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
 
@@ -25,7 +25,7 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 ## 本轮改动
 
-### 按日期勾选，再用官网下载（DEV 2.25.0-dev.8）
+### 按日期勾选，再用官网下载（DEV 2.25.0-dev.9）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。面板会扫描当前搜索结果的所有分页，保留官网已有的复选框选中状态。
 2. 展开面板的“按日期选择任务”，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。
@@ -43,6 +43,7 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 ### 提交结果确认
 
+- 启动时和确认摘要后重新核对标签；若不再是原先单独选择的 `Saved draft` 或 `Failed`，不会启动提交。
 - 草稿和 Failed 克隆重提都只点击一次 `Confirm and submit`，收到官网新的 `Job successfully launched.` 消息后才计为成功。
 - 弹窗消失、行内容变化、旧成功通知均不等于本次提交成功；未知通知会继续等待，60 秒内没有明确结果就停止。
 - 官网错误、提交结果超时或提交中按停止，会锁住启动按钮，防止不确定状态下重复提交。刷新会清空当前页锁定记录，因此应先核对官网记录再决定后续操作。

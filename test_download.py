@@ -286,6 +286,35 @@ async function checkIndividual(){
  }else setFormat(id.startsWith('download-individual-')?'individual':'combined');
  if(id==='download-format-persistence'||id==='download-format-default'){
   assert(state.nativeInputChanges===0&&state.nativeClears===0,'Format controls changed native selection');
+ }else if(id==='history-status-filters'){
+  const filters=Array.from(document.querySelectorAll('#filters button'));
+  const standby='😴 待机中: 请切换页面';
+  for(let mask=0;mask<32;mask++){
+   filters.forEach((node,index)=>node.setAttribute('aria-selected',String(Boolean(mask&(1<<index)))));
+   await pause(550);
+   const expected=mask===1?'就绪：核对选择后应用到官网勾选':mask===2?'🟢 就绪: 提交草稿':mask===4?'🔵 就绪: 失败任务重跑':standby;
+   assert(ui('status-text').textContent===expected,'Wrong top status for filters '+mask+': '+ui('status-text').textContent);
+   assert(ui('v20-btn').disabled===(mask!==2&&mask!==4),'Wrong submit availability for filters '+mask);
+  }
+  document.getElementById('filters').prepend(document.getElementById('failed-filter').parentElement);
+  setFilter('failed');document.getElementById('draft-filter').setAttribute('aria-selected','true');await pause(550);
+  assert(ui('status-text').textContent===standby&&ui('v20-btn').disabled,'Reordered mixed filters enabled failed submission');
+  const unrelated=document.createElement('button');unrelated.setAttribute('aria-selected','true');unrelated.textContent='Saved draft';document.body.prepend(unrelated);
+  setFilter('completed');await pause(550);
+  assert(ui('status-text').textContent==='就绪：核对选择后应用到官网勾选'&&ui('v20-btn').disabled,'Unrelated selection changed the history mode');
+ }else if(id==='history-status-click'){
+  for(const [mode,extra] of [['draft','failed'],['failed','examples']]){
+   setFilter(mode);await until(()=>!ui('v20-btn').disabled);await pause(550);
+   document.getElementById(extra+'-filter').setAttribute('aria-selected','true');ui('v20-btn').click();
+   assert(state.confirms===0&&state.rowOpens===0,'Stale '+mode+' readiness allowed submission after filter change');
+   assert(ui('v20-btn').disabled,'Click did not refresh mixed-filter readiness');
+  }
+  for(const [mode,next] of [['draft','failed'],['failed','draft']]){
+   setFilter(mode);await until(()=>!ui('v20-btn').disabled);await pause(550);
+   window.confirm=()=>{state.confirms++;setFilter(next);return true};
+   ui('v20-btn').click();
+   assert(state.rowOpens===0,'Filter change during confirmation started a different submission mode');
+  }
  }else if(id.startsWith('download-individual-')){
   await checkIndividual();
  }else if(id==='download-invalid-range'){
@@ -380,6 +409,7 @@ async function checkIndividual(){
 
 
 SCENARIOS = [
+    'history-status-filters', 'history-status-click',
     'download-range', 'download-reset-first', 'download-single-day', 'download-select',
     'download-day-selection', 'download-zero', 'download-invalid-range',
     'download-unknown-date', 'download-calendar-invalid', 'download-clock-invalid',

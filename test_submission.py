@@ -355,7 +355,8 @@ def main():
                 f'http://127.0.0.1:{server.server_port}/',
             ], stdout=subprocess.DEVNULL, stderr=log)
             try:
-                deadline = time.monotonic() + 300
+                # Larger suites share this runner; each case also has its own timeout.
+                deadline = time.monotonic() + max(300, 6 * len(scenarios))
                 while not finished.wait(0.25):
                     if process.poll() is not None or time.monotonic() >= deadline:
                         break

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      2.25.0-dev.8
+// @version      2.25.0-dev.9
 // @description  开发版：按天筛选，合并或逐个勾选后手动使用官网 Download 下载；放大面板文字，保留提交确认、实时额度和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -19,7 +19,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '2.25.0-dev.8';
+    const SCRIPT_VERSION = '2.25.0-dev.9';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -1299,9 +1299,12 @@
         return { ...histories[0], loading: allowLoading && downloadHistoryLoading(histories[0].root) };
     }
 
-    function getDownloadContext() {
-        const { table, root, loading } = getDownloadHistory(true);
-        const previous = loading && downloadState.context ? JSON.parse(downloadState.context) : null;
+    function getSelectedHistoryStatuses(root = null) {
+        if (!root) {
+            const histories = Array.from(document.querySelectorAll('gdm-af-history')).filter(downloadVisible);
+            if (histories.length > 1) return [];
+            root = histories[0] || document;
+        }
         const chips = root.querySelectorAll('mat-chip-option');
         const filters = Array.from(chips.length ? chips : root.querySelectorAll('[role="tab"], [role="option"]'))
             .filter(downloadVisible).map(node => ({
@@ -1310,7 +1313,13 @@
                     Boolean(node.querySelector('[aria-selected="true"], [aria-pressed="true"], [aria-checked="true"]')) ||
                     node.classList.contains('mat-mdc-chip-selected') || node.classList.contains('mdc-evolution-chip--selected'),
             })).filter(item => /^(Completed|Saved draft|In progress|Examples|Failed)$/i.test(item.name));
-        const selected = [...new Set(filters.filter(item => item.selected).map(item => item.name.toLowerCase()))].sort();
+        return [...new Set(filters.filter(item => item.selected).map(item => item.name.toLowerCase()))].sort();
+    }
+
+    function getDownloadContext() {
+        const { table, root, loading } = getDownloadHistory(true);
+        const previous = loading && downloadState.context ? JSON.parse(downloadState.context) : null;
+        const selected = getSelectedHistoryStatuses(root);
         if (selected.length !== 1 || selected[0] !== 'completed') throw new Error(t('downloadNeedCompleted'));
         const search = root.querySelector('input[placeholder="Search History"], input[aria-label="Search History"]');
         const sort = loading ? previous?.sort || [] : Array.from(table?.querySelectorAll('th[aria-sort]') || []).map(node => [downloadText(node), node.getAttribute('aria-sort')]);
@@ -2205,8 +2214,8 @@
             return;
         }
 
-        const activeTab = document.querySelector('button[aria-selected="true"], div[aria-selected="true"]');
-        const tabName = activeTab ? activeTab.textContent.toLowerCase() : "";
+        const selected = getSelectedHistoryStatuses();
+        const status = selected.length === 1 ? selected[0] : '';
 
         try {
             getDownloadContext();
@@ -2219,14 +2228,14 @@
             return;
         } catch (_) {}
 
-        if (tabName.includes('draft')) {
+        if (status === 'saved draft') {
             currentMode = 'DRAFT';
             light.style.backgroundColor = '#00e676'; // Green
             light.style.boxShadow = '0 0 8px #00e676';
             text.textContent = t('readyDraftStatus'); text.style.color = '#00e676';
             footer.textContent = t('modeDraftFooter');
             btn.disabled = false; btn.style.backgroundColor = '#1a73e8'; btn.style.color = 'white'; btn.style.cursor = 'pointer';
-        } else if (tabName.includes('failed')) {
+        } else if (status === 'failed') {
             currentMode = 'FAILED';
             light.style.backgroundColor = '#2979ff'; // Blue
             light.style.boxShadow = '0 0 8px #2979ff';
@@ -2246,15 +2255,20 @@
     // --- 主入口 ---
     async function mainProcess() {
         if (isRunning || downloadState.busy || submissionBlockReason) return;
+        checkSystemStatus();
+        const mode = currentMode;
+        if (mode !== 'DRAFT' && mode !== 'FAILED') return;
 
         const countInput = getUiElement('af3-v20-count');
         const requestedJobs = parseInt(countInput.value, 10) || 10;
         const maxJobs = confirmStart(requestedJobs);
         if (!maxJobs) return;
+        checkSystemStatus();
+        if (currentMode !== mode) return;
 
-        if (currentMode === 'DRAFT') {
+        if (mode === 'DRAFT') {
             await runDraftSubmission(maxJobs);
-        } else if (currentMode === 'FAILED') {
+        } else if (mode === 'FAILED') {
             await runFailedReprocessing(maxJobs);
         }
     }
