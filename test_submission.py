@@ -67,6 +67,8 @@ mat-snack-bar-container{display:block}button,input{margin:4px}td{padding:8px}</s
 <script>
 'use strict';
 const id=new URLSearchParams(location.search).get('id');
+// Leave room to grow in the 700px fixture, and verify existing saved sizes still work.
+if(id==='panel-ui'&&!new URLSearchParams(location.search).has('restore'))localStorage.setItem('af3-dev-panel-size',JSON.stringify({width:300,height:380}));
 const failed=id.startsWith('failed-');
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const root=()=>document.getElementById('af3-dev-panel')?.shadowRoot;

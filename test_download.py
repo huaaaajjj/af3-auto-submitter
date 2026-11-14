@@ -81,7 +81,8 @@ const pageSize=id==='download-over-fifty'?20:2;
 const pageOption=document.querySelector('mat-paginator select option');pageOption.value=String(pageSize);pageOption.textContent=String(pageSize);
 state.pages=Array.from({length:Math.ceil(jobs.length/pageSize)},(_,index)=>jobs.slice(index*pageSize,(index+1)*pageSize));
 if(id==='download-reset-first')state.page=2;
-function recordReadiness(){const text=ui('download-ready-text')?.textContent;if(text)state.readiness.push(text)}
+const submissionStatuses=[];
+function recordReadiness(){const text=ui('download-ready-text')?.textContent;if(text)state.readiness.push(text);const top=ui('status-text')?.textContent;if(top)submissionStatuses.push(top)}
 function nativeCheckbox(jobId){return Array.from(document.querySelectorAll('tbody tr')).find(row=>row.dataset.fixtureJob===jobId)?.querySelector('.mat-column-selected input')}
 function setFilter(name){for(const element of document.querySelectorAll('#filters button'))element.setAttribute('aria-selected',String(element.id===name+'-filter'))}
 for(const element of document.querySelectorAll('#filters button'))element.onclick=()=>setFilter(element.id.replace('-filter',''));
@@ -270,7 +271,7 @@ async function checkIndividual(){
 (async()=>{
  const script=document.createElement('script');script.src='/script.js';
  await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Cannot load userscript'));document.head.append(script)});
- await until(()=>ui('download-section'),5000);ui('download-section').open=true;
+ await until(()=>ui('download-section'),5000);
  assert(ui('download-apply'),'Apply-to-website control is missing');assertRemovedControls();
  assert(ui('download-format')?.tagName==='SELECT','Download format selector is missing');
  assert(Array.from(ui('download-format').options).map(option=>option.value).sort().join(',')==='combined,individual','Unexpected download format choices');
@@ -286,22 +287,32 @@ async function checkIndividual(){
  }else setFormat(id.startsWith('download-individual-')?'individual':'combined');
  if(id==='download-format-persistence'||id==='download-format-default'){
   assert(state.nativeInputChanges===0&&state.nativeClears===0,'Format controls changed native selection');
+ }else if(id==='panel-sections'){
+  const submission=ui('submission-section'),download=ui('download-section');
+  assert(submission&&download,'Submission and download sections must both exist');
+  assert(!submission.closest('details')&&!download.closest('details'),'Main sections must not be collapsible');
+  assert(Boolean(submission.compareDocumentPosition(download)&Node.DOCUMENT_POSITION_FOLLOWING),'Submission must be above download');
+  for(const name of ['status-text','quota','v20-count','v20-btn','footer-msg'])assert(submission.contains(ui(name)),'Submission section lost '+name);
+  for(const name of ['download-ready-text','download-start','download-end','download-format','download-scan','download-apply'])assert(download.contains(ui(name))&&ui(name).getClientRects().length,'Download control is hidden or outside its section: '+name);
+  await scan();assert(!download.querySelector('details'),'Download results must not need expansion');
+  assert(reviewChecks().length===4&&reviewChecks().every(node=>node.getClientRects().length),'Matching jobs must be visible without expansion');
  }else if(id==='history-status-filters'){
   const filters=Array.from(document.querySelectorAll('#filters button'));
   const standby='😴 待机中: 请切换页面';
   for(let mask=0;mask<32;mask++){
    filters.forEach((node,index)=>node.setAttribute('aria-selected',String(Boolean(mask&(1<<index)))));
    await pause(550);
-   const expected=mask===1?'就绪：核对选择后应用到官网勾选':mask===2?'🟢 就绪: 提交草稿':mask===4?'🔵 就绪: 失败任务重跑':standby;
+   const expected=mask===2?'🟢 就绪: 提交草稿':mask===4?'🔵 就绪: 失败任务重跑':standby;
    assert(ui('status-text').textContent===expected,'Wrong top status for filters '+mask+': '+ui('status-text').textContent);
    assert(ui('v20-btn').disabled===(mask!==2&&mask!==4),'Wrong submit availability for filters '+mask);
+   assert(/就绪/.test(ui('download-ready-text').textContent)===(mask===1),'Wrong download readiness for filters '+mask+': '+ui('download-ready-text').textContent);
   }
   document.getElementById('filters').prepend(document.getElementById('failed-filter').parentElement);
   setFilter('failed');document.getElementById('draft-filter').setAttribute('aria-selected','true');await pause(550);
   assert(ui('status-text').textContent===standby&&ui('v20-btn').disabled,'Reordered mixed filters enabled failed submission');
   const unrelated=document.createElement('button');unrelated.setAttribute('aria-selected','true');unrelated.textContent='Saved draft';document.body.prepend(unrelated);
   setFilter('completed');await pause(550);
-  assert(ui('status-text').textContent==='就绪：核对选择后应用到官网勾选'&&ui('v20-btn').disabled,'Unrelated selection changed the history mode');
+  assert(ui('status-text').textContent===standby&&ui('v20-btn').disabled&&/就绪/.test(ui('download-ready-text').textContent),'Unrelated selection changed the independent section states');
  }else if(id==='history-status-click'){
   for(const [mode,extra] of [['draft','failed'],['failed','examples']]){
    setFilter(mode);await until(()=>!ui('v20-btn').disabled);await pause(550);
@@ -331,6 +342,7 @@ async function checkIndividual(){
   setFilter('completed');await scan();
   assert(state.readiness.some(text=>/运行|进行|正在|running|loading|scanning|applying/i.test(text)),'Scan omitted running state');
   await apply();await until(()=>/就绪|ready|官网|website/i.test(ui('download-ready-text').textContent));
+  assert(ui('status-text').textContent==='😴 待机中: 请切换页面'&&submissionStatuses.every(text=>text==='😴 待机中: 请切换页面'),'Download activity replaced the submission status');
  }else{
   const single=id==='download-single-day';await scan(single?'2026-11-13':'2026-11-12','2026-11-13');
   const expected=id==='download-over-fifty'?51:single?2:['download-unknown-date','download-calendar-invalid','download-clock-invalid'].includes(id)?3:4;
@@ -409,6 +421,7 @@ async function checkIndividual(){
 
 
 SCENARIOS = [
+    'panel-sections',
     'history-status-filters', 'history-status-click',
     'download-range', 'download-reset-first', 'download-single-day', 'download-select',
     'download-day-selection', 'download-zero', 'download-invalid-range',

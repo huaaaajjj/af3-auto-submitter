@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      2.25.0-dev.9
-// @description  开发版：按天筛选，合并或逐个勾选后手动使用官网 Download 下载；放大面板文字，保留提交确认、实时额度和可调面板。
+// @version      2.25.0-dev.10
+// @description  开发版：上下分开展示提交与下载；按天筛选，合并或逐个勾选后手动使用官网 Download 下载；保留提交确认、实时额度和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -19,7 +19,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '2.25.0-dev.9';
+    const SCRIPT_VERSION = '2.25.0-dev.10';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -67,7 +67,7 @@
             devFooter: '⚠️ DEV测试版：请禁用正式版后测试',
             modeDraftFooter: '模式: 批量提交 Saved Drafts',
             modeFailedFooter: '模式: Clone & Resubmit',
-            standbyFooter: '请在下方列表中仅保留 Saved draft/Failed 列表',
+            standbyFooter: '请在官网 History 中仅选 Saved draft 或 Failed。',
             readyDraftStatus: '🟢 就绪: 提交草稿',
             readyFailedStatus: '🔵 就绪: 失败任务重跑',
             standbyStatus: '😴 待机中: 请切换页面',
@@ -560,7 +560,7 @@
     };
 
     const downloadEnglish = {
-        downloadTitle: 'Select jobs by date', downloadStart: 'From', downloadEnd: 'Through',
+        submitTitle: 'Submit jobs', downloadTitle: 'Download jobs', downloadStart: 'From', downloadEnd: 'Through',
         downloadNote: 'Modified date, including both days. Scan all pages of the current Completed search results.',
         downloadScan: 'Find jobs', downloadAll: 'Select all', downloadClear: 'Clear selection',
         downloadIdle: 'Choose dates, find jobs, then apply your reviewed selection to the website.',
@@ -603,7 +603,7 @@
     };
     const downloadTranslations = {
         zh: {
-            downloadTitle: '按日期选择任务', downloadStart: '开始日期', downloadEnd: '结束日期',
+            submitTitle: '提交任务', downloadTitle: '下载任务', downloadStart: '开始日期', downloadEnd: '结束日期',
             downloadNote: '按官网 Modified 日期，包含起止当天。扫描当前 Completed 搜索结果的所有分页。',
             downloadScan: '查找任务', downloadAll: '全选', downloadClear: '清空选择',
             downloadIdle: '先选择日期并查找任务，核对后将勾选应用到官网。',
@@ -644,10 +644,10 @@
             downloadIncomplete: '查找已停止或未完成，请重新查找后再应用勾选。',
             downloadDay: '{day} · {count} 个', downloadUnknown: '日期无法识别',
         },
-        ja: { downloadTitle: '日付でジョブを選択', downloadStart: '開始日', downloadEnd: '終了日', downloadScan: 'ジョブを検索', downloadAll: '全選択', downloadClear: '選択解除', downloadApply: '公式サイトの選択に反映' },
-        ko: { downloadTitle: '날짜별 작업 선택', downloadStart: '시작일', downloadEnd: '종료일', downloadScan: '작업 찾기', downloadAll: '전체 선택', downloadClear: '선택 해제', downloadApply: '웹사이트 선택에 적용' },
-        es: { downloadTitle: 'Seleccionar por fecha', downloadStart: 'Desde', downloadEnd: 'Hasta', downloadScan: 'Buscar tareas', downloadAll: 'Seleccionar todo', downloadClear: 'Borrar selección', downloadApply: 'Aplicar selección en la web' },
-        fr: { downloadTitle: 'Sélectionner par date', downloadStart: 'Du', downloadEnd: 'Au', downloadScan: 'Rechercher', downloadAll: 'Tout sélectionner', downloadClear: 'Tout désélectionner', downloadApply: 'Appliquer la sélection au site' },
+        ja: { submitTitle: 'ジョブを送信', downloadTitle: 'ジョブをダウンロード', downloadStart: '開始日', downloadEnd: '終了日', downloadScan: 'ジョブを検索', downloadAll: '全選択', downloadClear: '選択解除', downloadApply: '公式サイトの選択に反映' },
+        ko: { submitTitle: '작업 제출', downloadTitle: '작업 다운로드', downloadStart: '시작일', downloadEnd: '종료일', downloadScan: '작업 찾기', downloadAll: '전체 선택', downloadClear: '선택 해제', downloadApply: '웹사이트 선택에 적용' },
+        es: { submitTitle: 'Enviar tareas', downloadTitle: 'Descargar tareas', downloadStart: 'Desde', downloadEnd: 'Hasta', downloadScan: 'Buscar tareas', downloadAll: 'Seleccionar todo', downloadClear: 'Borrar selección', downloadApply: 'Aplicar selección en la web' },
+        fr: { submitTitle: 'Envoyer des tâches', downloadTitle: 'Télécharger des tâches', downloadStart: 'Du', downloadEnd: 'Au', downloadScan: 'Rechercher', downloadAll: 'Tout sélectionner', downloadClear: 'Tout désélectionner', downloadApply: 'Appliquer la sélection au site' },
     };
     for (const language of Object.keys(I18N)) {
         Object.assign(I18N[language], downloadEnglish, downloadTranslations[language] || {});
@@ -733,6 +733,8 @@
         const statusText = getUiElement('af3-status-text');
 
         if (header) header.textContent = `${t('headerDev')} ${SCRIPT_VERSION}`;
+        const submitTitle = getUiElement('af3-submission-title');
+        if (submitTitle) submitTitle.textContent = t('submitTitle');
         if (languageSelect) {
             languageSelect.value = currentLanguage;
             languageSelect.title = t('languageTitle');
@@ -799,7 +801,7 @@
         } catch (e) {
             // Storage may be disabled or contain an outdated value.
         }
-        return panelSize = { width: 300, height: 380 };
+        return panelSize = { width: 360, height: 760 };
     }
 
     function clampPanelSize(size) {
@@ -1628,8 +1630,9 @@
                 groups.get(job.day).push(job);
             }
             for (const [day, jobs] of [...groups].sort((a, b) => b[0].localeCompare(a[0]))) {
-                const group = document.createElement('details');
-                const summary = document.createElement('summary');
+                const group = document.createElement('div');
+                const groupHeader = document.createElement('label');
+                Object.assign(groupHeader.style, { display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 0', fontWeight: 'bold' });
                 const master = document.createElement('input');
                 master.type = 'checkbox'; master.dataset.day = day;
                 master.setAttribute('aria-label', t('downloadDay', { day, count: jobs.length }));
@@ -1640,8 +1643,8 @@
                     for (const job of jobs) master.checked ? downloadState.selected.add(job.key) : downloadState.selected.delete(job.key);
                     renderDownloadSection();
                 };
-                summary.append(master, document.createTextNode(' ' + t('downloadDay', { day, count: jobs.length })));
-                group.appendChild(summary);
+                groupHeader.append(master, document.createTextNode(t('downloadDay', { day, count: jobs.length })));
+                group.appendChild(groupHeader);
                 for (const job of jobs) {
                     const label = document.createElement('label');
                     Object.assign(label.style, { display: 'flex', gap: '6px', alignItems: 'start', padding: '5px 2px', overflowWrap: 'anywhere' });
@@ -1790,15 +1793,17 @@
     }
 
     function createDownloadSection() {
-        const section = document.createElement('details');
+        const section = document.createElement('section');
         section.id = 'af3-download-section';
+        section.setAttribute('aria-labelledby', 'af3-download-title');
         Object.assign(section.style, { borderTop: '1px solid #555', paddingTop: '8px', flexShrink: '0', fontSize: '14px', lineHeight: '1.5', overflowWrap: 'anywhere' });
         const translated = (tag, key) => {
             const node = document.createElement(tag); node.dataset.downloadI18n = key; node.textContent = t(key); return node;
         };
-        const summary = translated('summary', 'downloadTitle');
-        Object.assign(summary.style, { cursor: 'pointer', color: '#8ab4f8', fontWeight: 'bold' });
-        section.appendChild(summary);
+        const title = translated('h2', 'downloadTitle');
+        title.id = 'af3-download-title';
+        Object.assign(title.style, { margin: '0', fontSize: '14px', color: '#8ab4f8', fontWeight: 'bold' });
+        section.appendChild(title);
         const ready = document.createElement('div');
         Object.assign(ready.style, { display: 'flex', gap: '6px', alignItems: 'center', marginTop: '8px' });
         const light = document.createElement('span'); light.id = 'af3-download-ready-light';
@@ -2041,6 +2046,15 @@
         };
         languageRow.appendChild(languageSelect);
 
+        const submission = document.createElement('section');
+        submission.id = 'af3-submission-section';
+        submission.setAttribute('aria-labelledby', 'af3-submission-title');
+        Object.assign(submission.style, { display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: '0' });
+        const submissionTitle = document.createElement('h2');
+        submissionTitle.id = 'af3-submission-title';
+        submissionTitle.textContent = t('submitTitle');
+        Object.assign(submissionTitle.style, { margin: '0', fontSize: '14px', color: '#8ab4f8', fontWeight: 'bold' });
+
         const statusRow = document.createElement('div');
         Object.assign(statusRow.style, { display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' });
         const statusLight = document.createElement('div');
@@ -2151,11 +2165,11 @@
         logPanel.appendChild(logToggle);
         logPanel.appendChild(logBody);
 
-        container.appendChild(header); container.appendChild(languageRow); container.appendChild(statusRow);
-        container.appendChild(quota);
-        container.appendChild(controls); container.appendChild(runControls);
+        container.appendChild(header); container.appendChild(languageRow);
+        submission.append(submissionTitle, statusRow, quota, controls, runControls, footer);
+        container.appendChild(submission);
         container.appendChild(createDownloadSection());
-        container.appendChild(footer); container.appendChild(logPanel);
+        container.appendChild(logPanel);
         shadow.appendChild(container);
         const resizeHandle = document.createElement('span');
         resizeHandle.id = 'af3-resize-handle';
@@ -2192,16 +2206,6 @@
 
         if (!btn || !light || !text || isRunning) return;
 
-        if (downloadState.busy) {
-            btn.disabled = true;
-            btn.style.cursor = 'not-allowed';
-            const state = downloadReadiness();
-            text.textContent = t(state.key); text.style.color = state.color;
-            light.style.backgroundColor = state.color;
-            light.style.boxShadow = `0 0 8px ${state.color}`;
-            return;
-        }
-
         if (submissionBlockReason) {
             btn.disabled = true;
             btn.textContent = t('submissionLocked');
@@ -2215,18 +2219,7 @@
         }
 
         const selected = getSelectedHistoryStatuses();
-        const status = selected.length === 1 ? selected[0] : '';
-
-        try {
-            getDownloadContext();
-            currentMode = 'NONE';
-            const state = { key: 'downloadReadyApply', color: '#81c995' };
-            text.textContent = t(state.key, state.vars); text.style.color = state.color;
-            light.style.backgroundColor = state.color; light.style.boxShadow = `0 0 8px ${state.color}`;
-            footer.textContent = t('downloadReadyFooter');
-            btn.disabled = true; btn.style.backgroundColor = '#444'; btn.style.color = '#888'; btn.style.cursor = 'not-allowed';
-            return;
-        } catch (_) {}
+        const status = !downloadState.busy && selected.length === 1 ? selected[0] : '';
 
         if (status === 'saved draft') {
             currentMode = 'DRAFT';

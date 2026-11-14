@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 开发版 2.25.0-dev.9：修复混选标签时误显示提交就绪；保留合并 ZIP / 分开下载两种选择方式，由你手动点击官网原生 Download 下载。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">本 fork 开发版 2.25.0-dev.10：提交任务在上、下载任务在下，两个区域常驻展开、分别显示状态；保留合并 ZIP / 分开下载，由你手动点击官网原生 Download 下载。功能仍在开发分支，尚未合并 main。</p>
             <p class="version-note">main 的 2.24.1 仍为旧行为基线，不包含这些 DEV 功能。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.9</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.10</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
@@ -295,13 +295,14 @@
         </section>
 
         <section>
-            <h2>✨ DEV 2.25.0-dev.9 更新重点</h2>
+            <h2>✨ DEV 2.25.0-dev.10 更新重点</h2>
             <ul class="release-list">
+                <li>面板上方是提交任务，下方是下载任务，均不折叠；按天分组的匹配任务也直接列出，无需展开。</li>
                 <li>仅选中 Saved draft 才显示草稿提交就绪，仅选中 Failed 才显示失败重跑就绪；混选或未选标签时待机并禁用启动，点击启动和确认后均重新核对标签。</li>
                 <li>按日期查找任务：起止日期均包含当天，同一天可单独筛选；可按天或逐项核对，再应用到官网勾选。</li>
                 <li>保留合并 ZIP / 分开下载两种方式：合并时一次应用全部勾选；分开时每次只选一个任务，并提供“下一任务”。下载均由用户点击官网原生 Download。</li>
                 <li>应用选择会替换官网已有勾选；官网合并 ZIP 最多 50 个任务，超过时需自行调整，不自动拆批。</li>
-                <li>仅选中 Completed 且空闲时，顶部显示“就绪：核对选择后应用到官网勾选”；日期区域另行显示待机、就绪或运行中，可停止查找或应用选择。</li>
+                <li>两个区域分别显示状态：仅选中 Saved draft 时上方显示草稿提交就绪，仅选中 Completed 时下方显示下载就绪；混选或未选标签时均待机。查找或应用下载选择时，运行状态只显示在下方。</li>
                 <li>默认中文界面，并提供 6 种语言选择。</li>
                 <li>拖动标题栏移动面板，拖动右下角手柄调整尺寸；位置与尺寸会在本地保存。</li>
                 <li>实时显示官网 Remaining jobs，预览时优先读取预览额度；无法识别时明确提示。</li>
@@ -370,11 +371,11 @@
             <h3>3. 按日期勾选，再用官网下载</h3>
             <ol>
                 <li>在官网 History 中<strong>仅选中 Completed</strong>，按需填写 <code>Search History</code>。查找会遍历当前搜索结果的所有分页，并保留官网已有的复选框选中状态。</li>
-                <li>展开面板“按日期选择任务”，选择开始、结束日期，再点<strong>查找任务</strong>。按官网 <code>Modified</code> 显示日期筛选，包含起止当天；填写同一天即可选择一天。</li>
+                <li>在面板下方常驻的“下载任务”区域，选择开始、结束日期，再点<strong>查找任务</strong>。按官网 <code>Modified</code> 显示日期筛选，包含起止当天；填写同一天即可选择一天。</li>
                 <li>核对结果，按天或逐个任务勾选，也可点<strong>全选</strong>或<strong>清空选择</strong>。日期无法识别的任务不纳入结果；任务名称及显示的 Modified 时间均相同、无法区分时，请缩小官网搜索范围后重新查找。</li>
                 <li>选择<strong>合并一个 ZIP（官网最多 50 个）</strong>或<strong>分开下载（逐个勾选）</strong>，再点<strong>应用到官网勾选</strong>并确认替换提示。合并模式勾选全部已核对任务，分开模式每次只勾选一个任务，均<strong>只应用勾选，不发起下载</strong>。</li>
                 <li>合并模式：手动点击官网原生批量 <code>Download</code>。分开模式：核对面板显示的当前任务名称、Modified 时间与序号，手动点击官网原生 <code>Download</code>，完成后点<strong>下一任务</strong>切换勾选，再手动下载。到最后一个任务时“下一任务”禁用。也可直接使用官网任务行的 <code>Download</code>。</li>
-                <li>日期区域显示<strong>待机 / 就绪 / 运行中</strong>；仅选中 Completed 且空闲时，顶部显示<strong>就绪：核对选择后应用到官网勾选</strong>。点<strong>停止</strong>会停止查找或应用选择；应用中停止或出错可能留下部分勾选，不会自动恢复旧选择，请先核对官网复选框。</li>
+                <li>下方下载区域显示<strong>待机 / 就绪 / 运行中</strong>，仅选中 Completed 时显示下载就绪；上方提交区域独立显示状态。点<strong>停止</strong>会停止查找或应用选择；应用中停止或出错可能留下部分勾选，不会自动恢复旧选择，请先核对官网复选框。</li>
                 <li>手动下载后，请在浏览器下载列表核对文件保存情况。浏览器询问时，按需允许官网的多个文件下载。</li>
             </ol>
             <p><strong>“应用到官网勾选”和“下一任务”会替换官网原有选择。</strong>合并模式可以应用超过 50 个任务，但官网合并 ZIP 每次最多 <strong>50 个任务</strong>；应用时会提示此限制，请自行减少官网勾选后再下载。脚本没有下载按钮或下载位置选项，不点击行下载或批量下载，也不自动拆批或在本地打包。“下一任务”仅切换勾选，不检测文件是否下载成功。</p>
@@ -412,7 +413,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.9 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.10 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -422,7 +423,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter DEV 2.25.0-dev.9 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter DEV 2.25.0-dev.10 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 
