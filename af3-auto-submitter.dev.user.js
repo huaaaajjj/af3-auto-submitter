@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      2.25.0-dev.6
-// @description  开发版：按天筛选并批量勾选已完成任务，手动使用官网 Download 下载；保留提交确认、实时额度和可调面板。
+// @version      2.25.0-dev.7
+// @description  开发版：按天筛选，合并或逐个勾选后手动使用官网 Download 下载；放大面板文字，保留提交确认、实时额度和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -19,12 +19,13 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '2.25.0-dev.6';
+    const SCRIPT_VERSION = '2.25.0-dev.7';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
     const PANEL_SIZE_KEY = `${CONTAINER_ID}-size`;
     const LANGUAGE_KEY = `${CONTAINER_ID}-language`;
+    const DOWNLOAD_FORMAT_KEY = `${CONTAINER_ID}-download-format`;
     const WAIT_FOR_MODAL = 2000;
     const WAIT_FOR_PAGE_LOAD = 3000; // 跳转等待时间
     const SUBMISSION_TIMEOUT = 60000;
@@ -565,10 +566,16 @@
         downloadIdle: 'Choose dates, find jobs, then apply your reviewed selection to the website.',
         downloadScanning: 'Scanning page {page}… {count} matches',
         downloadFound: '{count} matches; {selected} selected. Unknown dates skipped: {unknown}.',
-        downloadHint: 'Applying replaces the website checkbox selection. Download manually with the website’s original Download button: up to 50 selected jobs in one ZIP, or use a job’s own Download menu for an individual ZIP.',
+        downloadHint: 'Apply replaces the website checkboxes. Combined: click the website Download for one ZIP (up to 50 jobs). Separate: download the current job on the website, then click Next job to select another. Next job only changes checkboxes; it does not verify saved files.',
+        downloadFormat: 'Download mode', downloadCombined: 'Combined ZIP (website limit: 50)', downloadIndividual: 'Separate ZIPs (select one at a time)',
+        downloadNext: 'Next job', downloadQueue: 'Current job {index}/{total}: {name} · {modified}',
+        downloadQueueLast: 'This is the last job. Click the website Download manually.',
+        downloadQueueInvalid: 'The individual selection queue was reset. Review the selection and apply it again.',
+        downloadIndividualApplied: 'One job selected on the website. Click its original Download button, then use Next job to select another.',
+        downloadReadyIndividual: 'Ready: download the current job on the website',
         downloadApply: 'Apply selection to website',
         downloadStandby: 'Standby: switch to Completed only',
-        downloadReadyApply: 'Ready: review and apply your selection', downloadReadyWeb: 'Ready: {count} currently selected on website; review and apply date matches first',
+        downloadReadyApply: 'Ready: review and apply your selection', downloadReadyWeb: 'Ready: {count} currently selected on website; use its Download button manually',
         downloadReadyFind: 'Ready: find jobs by date', downloadReadySelect: 'Ready: select jobs',
         downloadRunningScan: 'Running: finding jobs', downloadRunningApply: 'Running: selecting jobs on website',
         downloadSubmissionBusy: 'Standby: submission is running',
@@ -579,6 +586,7 @@
         downloadNativeMismatch: 'Website selections include jobs outside this history or changed during the operation. Check the website selection and try again.',
         downloadNativeChanged: 'Website checkboxes changed during the operation. Selection stopped.',
         downloadApplyConfirm: 'Replace the website checkbox selection with these {count} jobs? Download afterward using the website’s own Download button.',
+        downloadIndividualConfirm: 'Queue these {count} jobs and replace the website checkboxes with the first job? Next job will replace them with each following job. Download each job manually using the website Download button.',
         downloadReadyFooter: 'Use the website’s original Download button after selecting jobs.',
         downloadStopped: 'Selection stopped. Some website checkboxes may already have changed; review them or apply the selection again.',
         downloadError: '{detail} Some website checkboxes may already have changed; review them or apply the selection again.',
@@ -601,10 +609,16 @@
             downloadIdle: '先选择日期并查找任务，核对后将勾选应用到官网。',
             downloadScanning: '正在扫描第 {page} 页…已找到 {count} 个',
             downloadFound: '匹配 {count} 个，已选 {selected} 个；日期无法识别、未纳入 {unknown} 个。',
-            downloadHint: '应用会替换官网已有勾选。下载请手动点击官网原生 Download：批量最多 50 个任务合并一个 ZIP；单个任务可使用该行菜单中的 Download。',
+            downloadHint: '应用会替换官网勾选。合并：手动点击官网 Download，最多 50 个任务合成一个 ZIP。分开：在官网下载当前任务后，点“下一任务”切换勾选；此按钮只切换任务，不检测文件是否保存。',
+            downloadFormat: '下载方式', downloadCombined: '合并一个 ZIP（官网最多 50 个）', downloadIndividual: '分开下载（逐个勾选）',
+            downloadNext: '下一任务', downloadQueue: '当前第 {index}/{total} 个：{name} · {modified}',
+            downloadQueueLast: '已到最后一个任务，请手动点击官网 Download。',
+            downloadQueueInvalid: '逐个勾选队列已重置，请核对选择后重新应用。',
+            downloadIndividualApplied: '已在官网勾选当前任务。请手动点击官网原生 Download，之后点“下一任务”切换勾选。',
+            downloadReadyIndividual: '就绪：请在官网下载当前任务',
             downloadApply: '应用到官网勾选',
             downloadStandby: '待机中：请切换到仅选 Completed 的页面',
-            downloadReadyApply: '就绪：核对选择后应用到官网勾选', downloadReadyWeb: '就绪：官网当前已选 {count} 个；日期结果请先核对并应用',
+            downloadReadyApply: '就绪：核对选择后应用到官网勾选', downloadReadyWeb: '就绪：官网当前已选 {count} 个，请手动点击官网 Download',
             downloadReadyFind: '就绪：按日期查找任务', downloadReadySelect: '就绪：请勾选任务',
             downloadRunningScan: '运行中：正在查找任务', downloadRunningApply: '运行中：正在网页中勾选',
             downloadSubmissionBusy: '待机中：正在提交任务',
@@ -615,6 +629,7 @@
             downloadNativeMismatch: '官网勾选包含当前列表以外的任务，或勾选已变化。请核对官网选择后重试。',
             downloadNativeChanged: '运行期间官网勾选发生变化，已停止应用。',
             downloadApplyConfirm: '将官网勾选替换为这 {count} 个任务？随后请手动使用官网原生 Download 按钮下载。',
+            downloadIndividualConfirm: '将这 {count} 个任务加入逐个勾选队列，并用第一个任务替换官网勾选？之后“下一任务”也会替换官网勾选。每个任务都请手动点击官网 Download 下载。',
             downloadReadyFooter: '勾选完成后，请手动使用官网原生 Download 按钮下载。',
             downloadStopped: '已停止应用；官网可能保留部分勾选，请核对或重新应用。',
             downloadError: '{detail} 官网可能保留部分勾选，请核对或重新应用。',
@@ -654,6 +669,7 @@
         busy: false, stop: false, complete: false, jobs: [], selected: new Set(),
         unknown: 0, context: null, scanContext: null, message: '', messageVars: {}, phase: '',
         watchNative: false, nativeMutation: false, selectionChanged: false,
+        format: getSavedDownloadFormat(), queue: null,
     };
     let logExpanded = false;
     let currentLanguage = getSavedLanguage();
@@ -670,6 +686,11 @@
     };
     const logEntries = [];
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    function getSavedDownloadFormat() {
+        try { return localStorage.getItem(DOWNLOAD_FORMAT_KEY) === 'individual' ? 'individual' : 'combined'; }
+        catch (_) { return 'combined'; }
+    }
 
     function getSavedLanguage() {
         try {
@@ -1415,19 +1436,34 @@
         try { action(); } finally { downloadState.nativeMutation = false; }
     }
 
-    document.addEventListener('change', event => {
-        if (downloadState.busy && downloadState.watchNative && !downloadState.nativeMutation &&
-            event.target.matches?.('input[type="checkbox"]') && event.target.closest('gdm-af-history')) {
-            downloadState.selectionChanged = true;
+    function resetDownloadQueue(message) {
+        const hadQueue = Boolean(downloadState.queue);
+        downloadState.queue = null;
+        if (hadQueue && message) {
+            downloadState.message = message;
+            downloadState.messageVars = {};
         }
+    }
+
+    function nativeSelectionChanged() {
+        if (downloadState.nativeMutation) return;
+        if (downloadState.busy && downloadState.watchNative) downloadState.selectionChanged = true;
+        else if (downloadState.queue) {
+            resetDownloadQueue('downloadQueueInvalid');
+            renderDownloadSection();
+        }
+    }
+
+    document.addEventListener('change', event => {
+        if (event.target.matches?.('input[type="checkbox"]') && event.target.closest('gdm-af-history')) nativeSelectionChanged();
     }, true);
     document.addEventListener('click', event => {
-        if (!downloadState.busy || !downloadState.watchNative || downloadState.nativeMutation) return;
+        if (downloadState.nativeMutation) return;
         const history = event.target.closest?.('gdm-af-history');
         if (!history) return;
         const button = event.target.closest('button');
         if (event.target.closest('.mat-column-selected, .select-all-checkbox') ||
-            (button && button.querySelector('mat-icon')?.textContent.trim() === 'close')) downloadState.selectionChanged = true;
+            (button && button.querySelector('mat-icon')?.textContent.trim() === 'close')) nativeSelectionChanged();
     }, true);
 
     async function applyNativeDownloadSelection(records) {
@@ -1505,6 +1541,7 @@
         try {
             const { count } = getNativeDownloadToolbar();
             if (count > 50) return { key: 'downloadLimit', color: '#fbbc04' };
+            if (count === 1 && downloadState.queue) return { key: 'downloadReadyIndividual', color: '#81c995' };
             if (count) return { key: 'downloadReadyWeb', vars: { count }, color: '#8ab4f8' };
             return { key: !downloadState.complete ? 'downloadReadyFind' : downloadState.selected.size ? 'downloadReadyApply' : 'downloadReadySelect', color: '#81c995' };
         } catch (_) { return { key: 'downloadNativeMissing', color: '#fbbc04' }; }
@@ -1527,12 +1564,26 @@
 
     function updateDownloadControls() {
         const busy = downloadState.busy || isRunning;
-        for (const id of ['start', 'end', 'scan', 'all', 'clear']) {
+        if (!busy && downloadState.queue) {
+            try {
+                if (downloadState.queue.context !== getDownloadContext()) throw new Error();
+            } catch (_) {
+                resetDownloadQueue('downloadContextChanged');
+                renderDownloadSection();
+                return;
+            }
+        }
+        for (const id of ['start', 'end', 'scan', 'all', 'clear', 'format']) {
             const control = getUiElement(`af3-download-${id}`);
             if (control) control.disabled = busy;
         }
         const apply = getUiElement('af3-download-apply');
         if (apply) apply.disabled = busy || !downloadState.complete || downloadState.selected.size === 0;
+        const next = getUiElement('af3-download-next');
+        if (next) {
+            next.hidden = downloadState.format !== 'individual';
+            next.disabled = busy || !downloadState.queue || downloadState.queue.index >= downloadState.queue.records.length - 1;
+        }
         const stop = getUiElement('af3-download-stop');
         if (stop) {
             stop.hidden = !downloadState.busy;
@@ -1552,6 +1603,13 @@
             const vars = key === 'downloadFound' ? { count: downloadState.jobs.length, selected: downloadState.selected.size, unknown: downloadState.unknown } : downloadState.messageVars;
             status.textContent = key === 'error' ? downloadState.messageVars.detail : t(key, vars);
         }
+        const queueText = getUiElement('af3-download-queue');
+        if (queueText) {
+            const queue = downloadState.queue;
+            queueText.hidden = !queue;
+            queueText.textContent = queue ? t('downloadQueue', { index: queue.index + 1, total: queue.records.length, ...queue.records[queue.index] }) +
+                (queue.index === queue.records.length - 1 ? ' ' + t('downloadQueueLast') : '') : '';
+        }
         const list = getUiElement('af3-download-results');
         if (list && (downloadState.renderedJobs !== downloadState.jobs || downloadState.renderedList !== list || downloadState.renderedLanguage !== currentLanguage)) {
             list.replaceChildren();
@@ -1569,6 +1627,7 @@
                 master.onclick = event => event.stopPropagation();
                 master.onchange = () => {
                     if (downloadState.busy || isRunning) return;
+                    resetDownloadQueue('downloadQueueInvalid');
                     for (const job of jobs) master.checked ? downloadState.selected.add(job.key) : downloadState.selected.delete(job.key);
                     renderDownloadSection();
                 };
@@ -1581,6 +1640,7 @@
                     checkbox.type = 'checkbox'; checkbox.dataset.jobKey = job.key;
                     checkbox.onchange = () => {
                         if (downloadState.busy || isRunning) return;
+                        resetDownloadQueue('downloadQueueInvalid');
                         checkbox.checked ? downloadState.selected.add(job.key) : downloadState.selected.delete(job.key);
                         renderDownloadSection();
                     };
@@ -1607,6 +1667,7 @@
         if (isRunning || downloadState.busy) return;
         const start = getUiElement('af3-download-start')?.value;
         const end = getUiElement('af3-download-end')?.value;
+        resetDownloadQueue();
         downloadState.complete = false;
         downloadState.jobs = [];
         downloadState.selected.clear();
@@ -1659,20 +1720,27 @@
         }
     }
 
-    async function applySelectionToWebsite() {
+    async function applySelectionToWebsite(advance = false) {
         if (isRunning || downloadState.busy) return;
         if (!downloadState.complete || !downloadState.selected.size) { setDownloadMessage('downloadNoSelection'); return; }
+        const individual = downloadState.format === 'individual';
+        const previousQueue = downloadState.queue;
+        if (advance && (!individual || !previousQueue || previousQueue.index >= previousQueue.records.length - 1)) return;
         downloadState.stop = false;
         downloadState.selectionChanged = false;
         downloadState.context = downloadState.scanContext;
-        let records;
+        let records, queueRecords, queueIndex;
         try {
             checkDownloadActive();
-            records = downloadState.jobs.filter(job => downloadState.selected.has(job.key));
-            if (records.length !== downloadState.selected.size) throw new Error(t('downloadNativeMismatch'));
-            if (!confirm(t('downloadApplyConfirm', { count: records.length }))) return;
+            queueRecords = advance ? previousQueue.records : downloadState.jobs.filter(job => downloadState.selected.has(job.key));
+            if (queueRecords.length !== downloadState.selected.size) throw new Error(t('downloadNativeMismatch'));
+            if (advance && previousQueue.context !== getDownloadContext()) throw new Error(t('downloadContextChanged'));
+            if (!advance && !confirm(t(individual ? 'downloadIndividualConfirm' : 'downloadApplyConfirm', { count: queueRecords.length }))) return;
             checkDownloadActive();
+            queueIndex = advance ? previousQueue.index + 1 : 0;
+            records = individual ? [queueRecords[queueIndex]] : queueRecords;
         } catch (error) {
+            resetDownloadQueue();
             downloadState.complete = false;
             setDownloadMessage('error', { detail: error.message }); return;
         }
@@ -1682,13 +1750,26 @@
         checkSystemStatus();
         renderDownloadSection();
         try {
+            if (advance) {
+                // Verify the previous selection before replacing it. A count of
+                // one alone cannot establish which job the user has selected.
+                const current = await collectNativeDownloadSelection();
+                if (current.length !== 1 || !sameDownloadJob(current[0], previousQueue.records[previousQueue.index])) throw new Error(t('downloadNativeMismatch'));
+            }
             await applyNativeDownloadSelection(records);
             const verified = await collectNativeDownloadSelection();
             const targets = new Map(records.map(job => [job.key, job]));
             if (verified.length !== records.length || verified.some(job => !sameDownloadJob(job, targets.get(job.key)))) throw new Error(t('downloadNativeMismatch'));
             checkDownloadActive();
-            setDownloadMessage(records.length > 50 ? 'downloadAppliedLimit' : 'downloadApplied', { count: records.length });
+            // Advance only after exact website selection verification. This is
+            // selection progress and does not imply a file has been downloaded.
+            downloadState.queue = individual ? {
+                records: advance ? queueRecords : Object.freeze(queueRecords.map(job => Object.freeze({ ...job }))),
+                index: queueIndex, context: downloadState.context,
+            } : null;
+            setDownloadMessage(individual ? 'downloadIndividualApplied' : records.length > 50 ? 'downloadAppliedLimit' : 'downloadApplied', { count: records.length });
         } catch (error) {
+            resetDownloadQueue();
             if (!isUserStopError(error)) downloadState.complete = false;
             setDownloadMessage(isUserStopError(error) ? 'downloadStopped' : 'downloadError', { detail: error.message });
         } finally {
@@ -1702,7 +1783,7 @@
     function createDownloadSection() {
         const section = document.createElement('details');
         section.id = 'af3-download-section';
-        Object.assign(section.style, { borderTop: '1px solid #555', paddingTop: '8px', flexShrink: '0', fontSize: '12px', lineHeight: '1.5' });
+        Object.assign(section.style, { borderTop: '1px solid #555', paddingTop: '8px', flexShrink: '0', fontSize: '14px', lineHeight: '1.5', overflowWrap: 'anywhere' });
         const translated = (tag, key) => {
             const node = document.createElement(tag); node.dataset.downloadI18n = key; node.textContent = t(key); return node;
         };
@@ -1717,35 +1798,56 @@
         ready.append(light, readyText); section.appendChild(ready);
         section.appendChild(translated('p', 'downloadNote'));
         const dates = document.createElement('div');
-        Object.assign(dates.style, { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '8px' });
+        Object.assign(dates.style, { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' });
         const today = new Date();
         const day = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         for (const [id, key] of [['start', 'downloadStart'], ['end', 'downloadEnd']]) {
             const label = document.createElement('label'); label.appendChild(translated('span', key));
             const input = document.createElement('input'); input.type = 'date'; input.id = `af3-download-${id}`; input.value = day;
-            Object.assign(input.style, { display: 'block', boxSizing: 'border-box', width: '100%', minWidth: '0', padding: '6px 2px', border: '1px solid #666', borderRadius: '4px', background: '#303134', color: '#fff', fontSize: '11px', colorScheme: 'dark' });
+            Object.assign(input.style, { display: 'block', boxSizing: 'border-box', width: '100%', minWidth: '0', padding: '6px 2px', border: '1px solid #666', borderRadius: '4px', background: '#303134', color: '#fff', fontSize: '14px', colorScheme: 'dark' });
             input.onchange = () => {
+                resetDownloadQueue();
                 downloadState.complete = false; downloadState.jobs = []; downloadState.selected.clear(); setDownloadMessage('downloadIdle');
             };
             label.appendChild(input); dates.appendChild(label);
         }
         section.appendChild(dates);
+        const formatLabel = document.createElement('label');
+        Object.assign(formatLabel.style, { display: 'block', marginTop: '8px' });
+        formatLabel.appendChild(translated('span', 'downloadFormat'));
+        const format = document.createElement('select');
+        format.id = 'af3-download-format';
+        for (const [value, key] of [['combined', 'downloadCombined'], ['individual', 'downloadIndividual']]) {
+            const option = translated('option', key); option.value = value; format.appendChild(option);
+        }
+        format.value = downloadState.format;
+        Object.assign(format.style, { display: 'block', boxSizing: 'border-box', width: '100%', minWidth: '0', padding: '6px 4px', border: '1px solid #666', borderRadius: '4px', background: '#303134', color: '#fff', fontSize: '14px' });
+        format.onchange = () => {
+            downloadState.format = format.value === 'individual' ? 'individual' : 'combined';
+            try { localStorage.setItem(DOWNLOAD_FORMAT_KEY, downloadState.format); } catch (_) {}
+            resetDownloadQueue('downloadQueueInvalid');
+            renderDownloadSection();
+        };
+        formatLabel.appendChild(format); section.appendChild(formatLabel);
         const actions = document.createElement('div');
         Object.assign(actions.style, { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' });
         for (const [id, key, action] of [
             ['scan', 'downloadScan', scanDownloadJobs],
-            ['all', 'downloadAll', () => { if (downloadState.busy || isRunning) return; downloadState.selected = new Set(downloadState.jobs.map(job => job.key)); setDownloadMessage('downloadFound'); }],
-            ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning) return; downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
-            ['apply', 'downloadApply', applySelectionToWebsite],
+            ['all', 'downloadAll', () => { if (downloadState.busy || isRunning) return; resetDownloadQueue(); downloadState.selected = new Set(downloadState.jobs.map(job => job.key)); setDownloadMessage('downloadFound'); }],
+            ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning) return; resetDownloadQueue(); downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
+            ['apply', 'downloadApply', () => applySelectionToWebsite()],
+            ['next', 'downloadNext', () => applySelectionToWebsite(true)],
             ['stop', 'stopButton', () => { downloadState.stop = true; updateDownloadControls(); }],
         ]) {
             const button = translated('button', key); button.type = 'button'; button.id = `af3-download-${id}`;
             stylePanelButton(button, id === 'stop' ? '#b3261e' : id === 'apply' ? '#137333' : '#3c4043');
-            button.style.fontSize = '11px'; button.onclick = action; actions.appendChild(button);
+            button.onclick = action; actions.appendChild(button);
         }
         section.appendChild(actions);
         const status = document.createElement('p'); status.id = 'af3-download-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
         Object.assign(status.style, { overflowWrap: 'anywhere', color: '#dfe1e5', margin: '8px 0' }); section.appendChild(status);
+        const queue = document.createElement('p'); queue.id = 'af3-download-queue'; queue.setAttribute('role', 'status'); queue.setAttribute('aria-live', 'polite');
+        Object.assign(queue.style, { overflowWrap: 'anywhere', color: '#8ab4f8', margin: '8px 0' }); section.appendChild(queue);
         const list = document.createElement('div'); list.id = 'af3-download-results';
         Object.assign(list.style, { maxHeight: '240px', overflow: 'auto' }); section.appendChild(list);
         const hint = translated('p', 'downloadHint'); hint.style.color = '#bdc1c6'; section.appendChild(hint);
@@ -1842,7 +1944,7 @@
             borderRadius: '6px',
             cursor: 'pointer',
             fontWeight: 'bold',
-            fontSize: '12px',
+            fontSize: '14px',
             transition: 'all 0.2s'
         });
     }
@@ -1883,6 +1985,7 @@
             boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
             border: '1px solid #5f6368',
             fontFamily: 'Roboto, Arial, sans-serif',
+            fontSize: '14px',
             color: '#fff',
             lineHeight: 'normal'
         });
@@ -1891,7 +1994,7 @@
         header.id = 'af3-header';
         Object.assign(header.style, {
             textAlign: 'center', cursor: 'move', paddingBottom: '8px',
-            borderBottom: '1px solid #444', fontWeight: 'bold', color: '#eee', fontSize: '14px'
+            borderBottom: '1px solid #444', fontWeight: 'bold', color: '#eee', fontSize: '16px', overflowWrap: 'anywhere'
         });
         header.textContent = `${t('headerDev')} ${SCRIPT_VERSION}`;
 
@@ -1913,13 +2016,13 @@
         });
         languageSelect.value = currentLanguage;
         Object.assign(languageSelect.style, {
-            width: '86px',
+            width: '108px',
             padding: '2px 4px',
             borderRadius: '4px',
             border: '1px solid #3c4043',
             backgroundColor: '#2b2c30',
             color: '#cfd2d6',
-            fontSize: '10px',
+            fontSize: '13px',
             outline: 'none'
         });
         languageSelect.onchange = () => {
@@ -1940,7 +2043,7 @@
         const statusText = document.createElement('span');
         statusText.id = 'af3-status-text';
         statusText.textContent = t('initializing');
-        Object.assign(statusText.style, { fontSize: '12px', color: '#bbb', whiteSpace: 'nowrap' });
+        Object.assign(statusText.style, { fontSize: '14px', color: '#bbb', minWidth: '0', overflowWrap: 'anywhere', lineHeight: '1.5' });
         statusRow.appendChild(statusLight); statusRow.appendChild(statusText);
 
         const quota = document.createElement('p');
@@ -1948,7 +2051,7 @@
         quota.setAttribute('role', 'status');
         quota.setAttribute('aria-live', 'polite');
         Object.assign(quota.style, {
-            margin: '0', fontSize: '12px', color: '#dfe1e5',
+            margin: '0', fontSize: '14px', color: '#dfe1e5',
             overflowWrap: 'anywhere', lineHeight: '1.5', flexShrink: '0'
         });
         quota.textContent = t('quotaUnknown');
@@ -1959,14 +2062,14 @@
         input.type = 'number'; input.value = '10'; input.id = 'af3-v20-count';
         Object.assign(input.style, {
             width: '50px', padding: '8px', borderRadius: '6px', border: '1px solid #555',
-            textAlign: 'center', fontWeight: 'bold', backgroundColor: '#333', color: '#fff'
+            textAlign: 'center', fontWeight: 'bold', backgroundColor: '#333', color: '#fff', fontSize: '14px'
         });
         const btn = document.createElement('button');
         btn.id = 'af3-v20-btn'; btn.textContent = t('startButton');
         Object.assign(btn.style, {
             flex: '1', padding: '8px', backgroundColor: '#666', color: '#aaa',
             border: 'none', borderRadius: '6px', cursor: 'not-allowed',
-            fontWeight: 'bold', fontSize: '14px', transition: 'all 0.3s'
+            fontWeight: 'bold', fontSize: '16px', transition: 'all 0.3s'
         });
         btn.disabled = true; btn.onclick = mainProcess;
         controls.appendChild(input); controls.appendChild(btn);
@@ -1994,7 +2097,7 @@
         footer.id = 'af3-footer-msg';
         footer.textContent = t('devFooter');
         Object.assign(footer.style, {
-            fontSize: '11px', color: '#fdd835', textAlign: 'center', marginTop: '4px'
+            fontSize: '13px', color: '#fdd835', textAlign: 'center', marginTop: '4px', overflowWrap: 'anywhere'
         });
 
         const logPanel = document.createElement('div');
@@ -2012,7 +2115,7 @@
             color: '#9aa0a6',
             textAlign: 'left',
             cursor: 'pointer',
-            fontSize: '11px',
+            fontSize: '13px',
             fontWeight: 'bold'
         });
         logToggle.onclick = toggleLogPanel;
@@ -2033,7 +2136,7 @@
             overflowWrap: 'anywhere',
             minHeight: '60px',
             fontFamily: 'Consolas, monospace',
-            fontSize: '10px',
+            fontSize: '13px',
             lineHeight: '1.35'
         });
         logPanel.appendChild(logToggle);

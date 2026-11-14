@@ -4,13 +4,13 @@
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 2.25.0-dev.6](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 2.25.0-dev.7](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 本轮按日期勾选、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。Edge InPrivate 还需允许扩展在 InPrivate 中使用。
-3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.6`。网站控件与通知仍需使用英文。
+3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.7`。网站控件与通知仍需使用英文。
 4. 进入 Saved Drafts 或 Failed jobs 列表。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 5. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 6. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
@@ -25,15 +25,17 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 ## 本轮改动
 
-### 按日期勾选，再用官网下载（DEV 2.25.0-dev.6）
+### 按日期勾选，再用官网下载（DEV 2.25.0-dev.7）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。面板会扫描当前搜索结果的所有分页，保留官网已有的复选框选中状态。
 2. 展开面板的“按日期选择任务”，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。
 3. 查找完成后，按天或逐个任务核对勾选，也可用“全选”“清空选择”。日期无法识别的任务不纳入结果；若出现同名且显示的 Modified 时间也相同、无法唯一识别的任务，请缩小官网搜索范围后重新查找。
-4. 点击“应用到官网勾选”，确认替换提示。脚本会先清空官网已有选择，再跨页勾选本次核对过的任务，**只应用勾选，不发起下载**。完成后可在官网继续调整选择。
-5. 需要合并一个 ZIP 时，手动点击官网原生批量 `Download`；需要每个任务一个 ZIP 时，手动使用各任务行的 `Download`。也可直接在官网勾选并下载，无需先按日期查找。
+4. 选择“合并一个 ZIP（官网最多 50 个）”或“分开下载（逐个勾选）”，再点击“应用到官网勾选”并确认替换提示。合并模式勾选全部已核对任务；分开模式每次只勾选一个任务。两种模式都**只应用勾选，不发起下载**。
+5. 合并模式：手动点击官网原生批量 `Download`。分开模式：核对面板显示的当前任务名称、Modified 时间与序号，手动点击官网原生 `Download`；完成后点面板“下一任务”切换勾选，再手动下载。到最后一个任务时“下一任务”禁用。也可直接使用官网任务行的 `Download`。
 
-**“应用到官网勾选”会替换官网原有选择。** 可以应用超过 50 个任务，但官网合并 ZIP 每次最多 **50 个任务**；应用时会提示此限制，请自行减少官网勾选后再下载。脚本不自动拆批或在本地打包，也没有下载按钮、打包方式或下载位置选项，不会点击官网的行下载或批量下载控件。
+**“应用到官网勾选”和“下一任务”会替换官网原有选择。** 合并模式可以应用超过 50 个任务，但官网合并 ZIP 每次最多 **50 个任务**；应用时会提示此限制，请自行减少官网勾选后再下载。脚本不自动拆批或在本地打包，没有下载按钮或下载位置选项，不会点击官网的行下载或批量下载控件。“下一任务”仅切换勾选，不检测文件是否下载成功。
+
+下载方式保存在当前浏览器本地。分开模式的队列只在当前页面有效；刷新、重新查找、修改日期、面板勾选、全选、清空、下载方式或官网筛选、搜索、排序、每页数量、复选框，都会使队列失效。面板选择或官网勾选变化后请核对并重新应用；日期或官网列表条件变化后请重新查找。停止或出错不会推进队列；停止后可重新应用，出错后需重新查找。
 
 日期区域显示“待机 / 就绪 / 运行中”状态；仅选中 Completed 时，顶部状态也会提示可进行日期勾选。点击“停止”会停止查找或应用选择。应用过程中停止或出错可能留下部分勾选，不会自动恢复旧选择；请先核对官网复选框，再决定是否下载。
 
@@ -47,7 +49,9 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 - 草稿收到成功消息后，还需等待该任务从列表移出；列表未更新会保留成功计数并停止，不会重复提交同一行。
 - 暂停只影响后续操作，不会挂起已经发送请求的结果确认。额度不足会停止，请以官网实际提示为准。
 
-### 面板尺寸与位置
+### 面板字体、尺寸与位置
+
+面板正文、日期输入和主要操作按钮放大到 **14px**，标题与启动按钮为 **16px**，辅助文字为 **13px**。状态和长任务名称可换行，日期在窄面板中自动排成一列；内容较多时可在面板内滚动查看。
 
 按住标题栏可移动面板；拖动右下角尺寸手柄可调整大小。手柄也可用键盘操作：按 Tab 聚焦后，使用方向键调节尺寸。位置与尺寸保存在当前浏览器本地，刷新后会恢复。窄屏、窗口变小或网页缩放时，面板会约束在视口内。
 

@@ -42,12 +42,17 @@ button,input{margin:4px}td,th{padding:8px}mat-icon{display:inline-block}
 <script>
 'use strict';
 const id=new URLSearchParams(location.search).get('id');
+const restore=new URLSearchParams(location.search).get('restore');
+const formatKey='af3-dev-panel-download-format';
+if(id==='download-format-default')localStorage.setItem(formatKey,'unsupported-format');
+if(id==='download-format-persistence'&&!restore)localStorage.removeItem(formatKey);
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const root=()=>document.getElementById('af3-dev-panel')?.shadowRoot;
 const ui=name=>root()?.getElementById('af3-'+name)||document.getElementById('af3-'+name);
 const assert=(value,message)=>{if(!value)throw Error(message)};
 async function until(read,timeout=15000){const end=Date.now()+timeout;while(Date.now()<end){if(read())return;await pause(30)}throw Error('Timed out: '+(ui('download-status')?.textContent||''))}
 const state={page:0,pages:[],downloads:[],menus:[],bulkDownloads:[],rowOpens:0,submits:0,clones:0,deletes:0,confirms:0,nativeCheckboxClicks:0,nativeInputChanges:0,nativeClears:0,errors:[],transportCalls:[],selected:new Set(),visited:[],readiness:[],changes:0,stopTriggered:false,phase:'idle'};
+let manualActions=0,manualRecords=0;
 window.confirm=()=>{state.confirms++;if(id==='download-confirm-context-change')setFilter('draft');return id!=='download-cancel-apply'};
 window.alert=()=>{};
 window.addEventListener('error',event=>state.errors.push(event.message));
@@ -70,7 +75,7 @@ if(['download-duplicate','download-stable-ids','download-official-links'].includ
 if(id==='download-calendar-invalid')jobs[3]={...jobs[3],modified:'2026-02-30 12:00'};
 if(id==='download-clock-invalid')jobs[3]={...jobs[3],modified:'2026-11-12 24:00'};
 if(id==='download-stable-collision')jobs[3]={...jobs[3],id:jobs[2].id};
-if(['download-preselection','download-cancel-apply','download-clear-failure','download-confirm-context-change'].includes(id)){state.selected.add('older');state.selected.add('hidden-old-selection')}
+if(['download-preselection','download-cancel-apply','download-clear-failure','download-confirm-context-change','download-individual-preselection'].includes(id)){state.selected.add('older');state.selected.add('hidden-old-selection')}
 if(id==='download-over-fifty')jobs.splice(0,jobs.length,...Array.from({length:51},(_,index)=>({id:'many-'+index,name:'batch_'+index,modified:'2026-11-13 12:00'})));
 const pageSize=id==='download-over-fifty'?20:2;
 const pageOption=document.querySelector('mat-paginator select option');pageOption.value=String(pageSize);pageOption.textContent=String(pageSize);
@@ -103,6 +108,7 @@ function renderNativeSelection(){
 }
 function nativeSelectionChanged(job,checkbox){
  state.nativeInputChanges++;checkbox.checked?state.selected.add(job.id):state.selected.delete(job.id);renderNativeSelection();recordReadiness();
+ if(id==='download-individual-stop-next'&&state.phase==='next'&&!state.stopTriggered){state.stopTriggered=true;setTimeout(()=>ui('download-stop').click(),10);return}
  if(state.phase!=='active'||state.stopTriggered)return;
  if(['download-stop-apply','download-stop-restart','download-apply-native-change','download-apply-context-change','download-apply-metadata-change','download-apply-offpage-metadata-change'].includes(id)){
   state.stopTriggered=true;
@@ -122,7 +128,7 @@ function renderRows(){
   const select=document.createElement('td');select.className='mat-column-selected';
   const wrapper=document.createElement('mat-checkbox');wrapper.className='mat-mdc-checkbox';
   const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='mdc-checkbox__native-control';checkbox.checked=state.selected.has(job.id);
-  if(id==='download-partial-error'&&job.id==='end-early')checkbox.disabled=true;
+  if((id==='download-partial-error'||state.failNext)&&job.id==='end-early')checkbox.disabled=true;
   checkbox.onclick=event=>event.stopPropagation();checkbox.onchange=()=>nativeSelectionChanged(job,checkbox);wrapper.append(checkbox);select.append(wrapper);
   const statusCell=document.createElement('td');statusCell.className='mat-column-status';
   const status=document.createElement('mat-icon');status.textContent='check_circle';status.setAttribute('aria-label','Completed');statusCell.append(status);
@@ -171,22 +177,118 @@ if(id==='download-empty-history'){
 }
 const reviewChecks=()=>Array.from(ui('download-results').querySelectorAll('input[type="checkbox"][data-job-key]'));
 const selectedReview=()=>reviewChecks().filter(element=>element.checked);
-function assertNoScriptDownload(){assert(state.downloads.length===0&&state.bulkDownloads.length===0&&state.menus.length===0,'A script control triggered native download/menu action')}
-function assertRemovedControls(){for(const name of ['download-run','download-web-controls','download-web-run','download-web-stop','download-format','download-location'])assert(!ui(name),'Removed script download control remains: '+name)}
+function assertNoScriptDownload(){assert(state.downloads.length===manualRecords&&state.bulkDownloads.length===manualActions&&state.menus.length===0,'A script control triggered native download/menu action')}
+function assertRemovedControls(){for(const name of ['download-run','download-web-controls','download-web-run','download-web-stop','download-location'])assert(!ui(name),'Removed script download control remains: '+name)}
+function setFormat(value){ui('download-format').value=value;ui('download-format').dispatchEvent(new Event('change',{bubbles:true}));assert(ui('download-format').value===value,'Download format was not selectable: '+value)}
 async function scan(start='2026-11-12',end='2026-11-13'){
  ui('download-start').value=start;ui('download-end').value=end;
  ui('download-start').dispatchEvent(new Event('change',{bubbles:true}));ui('download-end').dispatchEvent(new Event('change',{bubbles:true}));
  ui('download-scan').click();await pause(60);await until(()=>!ui('download-scan').disabled);await pause(60);
 }
-async function apply(){state.phase='active';ui('download-apply').click();await pause(50);await until(()=>!ui('download-scan').disabled);await pause(150);assertNoScriptDownload()}
+async function apply(){state.phase='active';ui('download-apply').click();await pause(50);await until(()=>!ui('download-scan').disabled);await pause(150);state.phase='idle';assertNoScriptDownload()}
+async function next(){state.phase='next';ui('download-next').click();await pause(50);await until(()=>!ui('download-scan').disabled);await pause(150);state.phase='idle';assertNoScriptDownload()}
+async function manualNativeDownload(){
+ assertNoScriptDownload();const ids=[...state.selected],confirms=state.confirms;
+ const button=document.querySelector('button.download-button');assert(button&&!button.disabled,'Official Download is unavailable');
+ button.click();await pause(100);
+ assert(state.bulkDownloads.length===manualActions+1&&state.downloads.length===manualRecords+ids.length,'Manual native Download was blocked or duplicated');
+ assert(state.bulkDownloads.at(-1).slice().sort().join(',')===ids.slice().sort().join(','),'Manual native Download used the wrong selection');
+ manualActions++;manualRecords+=ids.length;assert(state.confirms===confirms,'Script intercepted manual native Download');assertNoScriptDownload();
+}
 function assertNativeIds(expected){assert([...state.selected].sort().join(',')===expected.slice().sort().join(','),'Wrong native selection: '+[...state.selected]+' expected '+expected)}
 const rangeIds=['end-late','end-early','start-late','start-early'];
+const queueText=()=>ui('download-queue')?.textContent||'';
+const queueAt=(index,total)=>new RegExp('(?:^|\\D)'+index+'\\s*/\\s*'+total+'(?:\\D|$)').test(queueText());
+function assertQueueAt(index,total){assert(queueAt(index,total),'Wrong individual queue position: '+queueText()+' expected '+index+'/'+total)}
+async function assertInvalidNext(){
+ await until(()=>ui('download-next').disabled);
+ const clears=state.nativeClears,changes=state.nativeInputChanges;
+ ui('download-next').disabled=false;await next();
+ assert(state.nativeClears===clears&&state.nativeInputChanges===changes,'Invalidated queue still changed native checkboxes');
+}
+async function checkIndividual(){
+ await scan();assert(reviewChecks().length===4,'Individual scan lost date matches');assertNoScriptDownload();
+ if(id==='download-individual-subset')ui('download-results').querySelector('input[data-day="2026-11-13"]').click();
+ await apply();
+ const subset=id==='download-individual-subset',ids=subset?['start-late','start-early']:rangeIds;
+ assertNativeIds([ids[0]]);assertQueueAt(1,ids.length);
+ assert(selectedReview().length===ids.length,'Individual Apply lost the reviewed queue');
+ if(id==='download-individual-sequence'||subset){
+  for(let index=0;index<ids.length;index++){
+   assertNativeIds([ids[index]]);assertQueueAt(index+1,ids.length);
+   assert(selectedReview().length===ids.length,'Next changed the frozen review selection');
+   if(!subset){await manualNativeDownload();await pause(250);assertNativeIds([ids[index]]);assertQueueAt(index+1,ids.length)}
+   if(index+1<ids.length){
+    assert(!ui('download-next').disabled,'Next was unavailable before the queue ended');
+    await next();
+   }
+  }
+  assert(ui('download-next').disabled,'Queue end allowed an extra Next');
+  const changes=state.nativeInputChanges;ui('download-next').disabled=false;await next();
+  assert(state.nativeInputChanges===changes,'Queue end repeated or advanced past the last task');
+ }else if(id==='download-individual-preselection'){
+  assert(state.nativeClears===1,'Individual Apply did not clear previous hidden native selection');
+ }else if(id==='download-individual-repeat-apply'){
+  await next();assertNativeIds([ids[1]]);assertQueueAt(2,ids.length);
+  await apply();assertNativeIds([ids[0]]);assertQueueAt(1,ids.length);
+ }else if(id==='download-individual-native-identity-swap'){
+  const clears=state.nativeClears,changes=state.nativeInputChanges;
+  state.selected.clear();state.selected.add('newer');renderNativeSelection();
+  await next();assertNativeIds(['newer']);
+  assert(state.nativeClears===clears&&state.nativeInputChanges===changes,'Next cleared or replaced a silently changed native identity');
+  assert(ui('download-next').disabled&&ui('download-queue').hidden,'Native identity mismatch did not invalidate the individual queue');
+ }else if(id==='download-individual-stop-next'||id==='download-individual-error-next'){
+  if(id==='download-individual-error-next')state.failNext=true;
+  const changes=state.nativeInputChanges;await next();
+  if(id==='download-individual-stop-next')assert(state.stopTriggered&&state.nativeInputChanges===changes+1,'Stop did not interrupt the pending Next');
+  else assert(state.nativeInputChanges===changes,'Failed Next clicked the unavailable checkbox');
+  assert(!queueAt(2,ids.length),'Stopped/failed Next advanced the queue');
+  assert(ui('download-next').disabled&&ui('download-queue').hidden,'Stopped/failed Next left an actionable queue');
+  assert(ui('download-apply').disabled===(id==='download-individual-error-next'),'Stop/error did not preserve the expected rescan requirement');
+  assert(selectedReview().length===4,'Stopped/failed Next lost pending reviews');
+  const stopped=state.nativeInputChanges;await pause(300);assert(state.nativeInputChanges===stopped,'Stopped/failed Next performed a late checkbox action');
+ }else{
+  if(id==='download-individual-item-change')reviewChecks()[3].click();
+  else if(id==='download-individual-day-change')ui('download-results').querySelector('input[data-day="2026-11-12"]').click();
+  else if(id==='download-individual-clear-all'){
+   ui('download-clear').click();assert(selectedReview().length===0,'Clear did not remove review choices');await assertInvalidNext();
+   ui('download-all').click();assert(selectedReview().length===4,'All did not restore review choices');
+  }else if(id==='download-individual-all-change')ui('download-all').click();
+  else if(id==='download-individual-mode-change')setFormat('combined');
+  else if(id==='download-individual-range-change'){ui('download-start').value='2026-11-13';ui('download-start').dispatchEvent(new Event('change',{bubbles:true}))}
+  else if(id==='download-individual-search-change')document.getElementById('history-search').value='changed while queue idle';
+  else if(id==='download-individual-filter-change')setFilter('draft');
+  else if(id==='download-individual-native-change')nativeCheckbox('newer').click();
+  else if(id==='download-individual-native-clear')document.querySelector('#native-selection button[aria-label="Clear selection"]').click();
+  else throw Error('Unknown individual test: '+id);
+  const selected=[...state.selected];await assertInvalidNext();assertNativeIds(selected);
+  if(id==='download-individual-mode-change'){
+   await apply();assertNativeIds(rangeIds);assert(ui('download-next').disabled,'Combined Apply left an individual queue active');
+  }
+ }
+}
 (async()=>{
  const script=document.createElement('script');script.src='/script.js';
  await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Cannot load userscript'));document.head.append(script)});
  await until(()=>ui('download-section'),5000);ui('download-section').open=true;
  assert(ui('download-apply'),'Apply-to-website control is missing');assertRemovedControls();
- if(id==='download-invalid-range'){
+ assert(ui('download-format')?.tagName==='SELECT','Download format selector is missing');
+ assert(Array.from(ui('download-format').options).map(option=>option.value).sort().join(',')==='combined,individual','Unexpected download format choices');
+ assert(ui('download-next')&&ui('download-queue'),'Individual queue controls are missing');
+ if(id==='download-format-persistence'){
+  const expected=restore==='individual'?'individual':'combined';assert(ui('download-format').value===expected,'Reload did not restore '+expected+' format');
+  if(restore!=='combined'){
+   const value=restore?'combined':'individual';setFormat(value);assert(localStorage.getItem(formatKey)===value,'Format was not persisted');
+   location.replace('/case?id='+id+'&restore='+value);return;
+  }
+ }else if(id==='download-format-default'){
+  assert(ui('download-format').value==='combined','Invalid stored format did not fall back to combined');
+ }else setFormat(id.startsWith('download-individual-')?'individual':'combined');
+ if(id==='download-format-persistence'||id==='download-format-default'){
+  assert(state.nativeInputChanges===0&&state.nativeClears===0,'Format controls changed native selection');
+ }else if(id.startsWith('download-individual-')){
+  await checkIndividual();
+ }else if(id==='download-invalid-range'){
   await scan('2026-11-14','2026-11-12');assert(state.changes===0&&ui('download-apply').disabled,'Reversed range was actionable');
   await scan('','2026-11-13');assert(state.changes===0&&ui('download-apply').disabled,'Empty range was actionable');
  }else if(id==='download-zero'||id==='download-empty-history'){
@@ -262,14 +364,12 @@ const rangeIds=['end-late','end-early','start-late','start-early'];
     assert(/50/.test(ui('download-section').textContent),'Native 50-job limit was not explained');
    }
    if(id==='download-manual-native'){
-    assertNoScriptDownload();const confirms=state.confirms;document.querySelector('button.download-button').click();await pause(100);
-    assert(state.bulkDownloads.length===1&&state.downloads.length===4,'Manual native Download was blocked or duplicated');
-    assert(state.confirms===confirms,'Script intercepted manual native Download');assertNativeIds(rangeIds);
+    await manualNativeDownload();assertNativeIds(rangeIds);
    }
   }
  }
  assertRemovedControls();
- if(id!=='download-manual-native')assertNoScriptDownload();
+ assertNoScriptDownload();
  assert(state.menus.length===0,'Script opened a native task menu');
  assert(state.transportCalls.length===0,'Independent transfer was invoked: '+state.transportCalls);
  assert(state.submits===0&&state.clones===0&&state.deletes===0&&state.rowOpens===0,'Unrelated native action: '+JSON.stringify(state));
@@ -295,6 +395,16 @@ SCENARIOS = [
     'download-apply-context-change', 'download-apply-metadata-change', 'download-apply-offpage-metadata-change',
     'download-repeat-apply', 'download-over-fifty', 'download-manual-native',
     'download-ready-states',
+    'download-format-default', 'download-format-persistence',
+    'download-individual-sequence', 'download-individual-subset',
+    'download-individual-preselection', 'download-individual-repeat-apply',
+    'download-individual-item-change', 'download-individual-day-change',
+    'download-individual-clear-all', 'download-individual-all-change',
+    'download-individual-mode-change', 'download-individual-range-change',
+    'download-individual-search-change', 'download-individual-filter-change',
+    'download-individual-native-change', 'download-individual-native-clear',
+    'download-individual-native-identity-swap',
+    'download-individual-stop-next', 'download-individual-error-next',
 ]
 
 
