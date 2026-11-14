@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 开发版 2.25.0-dev.10：提交任务在上、下载任务在下，两个区域常驻展开、分别显示状态；保留合并 ZIP / 分开下载，由你手动点击官网原生 Download 下载。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">本 fork 开发版 2.25.0-dev.11：显示当前账号邮箱；提交任务在上、下载任务在下，两个区域常驻展开、分别显示状态。下载由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
             <p class="version-note">main 的 2.24.1 仍为旧行为基线，不包含这些 DEV 功能。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.10</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.11</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
@@ -295,8 +295,9 @@
         </section>
 
         <section>
-            <h2>✨ DEV 2.25.0-dev.10 更新重点</h2>
+            <h2>✨ DEV 2.25.0-dev.11 更新重点</h2>
             <ul class="release-list">
+                <li>两个功能区上方显示当前账号邮箱，页面中的账号信息变化后同步更新；未登录、缺失或存在歧义时显示“未识别”，长邮箱自动换行。</li>
                 <li>面板上方是提交任务，下方是下载任务，均不折叠；按天分组的匹配任务也直接列出，无需展开。</li>
                 <li>仅选中 Saved draft 才显示草稿提交就绪，仅选中 Failed 才显示失败重跑就绪；混选或未选标签时待机并禁用启动，点击启动和确认后均重新核对标签。</li>
                 <li>按日期查找任务：起止日期均包含当天，同一天可单独筛选；可按天或逐项核对，再应用到官网勾选。</li>
@@ -413,7 +414,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.10 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.11 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -423,7 +424,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter DEV 2.25.0-dev.10 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter DEV 2.25.0-dev.11 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

@@ -4,13 +4,13 @@
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 2.25.0-dev.10](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 2.25.0-dev.11](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 本轮按日期勾选、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。Edge InPrivate 还需允许扩展在 InPrivate 中使用。
-3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.10`。网站控件与通知仍需使用英文。
+3. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `2.25.0-dev.11`。网站控件与通知仍需使用英文。
 4. 在 History 中仅选中 `Saved draft` 才显示“就绪: 提交草稿”，仅选中 `Failed` 才显示失败重跑就绪；混选或未选标签时待机并禁用启动。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 5. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 6. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
@@ -25,7 +25,7 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 ## 本轮改动
 
-### 按日期勾选，再用官网下载（DEV 2.25.0-dev.10）
+### 按日期勾选，再用官网下载（DEV 2.25.0-dev.11）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。面板会扫描当前搜索结果的所有分页，保留官网已有的复选框选中状态。
 2. 在面板下方常驻的“下载任务”区域，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。
@@ -60,11 +60,13 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 本地存储被浏览器禁用时，当前页面仍可调整尺寸；刷新后恢复尺寸需要本地存储可用。面板标题显示当前 DEV 版本号，便于核对更新。
 
-### 当前账号的官网额度
+### 当前账号邮箱与官网额度
+
+面板在两个功能区上方显示“当前账号：邮箱”。优先读取官网账号控件中的邮箱，控件未显示时读取官网页面初始化数据中的当前账号邮箱；每次状态更新时重新读取，支持页面中的账号变化。未登录、邮箱缺失或账号信息有歧义时显示“未识别”，不保留上次读取的邮箱。长邮箱自动换行。
 
 面板实时读取当前页面的 `Remaining jobs`，打开任务预览时优先显示预览中的额度。账号切换或页面 DOM 更新后会重新读取；读取不到或存在歧义时显示“无法识别”，不会把未知额度当作 `0`。这是官网页面所显示的额度，脚本不会自行推算或增加额度。
 
-额度显示仅读取页面内容，不额外请求官网接口、不读取 Cookie，也不上传账号或任务数据。
+邮箱与额度仅读取当前官网页面内容，不额外请求官网接口、不读取 Cookie，不保存邮箱或上传账号、任务数据。
 
 ### 保留的面板功能
 

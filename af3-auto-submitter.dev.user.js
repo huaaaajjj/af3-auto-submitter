@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      2.25.0-dev.10
-// @description  开发版：上下分开展示提交与下载；按天筛选，合并或逐个勾选后手动使用官网 Download 下载；保留提交确认、实时额度和可调面板。
+// @version      2.25.0-dev.11
+// @description  开发版：显示当前账号邮箱与官网额度，上下分开展示提交与下载；按天筛选，合并或逐个勾选后手动使用官网 Download 下载；保留提交确认和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -19,7 +19,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '2.25.0-dev.10';
+    const SCRIPT_VERSION = '2.25.0-dev.11';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -42,6 +42,8 @@
 
     const I18N = {
         zh: {
+            accountEmail: '当前账号：{email}',
+            accountUnknown: '当前账号：未识别，请检查登录状态。',
             quotaRemaining: '官网剩余额度：{count} 个',
             quotaUnknown: '官网剩余额度：无法识别，请检查登录与官网显示。',
             quotaPreview: '（预览）',
@@ -128,6 +130,8 @@
             runEnded: '运行结束'
         },
         en: {
+            accountEmail: 'Current account: {email}',
+            accountUnknown: 'Current account: unavailable. Check sign-in.',
             quotaRemaining: 'Server jobs remaining: {count}',
             quotaUnknown: 'Server quota unavailable. Check sign-in and the site display.',
             quotaPreview: ' (preview)',
@@ -214,6 +218,8 @@
             runEnded: 'Run ended'
         },
         ja: {
+            accountEmail: '現在のアカウント：{email}',
+            accountUnknown: '現在のアカウント：取得できません。ログインを確認してください。',
             quotaRemaining: 'サーバーの残りジョブ数：{count}',
             quotaUnknown: '残り枠を取得できません。ログインとサイト表示を確認してください。',
             quotaPreview: '（プレビュー）',
@@ -300,6 +306,8 @@
             runEnded: '実行終了'
         },
         ko: {
+            accountEmail: '현재 계정: {email}',
+            accountUnknown: '현재 계정: 확인할 수 없습니다. 로그인을 확인하세요.',
             quotaRemaining: '서버 남은 작업 수: {count}',
             quotaUnknown: '할당량을 읽을 수 없습니다. 로그인과 사이트 표시를 확인하세요.',
             quotaPreview: ' (미리보기)',
@@ -386,6 +394,8 @@
             runEnded: '실행 종료'
         },
         es: {
+            accountEmail: 'Cuenta actual: {email}',
+            accountUnknown: 'Cuenta actual: no disponible. Revisa la sesión.',
             quotaRemaining: 'Tareas restantes del servidor: {count}',
             quotaUnknown: 'Cuota no disponible. Revisa la sesión y la página.',
             quotaPreview: ' (vista previa)',
@@ -472,6 +482,8 @@
             runEnded: 'Ejecución finalizada'
         },
         fr: {
+            accountEmail: 'Compte actuel : {email}',
+            accountUnknown: 'Compte actuel : indisponible. Vérifiez la connexion.',
             quotaRemaining: 'Tâches restantes du serveur : {count}',
             quotaUnknown: 'Quota indisponible. Vérifiez la connexion et la page.',
             quotaPreview: ' (aperçu)',
@@ -746,6 +758,7 @@
             resizeHandle.setAttribute('aria-label', t('resizePanel'));
         }
         updateQuota();
+        updateAccountEmail();
         renderDownloadSection();
         renderLogPanel();
         updateRunControls();
@@ -862,6 +875,45 @@
         if (matches.length !== 1) return null;
         const quota = Number(matches[0][1]);
         return Number.isSafeInteger(quota) ? quota : null;
+    }
+
+    function readAccountEmail() {
+        const emailPattern = /[A-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?)+/gi;
+        const fromText = value => [...String(value || '').matchAll(emailPattern)].map(match => match[0]);
+        // Only read account controls, never task names or arbitrary page text.
+        const profiles = Array.from(document.querySelectorAll('gdm-af-user-menu, [aria-label*="Google Account"], [aria-label*="Google 账号"], [aria-label*="Google 帐号"]')).filter(downloadVisible);
+        const emails = new Set();
+        for (const profile of profiles) {
+            const nodes = [profile, ...profile.querySelectorAll('[aria-label], [title], img[alt]')].filter(downloadVisible);
+            for (const node of nodes) {
+                for (const attr of ['aria-label', 'title', 'alt']) fromText(node.getAttribute(attr)).forEach(email => emails.add(email));
+            }
+            const walker = document.createTreeWalker(profile, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) {
+                const parent = walker.currentNode.parentElement;
+                if (downloadVisible(parent) && !parent.closest('script, style')) fromText(walker.currentNode.textContent).forEach(email => emails.add(email));
+            }
+        }
+        if (emails.size) return emails.size === 1 ? [...emails][0] : null;
+
+        // The site's GAIA user reads this email from its own bootstrap data.
+        // Inspect that one value; no cookies, auth tokens, requests, or storage.
+        let data = window.WIZ_global_data;
+        if (!data) {
+            const script = document.querySelector('script[data-id="_gd"]');
+            const json = script?.textContent.match(/(?:window\.)?WIZ_global_data\s*=\s*(\{[\s\S]*\})\s*;?\s*$/)?.[1];
+            if (json) { try { data = JSON.parse(json); } catch (_) {} }
+        }
+        const email = typeof data?.oPEP7c === 'string' ? data.oPEP7c.trim() : '';
+        return email && fromText(email).length === 1 && fromText(email)[0] === email ? email : null;
+    }
+
+    function updateAccountEmail() {
+        const target = getUiElement('af3-account-email');
+        if (!target) return;
+        const email = readAccountEmail();
+        const message = email ? t('accountEmail', { email }) : t('accountUnknown');
+        if (target.textContent !== message) target.textContent = message;
     }
 
     function updateQuota() {
@@ -2046,6 +2098,13 @@
         };
         languageRow.appendChild(languageSelect);
 
+        const account = document.createElement('p');
+        account.id = 'af3-account-email';
+        account.setAttribute('role', 'status');
+        account.setAttribute('aria-live', 'polite');
+        Object.assign(account.style, { margin: '0', fontSize: '14px', color: '#dfe1e5', overflowWrap: 'anywhere', lineHeight: '1.5', flexShrink: '0' });
+        account.textContent = t('accountUnknown');
+
         const submission = document.createElement('section');
         submission.id = 'af3-submission-section';
         submission.setAttribute('aria-labelledby', 'af3-submission-title');
@@ -2165,7 +2224,7 @@
         logPanel.appendChild(logToggle);
         logPanel.appendChild(logBody);
 
-        container.appendChild(header); container.appendChild(languageRow);
+        container.appendChild(header); container.appendChild(languageRow); container.appendChild(account);
         submission.append(submissionTitle, statusRow, quota, controls, runControls, footer);
         container.appendChild(submission);
         container.appendChild(createDownloadSection());
@@ -2197,6 +2256,7 @@
     let currentMode = 'NONE';
 
     function checkSystemStatus() {
+        updateAccountEmail();
         updateQuota();
         updateDownloadControls();
         const btn = getUiElement('af3-v20-btn');

@@ -241,9 +241,42 @@ async function checkPanelUi(){
 }
 renderRows();
 if(id==='old-success')toast('Job successfully launched.');
+async function checkAccountEmail(){
+  assert(ui('account-email'),'Current account email display is missing');
+  const email=()=>ui('account-email').textContent;
+  const shown=async value=>{await until(()=>email()==='当前账号：'+value,2500)};
+  const unknown=async()=>{await until(()=>email().includes('未识别'),2500)};
+  await unknown();
+  const job=document.createElement('p');job.textContent='job.owner@example.com';document.getElementById('rows').append(job);
+  window.WIZ_global_data={oPEP7c:'first.account@example.com'};await shown('first.account@example.com');
+  window.WIZ_global_data.oPEP7c='second.account@example.com';await shown('second.account@example.com');
+  const userMenu=document.createElement('gdm-af-user-menu');
+  const accountButton=document.createElement('button');accountButton.setAttribute('aria-label','User menu: current.account@example.com');userMenu.append(accountButton);document.body.prepend(userMenu);
+  await shown('current.account@example.com');
+  accountButton.setAttribute('aria-label','User menu: switched.account@example.com');await shown('switched.account@example.com');
+  const another=document.createElement('span');another.textContent='ambiguous.account@example.com';userMenu.append(another);await unknown();another.remove();await shown('switched.account@example.com');
+  ui('language-select').value='en';ui('language-select').dispatchEvent(new Event('change'));
+  assert(email()==='Current account: switched.account@example.com','Email label did not change language');
+  ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));
+  userMenu.style.display='none';await shown('second.account@example.com');userMenu.remove();
+  const accountLink=document.createElement('a');accountLink.setAttribute('aria-label','Google Account: Test User (label.account@example.com)');accountLink.textContent='Account';document.body.prepend(accountLink);
+  await shown('label.account@example.com');accountLink.remove();
+  window.WIZ_global_data.oPEP7c='';await unknown();
+  window.WIZ_global_data.oPEP7c='invalid address';await unknown();
+  delete window.WIZ_global_data;
+  const bootstrap=document.createElement('script');bootstrap.dataset.id='_gd';bootstrap.type='application/json';
+  bootstrap.textContent='window.WIZ_global_data = '+JSON.stringify({oPEP7c:'bootstrap.account@example.com'})+';';document.head.append(bootstrap);
+  await shown('bootstrap.account@example.com');
+  window.WIZ_global_data={oPEP7c:''};await unknown();delete window.WIZ_global_data;
+  bootstrap.textContent='window.WIZ_global_data = invalid';await unknown();bootstrap.remove();
+  assert(!Object.values(localStorage).some(value=>value.includes('@example.com')),'Account email was persisted');
+  assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account readback triggered a task or script error');
+  parent.postMessage({type:'af3-case-result',result:{passed:true,message:'email readback, account changes, visible profile priority, unknown/logout, bootstrap, languages; 0 submits'}},location.origin);
+}
 (async()=>{
   const script=document.createElement('script');script.src='/script.js';
   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Cannot load userscript'));document.head.append(script)});
+  if(id==='account-email'){await until(()=>ui('v20-btn'),5000);await checkAccountEmail();return}
   if(id==='panel-ui'){
     await until(()=>ui('v20-btn'),5000);
     const saved=JSON.parse(localStorage.getItem('af3-dev-panel-size')||'null');
@@ -284,7 +317,7 @@ if(id==='old-success')toast('Job successfully launched.');
 
 
 SCENARIOS = [
-    'panel-ui',
+    'panel-ui', 'account-email',
     'delayed-success', 'old-success', 'server-error', 'no-toast',
     'failed-success', 'failed-error', 'stop-in-flight', 'stale-row',
     'multi-success', 'paused-success',
