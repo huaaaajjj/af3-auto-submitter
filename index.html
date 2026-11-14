@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 开发版 3.0.0-dev.2：新增“任务 / 账户管理”页面，保存多个账号、备注与额度记录，提供官网登录入口。任务页提交在上、下载在下，常驻展开；下载由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">本 fork 开发版 3.0.0-dev.3：修复账号切换沿用旧会话的问题，先退出官网再选择 Google 账号；账户管理保存多个账号、备注与额度记录。任务页提交在上、下载在下，常驻展开；下载由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
             <p class="version-note">main 的 2.24.1 仍为旧行为基线，不包含这些 DEV 功能。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 3.0.0-dev.2</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 3.0.0-dev.3</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
@@ -295,12 +295,13 @@
         </section>
 
         <section>
-            <h2>✨ DEV 3.0.0-dev.2 更新重点</h2>
+            <h2>✨ DEV 3.0.0-dev.3 更新重点</h2>
             <ul class="release-list">
+                <li>修复切换后仍是原账号：“官网登录 / 切换”先退出当前官网会话，再在本页打开 Google 账号选择；提交、查找和应用勾选期间禁用切换。本地账号记录保留，无需手动清理 Cookie。</li>
                 <li>修复 3.0.0-dev.1 更新后面板消失：账户页改用 DOM 节点构建，兼容官网 Trusted Types 限制。更新后刷新官网即可恢复，已有本地账户记录和面板设置保留。</li>
                 <li>新增账户管理页面：自动记录当前账号，也可手动添加邮箱、保存备注、编辑和移除本地记录；当前账号置顶标记。</li>
                 <li>额度变更时自动记录，持续可读时每分钟更新记录时间，也可手动“记录当前额度”。其他账号显示上次记录及时间，未知额度不记为零，预览额度不写入账户记录。</li>
-                <li>“官网登录 / 切换”打开官网入口；在官网退出并用 Google 选择另一个账号后刷新面板。邮箱、备注和额度记录只存于当前浏览器，跨标签页同步，不保存密码或登录会话。</li>
+                <li>在 Google 账号选择页选择其他账号（或“使用其他账号”），登录后面板重新读取邮箱与额度。邮箱、备注和额度记录只存于当前浏览器，跨标签页同步，不保存密码或登录会话。公开入口跳转已验证，真实多账号登录仍需在已登录的浏览器中核对。</li>
                 <li>切换账号后清除旧下载结果和逐个选择队列；已识别账号在提交中变化时停止并锁定启动，避免继续处理。</li>
                 <li>两个功能区上方显示当前账号邮箱，页面中的账号信息变化后同步更新；未登录、缺失或存在歧义时显示“未识别”，长邮箱自动换行。</li>
                 <li>面板上方是提交任务，下方是下载任务，均不折叠；按天分组的匹配任务也直接列出，无需展开。</li>
@@ -419,7 +420,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 3.0.0-dev.2 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 3.0.0-dev.3 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -429,7 +430,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter DEV 3.0.0-dev.2 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter DEV 3.0.0-dev.3 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

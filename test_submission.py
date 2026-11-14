@@ -288,6 +288,28 @@ async function checkAccountEmail(){
   assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account readback triggered a task or script error');
   parent.postMessage({type:'af3-case-result',result:{passed:true,message:'email readback, account changes, visible profile priority, unknown/logout, bootstrap, languages; 0 submits'}},location.origin);
 }
+function assertAccountSwitchUrl(login){
+  const logout=new URL(login.href);
+  assert(logout.origin===location.origin&&logout.pathname==='/accounts/ClearOSID','Switch must exit the existing website session before signing in');
+  const chooser=new URL(logout.searchParams.get('continue'));
+  assert(chooser.origin==='https://accounts.google.com'&&chooser.pathname==='/AccountChooser','Switch must show Google account selection');
+  const signin=new URL(chooser.searchParams.get('continue'));
+  assert(signin.origin===location.origin&&signin.pathname==='/signin','Account selection must return to the official sign-in entry');
+  assert(chooser.searchParams.get('osid')==='1'&&chooser.searchParams.get('followup')===signin.href,'Account selection must retain the website sign-in handoff');
+  assert(login.target==='_self','Switch must replace the old account page in the same tab');
+}
+function assertAccountSwitchBlocked(){
+  const login=ui('account-login');
+  assert(login.getAttribute('aria-disabled')==='true'&&!login.hasAttribute('href')&&login.tabIndex===-1,'Running task left an actionable account switch');
+  for(const type of ['click','auxclick']){
+    // Even a stale link restored before the next render must not navigate.
+    login.href='/accounts/ClearOSID';
+    let blocked=false;
+    login.addEventListener(type,event=>{blocked=event.defaultPrevented;event.preventDefault()},{once:true});
+    login.dispatchEvent(new MouseEvent(type,{cancelable:true,button:type==='auxclick'?1:0}));
+    assert(blocked,'Running task allowed '+type+' to exit the website session');
+  }
+}
 async function checkAccountManager(){
   const records=()=>JSON.parse(localStorage.getItem(accountsKey)||'{"accounts":[]}').accounts;
   const cards=()=>Array.from(ui('accounts-list').querySelectorAll('article'));
@@ -297,8 +319,17 @@ async function checkAccountManager(){
   assert(ui('tasks-page').hidden&&!ui('accounts-page').hidden,'Account tab did not switch pages');
   assert(ui('accounts-tab').getAttribute('aria-selected')==='true','Account tab is not selected accessibly');
   const login=ui('account-login');
-  assert(new URL(login.href).origin===location.origin&&new URL(login.href).pathname==='/welcome'&&login.target==='_blank'&&login.rel.includes('noopener'),'Login must open the official welcome page');
-  if(id==='account-storage'||id==='account-storage-blocked'){
+  assertAccountSwitchUrl(login);
+  if(id==='account-login'){
+    save('saved@example.com','Keep this record');
+    const before=localStorage.getItem(accountsKey);
+    let prevented=true;
+    login.addEventListener('click',event=>{prevented=event.defaultPrevented;event.preventDefault()},{once:true});
+    login.click();
+    assert(!prevented,'Idle switch did not allow official navigation');
+    assert(localStorage.getItem(accountsKey)===before,'Switch removed saved accounts or notes');
+    assert(ui('account-login-help').textContent.includes('退出'),'Switch does not explain that it exits the current session');
+  }else if(id==='account-storage'||id==='account-storage-blocked'){
     save('memory@example.com','first');save('another@example.com','second');
     assert(cards().length===2&&card('memory@example.com').textContent.includes('first'),'Unavailable storage lost in-page records');
     assert(ui('accounts-message').textContent.includes('当前页面有效'),'Unavailable storage did not report memory-only mode');
@@ -383,6 +414,7 @@ async function checkAccountManager(){
     assert(ui('tasks-page').getClientRects().length,'Tasks page was not rendered under Trusted Types');
     ui('accounts-tab').click();
     assert(ui('accounts-page').getClientRects().length,'Account page was not rendered under Trusted Types');
+    assertAccountSwitchUrl(ui('account-login'));
     ui('account-input').value='manual@example.com';ui('account-note').value='Strict CSP note';
     ui('account-form').dispatchEvent(new Event('submit',{cancelable:true}));
     assert(ui('accounts-list').textContent.includes('Strict CSP note'),'Account save failed under Trusted Types');
@@ -395,7 +427,7 @@ async function checkAccountManager(){
     parent.postMessage({type:'af3-case-result',result:{passed:true,message:'Trusted Types enforced: startup, navigation, account save and panel recovery; 0 submits'}},location.origin);return;
   }
   if(id==='account-email'){await until(()=>ui('v20-btn'),5000);await checkAccountEmail();return}
-  if(['account-manager','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
+  if(['account-manager','account-login','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
   if(id==='storage-writer')return;
   if(id==='panel-ui'){
     await until(()=>ui('v20-btn'),5000);
@@ -408,6 +440,16 @@ async function checkAccountManager(){
     await checkPanelUi();return;
   }
   await until(()=>ui('v20-btn')&&!ui('v20-btn').disabled,5000);
+  if(id==='account-login-busy'){
+    ui('v20-btn').click();
+    assertAccountSwitchBlocked();
+    ui('stop-btn').click();
+    await until(()=>state.summaries.length>0);
+    assertAccountSwitchUrl(ui('account-login'));
+    assert(ui('account-login').getAttribute('aria-disabled')==='false','Switch did not recover after stopping');
+    assert(state.calls===0&&state.errors.length===0,'Switch during processing submitted a job or caused an error');
+    parent.postMessage({type:'af3-case-result',result:{passed:true,message:'switch blocked during submission, including stale click/auxclick; restored after stop; 0 submits'}},location.origin);return;
+  }
   if(id==='account-switch-confirm'){
     ui('v20-btn').click();await pause(600);
     assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account change during confirmation started a batch');
@@ -446,7 +488,7 @@ async function checkAccountManager(){
 
 
 SCENARIOS = [
-    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-quota', 'account-persistence',
+    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-busy', 'account-quota', 'account-persistence',
     'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-switch-submission', 'account-switch-confirm',
     'delayed-success', 'old-success', 'server-error', 'no-toast',
     'failed-success', 'failed-error', 'stop-in-flight', 'stale-row',

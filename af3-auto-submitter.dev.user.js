@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.2
-// @description  3.0 开发版：新增账户管理页面，本地保存账号、备注与额度记录，提供官网登录入口；保留分区提交、按日期勾选下载、提交确认和可调面板。
+// @version      3.0.0-dev.3
+// @description  3.0 开发版：账户管理支持先退出官网再选择 Google 账号，本地保存账号、备注与额度记录；保留分区提交、按日期勾选下载、提交确认和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -19,7 +19,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.2';
+    const SCRIPT_VERSION = '3.0.0-dev.3';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -672,7 +672,8 @@
         accountEmailLabel: 'Email', accountNoteLabel: 'Note (optional)', accountAdd: 'Save account', accountSave: 'Save changes', accountCancel: 'Cancel edit',
         accountCurrent: 'Current account', accountEdit: 'Edit', accountRemove: 'Remove', accountRemoveConfirm: 'Remove the local record for {email}? This does not delete the website account.',
         accountLiveQuota: 'Website quota: {count}', accountSavedQuota: 'Last recorded quota: {count}', accountNoQuota: 'Quota not recorded', accountRecordedAt: 'Recorded: {time}',
-        accountRefresh: 'Record current quota', accountLogin: 'Website sign-in / switch', accountLoginHelp: 'Open the website account menu, sign out, then use Continue with Google to choose an account. Refresh this panel after signing in.',
+        accountRefresh: 'Record current quota', accountLogin: 'Website sign-in / switch', accountLoginHelp: 'This exits the current AlphaFold session and opens Google account selection in this tab. Choose another account or Use another account. After signing in, the panel reads the email and quota again.',
+        accountSwitchBusy: 'Stop processing before switching accounts.',
         accountInvalid: 'Enter a valid email address.', accountSaved: 'Account saved.', accountRemoved: 'Local record removed.', accountUpdated: 'Current account quota recorded.',
         accountReadFailed: 'Current account or quota is unavailable. Check sign-in and the website quota display.',
         accountStorageError: 'Local storage is unavailable or invalid. Changes are kept only on this page.', accountChanged: 'The signed-in account changed. Processing stopped; check the website account and history before reloading.',
@@ -684,7 +685,8 @@
             accountEmailLabel: '邮箱', accountNoteLabel: '备注（可选）', accountAdd: '保存账号', accountSave: '保存修改', accountCancel: '取消编辑',
             accountCurrent: '当前账号', accountEdit: '编辑', accountRemove: '移除', accountRemoveConfirm: '移除 {email} 的本地记录？不会删除官网账号。',
             accountLiveQuota: '官网当前额度：{count} 个', accountSavedQuota: '上次记录额度：{count} 个', accountNoQuota: '尚未记录额度', accountRecordedAt: '记录时间：{time}',
-            accountRefresh: '记录当前额度', accountLogin: '官网登录 / 切换', accountLoginHelp: '在官网账号菜单退出，再用 Continue with Google 选择账号；登录后刷新面板。',
+            accountRefresh: '记录当前额度', accountLogin: '官网登录 / 切换', accountLoginHelp: '点击后会退出当前 AlphaFold 登录，在本页打开 Google 账号选择。请选择其他账号（或“使用其他账号”）；登录后面板会重新读取邮箱与额度。',
+            accountSwitchBusy: '请先停止任务，再切换账号。',
             accountInvalid: '请输入有效邮箱。', accountSaved: '账号已保存。', accountRemoved: '本地记录已移除。', accountUpdated: '已记录当前账号的官网额度。',
             accountReadFailed: '无法读取当前账号或额度，请检查登录状态与官网额度显示。', accountStorageError: '本地存储不可用或记录无效，改动仅在当前页面有效。',
             accountChanged: '登录账号已变化，已停止处理；请核对官网账号与历史记录后刷新页面。',
@@ -1069,6 +1071,33 @@
         }
     }
 
+    function getAccountSwitchUrl() {
+        const signin = new URL('/signin', location.origin).href;
+        const chooser = new URL('https://accounts.google.com/AccountChooser');
+        chooser.searchParams.set('continue', signin);
+        // Keep the OSID handoff used by the website's own Google sign-in,
+        // so the chosen identity can establish the new website session.
+        chooser.searchParams.set('followup', signin);
+        chooser.searchParams.set('osid', '1');
+        // Use the same sign-out entry as the website's account menu. Going
+        // straight to /welcome keeps the existing site session signed in.
+        const logout = new URL('/accounts/ClearOSID', location.origin);
+        logout.searchParams.set('continue', chooser.href);
+        return logout.href;
+    }
+
+    function updateAccountSwitchControl() {
+        const login = getUiElement('af3-account-login');
+        if (!login) return;
+        const busy = isRunning || downloadState.busy;
+        login.setAttribute('aria-disabled', String(busy));
+        login.tabIndex = busy ? -1 : 0;
+        login.title = t(busy ? 'accountSwitchBusy' : 'accountLoginHelp');
+        if (busy) login.removeAttribute('href');
+        else login.href = getAccountSwitchUrl();
+        getUiElement('af3-account-login-help').textContent = t(busy ? 'accountSwitchBusy' : 'accountLoginHelp');
+    }
+
     function renderAccountManager(force = false) {
         const list = getUiElement('af3-accounts-list');
         if (!list) return;
@@ -1079,6 +1108,7 @@
         getUiElement('af3-account-save').textContent = t(editingAccount ? 'accountSave' : 'accountAdd');
         getUiElement('af3-account-cancel').hidden = !editingAccount;
         getUiElement('af3-account-refresh').disabled = !observedAccountEmail || accountLiveQuota === null;
+        updateAccountSwitchControl();
         getUiElement('af3-accounts-count').textContent = t('accountsCount', { count: accountRecords.length });
         getUiElement('af3-accounts-message').textContent = accountStorageError ? t('accountStorageError') : accountMessage ? t(accountMessage) : '';
         const signature = JSON.stringify([currentLanguage, observedAccountEmail, accountLiveQuota, accountRecords]);
@@ -1147,7 +1177,7 @@
         append(page, 'p', 'accounts-intro', { class: 'af3-account-help' });
         const actions = append(page, 'div', '', { class: 'af3-account-actions' });
         append(actions, 'button', 'account-refresh', { type: 'button' });
-        append(actions, 'a', 'account-login', { target: '_blank', rel: 'noopener noreferrer' });
+        append(actions, 'a', 'account-login', { target: '_self' });
         append(page, 'p', 'account-login-help', { class: 'af3-account-help' });
         const form = append(page, 'form', 'account-form', { novalidate: '' });
         append(form, 'label', 'account-email-label', { for: 'af3-account-input' });
@@ -1160,7 +1190,14 @@
         append(page, 'p', 'accounts-message', { role: 'status', 'aria-live': 'polite' });
         append(page, 'h3', 'accounts-count');
         append(page, 'div', 'accounts-list');
-        page.querySelector('#af3-account-login').href = new URL('/welcome', location.origin).href;
+        const login = page.querySelector('#af3-account-login');
+        login.href = getAccountSwitchUrl();
+        login.onclick = login.onauxclick = event => {
+            if (isRunning || downloadState.busy) {
+                event.preventDefault();
+                updateAccountSwitchControl();
+            }
+        };
         page.querySelector('#af3-account-form').onsubmit = event => {
             event.preventDefault();
             const email = normalizeAccountEmail(getUiElement('af3-account-input').value);
@@ -1905,6 +1942,7 @@
 
     function updateDownloadControls() {
         const busy = downloadState.busy || isRunning;
+        updateAccountSwitchControl();
         if (!busy && downloadState.queue) {
             try {
                 if (downloadState.queue.context !== getDownloadContext()) throw new Error();
@@ -2325,6 +2363,7 @@
             .af3-account-help, .af3-account-card time { font-size: 13px; color: #bdc1c6; line-height: 1.5; }
             .af3-account-actions { display: flex; flex-wrap: wrap; gap: 7px; }
             #af3-account-login { text-decoration: none; display: inline-block; }
+            #af3-account-login[aria-disabled="true"] { opacity: 0.6; cursor: not-allowed; }
             #af3-account-form { display: grid; gap: 7px; margin: 0; padding: 10px; border: 1px solid #5f6368; border-radius: 8px; }
             #af3-account-form input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: 7px; border: 1px solid #5f6368; border-radius: 5px; color: #e8eaed; background: #292a2d; }
             #af3-account-input[readonly] { color: #bdc1c6; }
@@ -2819,6 +2858,7 @@
     // --- 辅助状态管理 ---
     function setRunningState(state) {
         isRunning = state;
+        updateAccountSwitchControl();
         batchAccountEmail = state ? normalizeAccountEmail(readAccountEmail()) : null;
         shouldStop = false;
         isPaused = false;

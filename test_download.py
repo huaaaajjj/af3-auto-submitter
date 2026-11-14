@@ -182,12 +182,20 @@ const selectedReview=()=>reviewChecks().filter(element=>element.checked);
 function assertNoScriptDownload(){assert(state.downloads.length===manualRecords&&state.bulkDownloads.length===manualActions&&state.menus.length===0,'A script control triggered native download/menu action')}
 function assertRemovedControls(){for(const name of ['download-run','download-web-controls','download-web-run','download-web-stop','download-location'])assert(!ui(name),'Removed script download control remains: '+name)}
 function setFormat(value){ui('download-format').value=value;ui('download-format').dispatchEvent(new Event('change',{bubbles:true}));assert(ui('download-format').value===value,'Download format was not selectable: '+value)}
+function assertAccountSwitchBlocked(){
+ const login=ui('account-login');
+ assert(login.getAttribute('aria-disabled')==='true'&&!login.hasAttribute('href'),'Scan/application left an actionable account switch');
+ login.href='/accounts/ClearOSID';
+ let blocked=false;
+ login.addEventListener('click',event=>{blocked=event.defaultPrevented;event.preventDefault()},{once:true});
+ login.click();assert(blocked,'Scan/application allowed a stale switch link to exit the session');
+}
 async function scan(start='2026-11-12',end='2026-11-13'){
  ui('download-start').value=start;ui('download-end').value=end;
  ui('download-start').dispatchEvent(new Event('change',{bubbles:true}));ui('download-end').dispatchEvent(new Event('change',{bubbles:true}));
- ui('download-scan').click();await pause(60);await until(()=>!ui('download-scan').disabled);await pause(60);
+ ui('download-scan').click();if(id==='download-busy')assertAccountSwitchBlocked();await pause(60);await until(()=>!ui('download-scan').disabled);await pause(60);
 }
-async function apply(){state.phase='active';ui('download-apply').click();await pause(50);await until(()=>!ui('download-scan').disabled);await pause(150);state.phase='idle';assertNoScriptDownload()}
+async function apply(){state.phase='active';ui('download-apply').click();if(id==='download-busy')assertAccountSwitchBlocked();await pause(50);await until(()=>!ui('download-scan').disabled);await pause(150);state.phase='idle';assertNoScriptDownload()}
 async function next(){state.phase='next';ui('download-next').click();await pause(50);await until(()=>!ui('download-scan').disabled);await pause(150);state.phase='idle';assertNoScriptDownload()}
 async function manualNativeDownload(){
  assertNoScriptDownload();const ids=[...state.selected],confirms=state.confirms;
@@ -366,6 +374,9 @@ async function checkIndividual(){
   if(['download-unknown-date','download-calendar-invalid','download-clock-invalid'].includes(id))assert(/无法|识别|未知|unknown|unreadable|invalid/i.test(ui('download-status').textContent),'Unrecognized date was not reported');
   if(id==='download-busy'){
    assert(state.confirms===0,'Submission bypassed exclusion during scan');
+   assert(ui('account-login').getAttribute('aria-disabled')==='false'&&ui('account-login').hasAttribute('href'),'Switch stayed disabled after scanning');
+   await apply();
+   assert(ui('account-login').getAttribute('aria-disabled')==='false'&&ui('account-login').hasAttribute('href'),'Switch stayed disabled after application');
   }else if(id==='download-select'){
    ui('download-clear').click();assert(selectedReview().length===0&&ui('download-apply').disabled,'Clear selection stayed actionable');
    ui('download-all').click();assert(selectedReview().length===4,'Select all lost matches');
