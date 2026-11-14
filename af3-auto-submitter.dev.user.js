@@ -1,16 +1,18 @@
 // ==UserScript==
-// @name         AF3 Auto Submitter DEV
-// @namespace    https://github.com/siyuanj/af3-auto-submitter/dev
-// @version      2.24-dev.1
+// @name         AF3 Auto Submitter DEV (huaaaajjj)
+// @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
+// @version      2.24-dev.2
 // @description  测试版：稳定版，包含轻量多语言、运行前安全摘要、完成统计、失败任务汇总、暂停/停止控制、可折叠运行日志和拖动位置保存，不会覆盖正式版脚本。
-// @author       Jiang Siyuan
+// @author       Jiang Siyuan; huaaaajjj
+// @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
+// @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
 // @match        https://alphafoldserver.com/*
 // @match        https://www.alphafoldserver.com/*
 // @grant        none
 // @run-at       document-start
 // @noframes
-// @updateURL    https://raw.githubusercontent.com/siyuanj/af3-auto-submitter/test/greasyfork-dev-v2.2/af3-auto-submitter.dev.user.js
-// @downloadURL  https://raw.githubusercontent.com/siyuanj/af3-auto-submitter/test/greasyfork-dev-v2.2/af3-auto-submitter.dev.user.js
+// @updateURL    https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js
+// @downloadURL  https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js
 // ==/UserScript==
 
 (function() {
