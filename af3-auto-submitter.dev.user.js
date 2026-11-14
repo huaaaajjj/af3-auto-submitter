@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      2.25.0-dev.1
-// @description  开发版：仅点击一次提交，收到官网明确成功提示才计数，未确认结果时停止并锁定启动。
+// @version      2.25.0-dev.3
+// @description  开发版：可调整面板大小、实时显示官网剩余额度；明确成功才计数，未确认结果时停止并锁定启动。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -19,9 +19,11 @@
     'use strict';
 
     // --- 配置 ---
+    const SCRIPT_VERSION = '2.25.0-dev.3';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
+    const PANEL_SIZE_KEY = `${CONTAINER_ID}-size`;
     const LANGUAGE_KEY = `${CONTAINER_ID}-language`;
     const WAIT_FOR_MODAL = 2000;
     const WAIT_FOR_PAGE_LOAD = 3000; // 跳转等待时间
@@ -39,6 +41,10 @@
 
     const I18N = {
         zh: {
+            quotaRemaining: '官网剩余额度：{count} 个',
+            quotaUnknown: '官网剩余额度：无法识别，请检查登录与官网显示。',
+            quotaPreview: '（预览）',
+            resizePanel: '拖动调整面板大小；聚焦后用方向键调整',
             verifyingSubmission: "等待官网确认…",
             submissionLocked: "需要人工核对",
             submissionNotReady: "提交按钮已失效或不可用，未提交。",
@@ -121,6 +127,10 @@
             runEnded: '运行结束'
         },
         en: {
+            quotaRemaining: 'Server jobs remaining: {count}',
+            quotaUnknown: 'Server quota unavailable. Check sign-in and the site display.',
+            quotaPreview: ' (preview)',
+            resizePanel: 'Drag to resize the panel; use arrow keys when focused',
             verifyingSubmission: "Waiting for server confirmation…",
             submissionLocked: "Manual review required",
             submissionNotReady: "The submit button is no longer available. Nothing was submitted.",
@@ -203,6 +213,10 @@
             runEnded: 'Run ended'
         },
         ja: {
+            quotaRemaining: 'サーバーの残りジョブ数：{count}',
+            quotaUnknown: '残り枠を取得できません。ログインとサイト表示を確認してください。',
+            quotaPreview: '（プレビュー）',
+            resizePanel: 'ドラッグでサイズ変更。フォーカス中は矢印キーで調整',
             verifyingSubmission: "サーバーの確認を待機中…",
             submissionLocked: "手動確認が必要です",
             submissionNotReady: "送信ボタンが無効または表示されていません。送信していません。",
@@ -285,6 +299,10 @@
             runEnded: '実行終了'
         },
         ko: {
+            quotaRemaining: '서버 남은 작업 수: {count}',
+            quotaUnknown: '할당량을 읽을 수 없습니다. 로그인과 사이트 표시를 확인하세요.',
+            quotaPreview: ' (미리보기)',
+            resizePanel: '드래그하여 크기 조절. 포커스 시 방향키로 조절',
             verifyingSubmission: "서버 확인 대기 중…",
             submissionLocked: "수동 확인 필요",
             submissionNotReady: "제출 버튼을 사용할 수 없습니다. 제출하지 않았습니다.",
@@ -367,6 +385,10 @@
             runEnded: '실행 종료'
         },
         es: {
+            quotaRemaining: 'Tareas restantes del servidor: {count}',
+            quotaUnknown: 'Cuota no disponible. Revisa la sesión y la página.',
+            quotaPreview: ' (vista previa)',
+            resizePanel: 'Arrastra para cambiar el tamaño; usa las flechas al enfocar',
             verifyingSubmission: "Esperando confirmación del servidor…",
             submissionLocked: "Revisión manual necesaria",
             submissionNotReady: "El botón de envío ya no está disponible. No se envió nada.",
@@ -449,6 +471,10 @@
             runEnded: 'Ejecución finalizada'
         },
         fr: {
+            quotaRemaining: 'Tâches restantes du serveur : {count}',
+            quotaUnknown: 'Quota indisponible. Vérifiez la connexion et la page.',
+            quotaPreview: ' (aperçu)',
+            resizePanel: 'Glissez pour redimensionner ; flèches quand la poignée est sélectionnée',
             verifyingSubmission: "En attente de confirmation du serveur…",
             submissionLocked: "Vérification manuelle requise",
             submissionNotReady: "Le bouton d’envoi n’est plus disponible. Aucun envoi effectué.",
@@ -542,6 +568,8 @@
     // that a request was rejected; the user must reconcile it before reloading.
     let submissionBlockReason = '';
     let isDraggingPanel = false;
+    let isResizingPanel = false;
+    let panelSize = null;
     let logExpanded = false;
     let currentLanguage = getSavedLanguage();
     let runProgress = {
@@ -598,12 +626,18 @@
         const footer = getUiElement('af3-footer-msg');
         const statusText = getUiElement('af3-status-text');
 
-        if (header) header.textContent = t('headerDev');
+        if (header) header.textContent = `${t('headerDev')} ${SCRIPT_VERSION}`;
         if (languageSelect) {
             languageSelect.value = currentLanguage;
             languageSelect.title = t('languageTitle');
         }
         if (input) input.title = t('confirmPlan', { count: input.value || 0 });
+        const resizeHandle = getUiElement('af3-resize-handle');
+        if (resizeHandle) {
+            resizeHandle.title = t('resizePanel');
+            resizeHandle.setAttribute('aria-label', t('resizePanel'));
+        }
+        updateQuota();
         renderLogPanel();
         updateRunControls();
 
@@ -649,8 +683,41 @@
         }
     }
 
+    function getSavedPanelSize() {
+        if (panelSize) return panelSize;
+        try {
+            const size = JSON.parse(localStorage.getItem(PANEL_SIZE_KEY));
+            if (Number.isFinite(size?.width) && size.width > 0 &&
+                Number.isFinite(size?.height) && size.height > 0) return panelSize = size;
+        } catch (e) {
+            // Storage may be disabled or contain an outdated value.
+        }
+        return panelSize = { width: 300, height: 380 };
+    }
+
+    function clampPanelSize(size) {
+        const availableWidth = Math.max(1, window.innerWidth - 24);
+        const availableHeight = Math.max(1, window.innerHeight - 24);
+        return {
+            width: Math.min(Math.max(Math.min(240, availableWidth), size.width), availableWidth),
+            height: Math.min(Math.max(Math.min(260, availableHeight), size.height), availableHeight)
+        };
+    }
+
+    function savePanelSize(host) {
+        const rect = host.getBoundingClientRect();
+        panelSize = { width: Math.round(rect.width), height: Math.round(rect.height) };
+        try {
+            localStorage.setItem(PANEL_SIZE_KEY, JSON.stringify(panelSize));
+        } catch (e) {
+            // Resizing still works when persistent storage is unavailable.
+        }
+    }
+
     function applyHostStyle(host) {
+        if (isDraggingPanel || isResizingPanel) return;
         const savedPosition = getSavedPanelPosition();
+        const size = clampPanelSize(getSavedPanelSize());
         Object.assign(host.style, {
             position: 'fixed',
             zIndex: '2147483647',
@@ -658,26 +725,47 @@
             visibility: 'visible',
             opacity: '1',
             pointerEvents: 'auto',
-            width: '260px',
+            width: size.width + 'px',
             maxWidth: 'calc(100vw - 24px)',
-            height: 'auto',
+            height: size.height + 'px',
+            maxHeight: 'calc(100vh - 24px)',
             colorScheme: 'light',
             transform: 'none'
         });
 
-        if (isDraggingPanel) return;
+        const position = savedPosition || { left: window.innerWidth - size.width - 30, top: 80 };
+        host.style.left = Math.min(Math.max(12, position.left), Math.max(12, window.innerWidth - size.width - 12)) + 'px';
+        host.style.top = Math.min(Math.max(12, position.top), Math.max(12, window.innerHeight - size.height - 12)) + 'px';
+        host.style.right = 'auto';
+    }
 
-        if (savedPosition) {
-            const maxLeft = Math.max(12, window.innerWidth - 272);
-            const maxTop = Math.max(12, window.innerHeight - 180);
-            host.style.left = Math.min(Math.max(12, savedPosition.left), maxLeft) + 'px';
-            host.style.top = Math.min(Math.max(12, savedPosition.top), maxTop) + 'px';
-            host.style.right = 'auto';
-        } else if (!host.style.left && !host.style.top) {
-            host.style.top = '80px';
-            host.style.right = '30px';
-            host.style.left = 'auto';
+    function readQuota(root) {
+        if (!root) return null;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const parts = [];
+        while (walker.nextNode()) {
+            const parent = walker.currentNode.parentElement;
+            if (!parent || parent.closest('mat-icon, svg, script, style') ||
+                !parent.getClientRects().length || getComputedStyle(parent).visibility === 'hidden') continue;
+            parts.push(walker.currentNode.textContent);
         }
+        const matches = [...parts.join(' ').replace(/\s+/g, ' ').matchAll(/\bRemaining jobs:\s*(\d+)\b(?![.,]\d)/gi)];
+        if (matches.length !== 1) return null;
+        const quota = Number(matches[0][1]);
+        return Number.isSafeInteger(quota) ? quota : null;
+    }
+
+    function updateQuota() {
+        const target = getUiElement('af3-quota');
+        if (!target) return;
+        const preview = Array.from(document.querySelectorAll('gdm-af-preview-dialog'))
+            .find(node => node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
+        const points = Array.from(document.querySelectorAll('gdm-af-request .points'))
+            .filter(node => node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
+        const quota = preview ? readQuota(preview) : points.length === 1 ? readQuota(points[0]) : null;
+        const message = quota === null ? t('quotaUnknown') :
+            t('quotaRemaining', { count: quota }) + (preview ? t('quotaPreview') : '');
+        if (target.textContent !== message) target.textContent = message;
     }
 
     function addLog(message, level = 'info') {
@@ -1079,8 +1167,10 @@
             e = e || window.event; e.preventDefault();
             pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
             pos3 = e.clientX; pos4 = e.clientY;
-            element.style.top = (element.offsetTop - pos2) + "px";
-            element.style.left = (element.offsetLeft - pos1) + "px";
+            element.style.top = Math.min(Math.max(12, element.offsetTop - pos2),
+                Math.max(12, window.innerHeight - element.offsetHeight - 12)) + 'px';
+            element.style.left = Math.min(Math.max(12, element.offsetLeft - pos1),
+                Math.max(12, window.innerWidth - element.offsetWidth - 12)) + 'px';
         }
         function closeDragElement() {
             document.onmouseup = null; document.onmousemove = null;
@@ -1088,6 +1178,52 @@
             isDraggingPanel = false;
             element.style.cursor = 'default';
         }
+    }
+
+    function makeResizable(host, handle) {
+        const resize = (width, height) => {
+            const rect = host.getBoundingClientRect();
+            const size = clampPanelSize({ width, height });
+            host.style.width = Math.min(size.width, Math.max(1, window.innerWidth - rect.left - 12)) + 'px';
+            host.style.height = Math.min(size.height, Math.max(1, window.innerHeight - rect.top - 12)) + 'px';
+        };
+        handle.addEventListener('pointerdown', event => {
+            if (event.button !== 0) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const rect = host.getBoundingClientRect();
+            const startX = event.clientX, startY = event.clientY;
+            isResizingPanel = true;
+            try { handle.setPointerCapture(event.pointerId); } catch (e) { /* Synthetic or lost pointer. */ }
+            const move = moveEvent => {
+                if (moveEvent.pointerId !== event.pointerId) return;
+                resize(rect.width + moveEvent.clientX - startX, rect.height + moveEvent.clientY - startY);
+            };
+            const end = endEvent => {
+                if (endEvent.pointerId !== event.pointerId) return;
+                document.removeEventListener('pointermove', move);
+                document.removeEventListener('pointerup', end);
+                document.removeEventListener('pointercancel', end);
+                try { handle.releasePointerCapture(event.pointerId); } catch (e) { /* Pointer already released. */ }
+                savePanelSize(host);
+                isResizingPanel = false;
+                applyHostStyle(host);
+            };
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', end);
+            document.addEventListener('pointercancel', end);
+        });
+        handle.addEventListener('keydown', event => {
+            const delta = { ArrowLeft: [-16, 0], ArrowRight: [16, 0], ArrowUp: [0, -16], ArrowDown: [0, 16] }[event.key];
+            if (!delta) return;
+            event.preventDefault();
+            const rect = host.getBoundingClientRect();
+            const size = clampPanelSize({ width: rect.width + delta[0], height: rect.height + delta[1] });
+            host.style.width = size.width + 'px';
+            host.style.height = size.height + 'px';
+            savePanelSize(host);
+            applyHostStyle(host);
+        });
     }
 
     function stylePanelButton(button, backgroundColor, color = '#fff') {
@@ -1131,7 +1267,10 @@
             flexDirection: 'column',
             gap: '10px',
             width: '100%',
-            padding: '15px',
+            height: '100%',
+            minHeight: '0',
+            overflow: 'auto',
+            padding: '15px 15px 30px',
             backgroundColor: 'rgba(32, 33, 36, 0.97)',
             borderRadius: '12px',
             boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
@@ -1147,7 +1286,7 @@
             textAlign: 'center', cursor: 'move', paddingBottom: '8px',
             borderBottom: '1px solid #444', fontWeight: 'bold', color: '#eee', fontSize: '14px'
         });
-        header.textContent = t('headerDev');
+        header.textContent = `${t('headerDev')} ${SCRIPT_VERSION}`;
 
         const languageRow = document.createElement('div');
         Object.assign(languageRow.style, {
@@ -1196,6 +1335,16 @@
         statusText.textContent = t('initializing');
         Object.assign(statusText.style, { fontSize: '12px', color: '#bbb', whiteSpace: 'nowrap' });
         statusRow.appendChild(statusLight); statusRow.appendChild(statusText);
+
+        const quota = document.createElement('p');
+        quota.id = 'af3-quota';
+        quota.setAttribute('role', 'status');
+        quota.setAttribute('aria-live', 'polite');
+        Object.assign(quota.style, {
+            margin: '0', fontSize: '12px', color: '#dfe1e5',
+            overflowWrap: 'anywhere', lineHeight: '1.5', flexShrink: '0'
+        });
+        quota.textContent = t('quotaUnknown');
 
         const controls = document.createElement('div');
         Object.assign(controls.style, { display: 'flex', alignItems: 'center', gap: '8px' });
@@ -1274,6 +1423,8 @@
             borderRadius: '6px',
             color: '#dfe1e5',
             whiteSpace: 'pre-wrap',
+            overflowWrap: 'anywhere',
+            minHeight: '60px',
             fontFamily: 'Consolas, monospace',
             fontSize: '10px',
             lineHeight: '1.35'
@@ -1282,11 +1433,27 @@
         logPanel.appendChild(logBody);
 
         container.appendChild(header); container.appendChild(languageRow); container.appendChild(statusRow);
+        container.appendChild(quota);
         container.appendChild(controls); container.appendChild(runControls);
         container.appendChild(footer); container.appendChild(logPanel);
         shadow.appendChild(container);
+        const resizeHandle = document.createElement('span');
+        resizeHandle.id = 'af3-resize-handle';
+        resizeHandle.setAttribute('role', 'button');
+        resizeHandle.tabIndex = 0;
+        resizeHandle.textContent = '↘';
+        resizeHandle.title = t('resizePanel');
+        resizeHandle.setAttribute('aria-label', t('resizePanel'));
+        Object.assign(resizeHandle.style, {
+            position: 'absolute', right: '5px', bottom: '5px', width: '22px', height: '22px',
+            display: 'grid', placeItems: 'center', fontSize: '18px', borderRadius: '4px',
+            backgroundColor: '#3c4043', color: '#fff', cursor: 'nwse-resize',
+            userSelect: 'none', touchAction: 'none', zIndex: '1'
+        });
+        shadow.appendChild(resizeHandle);
         document.body.appendChild(host);
         makeDraggable(host, header);
+        makeResizable(host, resizeHandle);
         renderLogPanel();
         updateRunControls();
         applyLanguage();
@@ -1296,6 +1463,7 @@
     let currentMode = 'NONE';
 
     function checkSystemStatus() {
+        updateQuota();
         const btn = getUiElement('af3-v20-btn');
         const light = getUiElement('af3-status-light');
         const text = getUiElement('af3-status-text');
@@ -1579,9 +1747,11 @@
 
         const observer = new MutationObserver(() => {
             if (!getPanelHost()) ensureUI();
+            updateQuota();
         });
-        observer.observe(document.documentElement, { childList: true, subtree: true });
+        observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 
+        window.addEventListener('resize', () => applyHostStyle(getPanelHost()));
         window.addEventListener('pageshow', ensureUI);
         document.addEventListener('visibilitychange', ensureUI);
     }

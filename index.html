@@ -243,28 +243,28 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">当前正式版 V2.24：支持多语言、运行前确认、暂停/继续/停止、完成汇总和可折叠日志。</p>
+            <p class="version-note">本 fork 开发版 2.25.0-dev.3：明确提交确认、可调尺寸面板与当前账号实时额度。功能仍在开发分支，尚未合并 main。</p>
             <div class="install-actions">
-                <a href="https://greasyfork.org/zh-CN/scripts/563083-af3-auto-submitter-alphafold3-%E8%87%AA%E5%8A%A8%E6%8F%90%E4%BA%A4%E5%8A%A9%E6%89%8B" class="install-btn" target="_blank" rel="noopener noreferrer">点击安装脚本 (Greasy Fork)</a>
-                <a href="https://raw.githubusercontent.com/siyuanj/af3-auto-submitter/main/af3-auto-submitter.js" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看正式版 raw</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 2.25.0-dev.3</a>
+                <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
-            <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要先安装 Tampermonkey 插件</p>
+            <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
         </header>
 
         <section>
             <h2>🚀 核心功能</h2>
             <div class="features-grid">
                 <div class="feature-card">
-                    <h3>🖐️ 自由拖拽面板</h3>
-                    <p>全新的悬浮面板设计，不再遮挡页面内容。按住标题栏即可随意拖动，位置自动记忆。</p>
+                    <h3>🖐️ 可移动、可调尺寸</h3>
+                    <p>拖动标题栏移动，拖动右下角手柄调节大小；刷新后恢复位置和尺寸，窄屏或缩放时约束在视口内。</p>
                 </div>
                 <div class="feature-card" style="border-left-color: var(--success);">
                     <h3>🧠 自动模式识别</h3>
                     <p>能够自动识别当前是“草稿列表”还是“失败列表”，智能切换运行逻辑，无需手动设置。</p>
                 </div>
                 <div class="feature-card" style="border-left-color: var(--info);">
-                    <h3>♻️ 失败断点重跑</h3>
-                    <p>针对 Failed 任务，脚本会自动执行 Clone -> Resubmit 流程，在原参数基础上快速重试。</p>
+                    <h3>♻️ Failed 克隆重提</h3>
+                    <p>对 Failed 任务执行 Clone and reuse 后重新提交；Confirm 只点击一次，等待官网新的成功消息，未确认时停止并锁定。</p>
                 </div>
                 <div class="feature-card" style="border-left-color: #f44336;">
                     <h3>🛡️ 启动前确认</h3>
@@ -272,7 +272,7 @@
                 </div>
                 <div class="feature-card" style="border-left-color: #9c27b0;">
                     <h3>⏸️ 暂停 / 停止</h3>
-                    <p>运行中可以暂停、继续或停止，适合遇到网络波动、页面弹窗或临时需要接管浏览器时使用。</p>
+                    <p>可暂停后续操作或停止批次；已发送请求仍会等待确认，停止不能撤回请求。</p>
                 </div>
                 <div class="feature-card" style="border-left-color: #ff9800;">
                     <h3>📋 完成汇总</h3>
@@ -290,10 +290,12 @@
         </section>
 
         <section>
-            <h2>✨ V2.24 更新重点</h2>
+            <h2>✨ DEV 2.25.0-dev.3 更新重点</h2>
             <ul class="release-list">
                 <li>默认中文界面，并提供 6 种语言选择。</li>
-                <li>拖动后的面板位置会保存在本地，刷新后仍会保持。</li>
+                <li>拖动标题栏移动面板，拖动右下角手柄调整尺寸；位置与尺寸会在本地保存。</li>
+                <li>实时显示官网 Remaining jobs，预览时优先读取预览额度；无法识别时明确提示。</li>
+                <li>面板标题显示 DEV 版本号，便于核对油猴更新。</li>
                 <li>拖动面板不再产生无用日志，日志只记录关键运行事件。</li>
                 <li>移除了常驻进度框，改为运行结束后弹出清晰汇总。</li>
                 <li>汇总中会列出最多 5 个跳过或失败任务，方便非技术用户定位问题。</li>
@@ -374,23 +376,23 @@
         <section>
             <h2>⚠️ 免责声明 & 常见问题</h2>
             <div class="alert">
-                <strong>配额不足：</strong> 脚本会跳过因为 Daily Quota 不足而无法提交的任务，并在完成汇总中显示跳过数量和原因。
+                <strong>配额不足：</strong> 额度以官网为准；不足时停止，无法识别时不当作 0。请先核对官网状态，不要靠反复启动解决。
             </div>
             <div class="alert">
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请先确认 Tampermonkey 中脚本已更新到 V2.24 或更新版本且处于启用状态，然后刷新 <code>https://alphafoldserver.com/</code>。如果你访问的是 <code>www.alphafoldserver.com</code>，也需要确认脚本权限覆盖该域名。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 2.25.0-dev.3 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
-                <li><strong>如果卡住了：</strong> 可以先使用面板上的暂停、继续或停止按钮。极少数情况下如果网络卡顿导致弹窗未关闭，也可以手动点一次 Confirm，脚本会自动检测变化并继续。</li>
-                <li><strong>测试新版：</strong> 如果你安装了 DEV 测试版，请在 Tampermonkey 中禁用正式版，避免两个脚本同时操作页面。</li>
+                <li><strong>如果锁定或卡住：</strong> 先查看官网提示、面板日志及历史记录，核对任务和剩余额度。不要手动重复点击 Confirm。</li>
+                <li><strong>测试新版：</strong> DEV 安装、检查更新和下载均来自本 fork 的开发分支；请只启用一份。提交结果不确定时，先查看官网历史记录和面板日志，不要手动重复点击 Confirm。</li>
             </ul>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter V2.24 | 用于 AlphaFold Server 的 Tampermonkey 自动提交助手</p>
+            <p>AF3 Auto Submitter DEV 2.25.0-dev.3 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

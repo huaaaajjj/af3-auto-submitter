@@ -150,11 +150,106 @@ function showPreview(name){
     }
   };
 }
+async function checkPanelUi(){
+  const host=()=>document.getElementById('af3-dev-panel');
+  const rect=()=>host().getBoundingClientRect();
+  const quota=()=>ui('quota')?.textContent||'';
+  assert(ui('quota'),'Quota display is missing');
+  assert(ui('header').textContent.includes('2.25.0-dev.3'),'Panel release version is missing');
+  const handle=ui('resize-handle');
+  assert(handle,'Panel resize handle is missing');
+  assert(handle.getAttribute('role')==='button'&&handle.tabIndex===0,'Resize handle is not keyboard accessible');
+  const points=document.querySelector('gdm-af-request .points');
+  points.textContent='Remaining jobs: 24';
+  await until(()=>/24\s*个/.test(quota()),2500);
+  points.textContent='Remaining jobs: 17';
+  await until(()=>/17\s*个/.test(quota()),2500);
+  points.textContent='Remaining jobs: 0';
+  await until(()=>/0\s*个/.test(quota()),2500);
+  points.textContent='Quota unavailable';
+  await until(()=>/无法识别/.test(quota()),2500);
+  points.textContent='Remaining jobs: 0';
+  // Adjacent elements intentionally have no whitespace separators, mirroring
+  // the real preview that previously joined sequence / quota / button text.
+  const preview=document.createElement('gdm-af-preview-dialog');
+  const seq=document.createElement('span');seq.textContent='ACDEFGHIKL';
+  const p=document.createElement('div');p.className='points';p.textContent='Remaining jobs: 23';
+  const confirm=document.createElement('button');confirm.textContent='Confirm and submit job';
+  preview.append(seq,p,confirm);document.getElementById('overlay').append(preview);
+  await until(()=>/23\s*个/.test(quota()),2500);
+  preview.remove();
+  const replacement=document.createElement('div');replacement.className='points';replacement.textContent='Remaining jobs: 12';
+  points.replaceWith(replacement);
+  await until(()=>/12\s*个/.test(quota()),2500);
+  assert(state.calls===0&&state.opened.length===0,'Quota observation submitted or opened a job');
+  const initial=rect();
+  let observedDown=0,observedMove=0,observedUp=0;
+  handle.addEventListener('pointerdown',()=>observedDown++);
+  handle.addEventListener('pointermove',()=>observedMove++);
+  handle.addEventListener('pointerup',()=>observedUp++);
+  const pointer=(type,x,y,target)=>target.dispatchEvent(new PointerEvent(type,{bubbles:true,composed:true,cancelable:true,pointerId:1,pointerType:'mouse',isPrimary:true,button:0,buttons:type==='pointerup'?0:1,clientX:x,clientY:y}));
+  const grip=handle.getBoundingClientRect();const x=grip.left+grip.width/2,y=grip.top+grip.height/2;
+  pointer('pointerdown',x,y,handle);
+  // Dispatch through the handle as well as document so synthetic Edge events
+  // exercise both normal bubbling and the fallback used when pointer capture
+  // is unavailable in a test iframe.
+  pointer('pointermove',x+80,y+60,handle);
+  pointer('pointermove',x+80,y+60,document);
+  pointer('pointerup',x+80,y+60,handle);
+  await pause(80);
+  const enlarged=rect();
+  assert(enlarged.width>initial.width+5&&enlarged.height>initial.height+5,`Pointer resize did not change width and height (events ${observedDown}/${observedMove}/${observedUp}, ${initial.width}x${initial.height}->${enlarged.width}x${enlarged.height})`);
+  await pause(1100);
+  assert(Math.abs(rect().width-enlarged.width)<2&&Math.abs(rect().height-enlarged.height)<2,'Periodic ensureUI reset the resized panel');
+  const beforeKeys=rect();
+  handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+  handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true,cancelable:true}));
+  await pause(80);
+  assert(rect().width>beforeKeys.width&&rect().height>beforeKeys.height,'Arrow keys did not resize the panel');
+  const stored=JSON.parse(localStorage.getItem('af3-dev-panel-size')||'null');
+  const oldSetItem=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(){throw new DOMException('Storage blocked','SecurityError')};
+  const beforeBlocked=rect();
+  handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true,cancelable:true}));
+  await pause(1200);
+  assert(rect().width<beforeBlocked.width-5,'Blocked storage reset the requested panel size');
+  Storage.prototype.setItem=oldSetItem;
+  handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+  await pause(80);
+  assert(stored&&Number.isFinite(stored.width)&&Number.isFinite(stored.height),'Panel size was not persisted as numeric width/height');
+  assert(Math.abs(stored.width-rect().width)<2&&Math.abs(stored.height-rect().height)<2,'Stored dimensions differ from panel dimensions');
+  const reloadStage=new URLSearchParams(location.search).get('restore')==='1';
+  if(!reloadStage){
+    // Persist the actual interaction result, then reload this browsing context
+    // so a new userscript instance must read its saved size.
+    location.replace('/case?id=panel-ui&restore=1');
+    return false;
+  }
+  const frame=window.frameElement;frame.style.width='340px';frame.style.height='400px';
+  await until(()=>innerWidth<=340&&innerHeight<=400,2500);
+  dispatchEvent(new Event('resize'));await pause(1200);
+  const small=rect();
+  assert(small.left>=0&&small.top>=0&&small.right<=innerWidth+1&&small.bottom<=innerHeight+1,'Panel escapes a small viewport');
+  assert(state.calls===0&&state.opened.length===0,'Panel controls submitted a job');
+  assert(state.errors.length===0,state.errors.join('; '));
+  parent.postMessage({type:'af3-case-result',result:{passed:true,message:'live quota, pointer/keyboard resize, restore and viewport bounds; 0 submits'}},location.origin);
+  return false;
+}
 renderRows();
 if(id==='old-success')toast('Job successfully launched.');
 (async()=>{
   const script=document.createElement('script');script.src='/script.js';
   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Cannot load userscript'));document.head.append(script)});
+  if(id==='panel-ui'){
+    await until(()=>ui('v20-btn'),5000);
+    const saved=JSON.parse(localStorage.getItem('af3-dev-panel-size')||'null');
+    if(new URLSearchParams(location.search).get('restore')==='1'){
+      assert(saved,'Saved panel size disappeared after reload');
+      const loaded=document.getElementById('af3-dev-panel').getBoundingClientRect();
+      assert(Math.abs(saved.width-loaded.width)<2&&Math.abs(saved.height-loaded.height)<2,'Reload did not restore the saved panel size');
+    }
+    await checkPanelUi();return;
+  }
   await until(()=>ui('v20-btn')&&!ui('v20-btn').disabled,5000);
   ui('v20-count').value=['multi-success','stale-row','server-error','failed-error'].includes(id)?2:1;
   ui('v20-btn').click();
@@ -185,6 +280,7 @@ if(id==='old-success')toast('Job successfully launched.');
 
 
 SCENARIOS = [
+    'panel-ui',
     'delayed-success', 'old-success', 'server-error', 'no-toast',
     'failed-success', 'failed-error', 'stop-in-flight', 'stale-row',
     'multi-success', 'paused-success',
