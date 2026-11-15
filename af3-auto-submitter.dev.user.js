@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.8
+// @version      3.0.0-dev.9
 // @description  3.0 开发版：浅色科研工作台、固定导航与响应式分区；保留跨普通与 InPrivate 的账户记录、提交确认、按日期勾选和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.8';
+    const SCRIPT_VERSION = '3.0.0-dev.9';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -618,7 +618,8 @@
         downloadNoHistory: 'Cannot identify one history table with Name and Modified columns.',
         downloadPageError: 'Pagination did not finish or repeated a page. Find jobs again after checking the website.',
         downloadContextChanged: 'The history filters, search, order, or page size changed. Find jobs again.',
-        downloadAmbiguous: 'Some jobs have the same name and Modified time and cannot be distinguished. Narrow the website search.',
+        downloadIdentityConflict: 'The website row has conflicting job IDs. Refresh the history and find jobs again.',
+        downloadAmbiguous: 'Some jobs have identical names and Modified times, but no readable unique job ID. Narrow the website search or select and download those jobs manually.',
         downloadNoSelection: 'Select at least one job from a completed scan.',
         downloadMissing: 'A selected job changed or could not be found. Selection stopped.',
         downloadIncomplete: 'Scan stopped or incomplete. Find jobs again before applying the selection.',
@@ -661,7 +662,8 @@
             downloadNoHistory: '未能识别唯一的 Name / Modified 历史列表。',
             downloadPageError: '分页未完成或重复，请核对官网后重新查找任务。',
             downloadContextChanged: '官网的筛选、搜索、排序或每页数量已变化，请重新查找任务。',
-            downloadAmbiguous: '有任务的名称和 Modified 时间完全相同，无法唯一识别。请缩小官网搜索范围。',
+            downloadIdentityConflict: '官网任务行的唯一标识有冲突，已停止；请刷新官网历史列表后重新查找。',
+            downloadAmbiguous: '有同名且 Modified 时间相同的任务，但未能读取官网唯一任务 ID。请缩小官网搜索范围，或在官网手动勾选下载。',
             downloadNoSelection: '请先完成查找，并至少勾选一个任务。',
             downloadMissing: '所选任务已变化或未找到，已停止应用。',
             downloadIncomplete: '查找已停止或未完成，请重新查找后再应用勾选。',
@@ -1795,11 +1797,24 @@
             const modified = downloadText(cells[dateIndex]);
             const match = /^(\d{4}-\d{2}-\d{2})(?:\s+(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?)?$/.exec(modified);
             const day = match && validDownloadDay(match[1]) ? match[1] : null;
-            // Use a native public job link/ID when present. Otherwise require a
-            // unique name and full displayed Modified time throughout the scan.
-            const link = Array.from(row.querySelectorAll('a[href]')).map(a => a.getAttribute('href'))
-                .find(href => /^\/(?:job|jobs|fold)\//.test(href));
-            const id = row.getAttribute('data-job-id') || link;
+            // Normalize public result links to the job ID, not their URL spelling.
+            // Never use a row index: identical names/times can move across pages.
+            const ids = new Set();
+            const declaredId = row.getAttribute('data-job-id');
+            if (declaredId) ids.add(declaredId);
+            for (const anchor of row.querySelectorAll('a[href]')) {
+                let url, linkId;
+                try {
+                    url = new URL(anchor.getAttribute('href'), document.baseURI);
+                    const path = /^\/(?:job|jobs|fold)\/([^/]+)(?:\/\d+)?\/?$/.exec(url.pathname);
+                    if (!/^https?:$/.test(url.protocol) || url.origin !== location.origin || url.username || url.password || !path) continue;
+                    linkId = decodeURIComponent(path[1]);
+                } catch (_) { continue; }
+                if (!linkId || /[\\/\s?#\x00-\x1f\x7f]/.test(linkId)) continue;
+                ids.add(linkId);
+            }
+            if (ids.size > 1) throw new Error(t('downloadIdentityConflict'));
+            const id = ids.values().next().value;
             if (!name) throw new Error(t('downloadNoHistory'));
             return { key: id ? `id:${id}` : `row:${JSON.stringify([name, modified])}`, id: Boolean(id), name, modified, day, row };
         });
@@ -2029,7 +2044,7 @@
         }
         for (const id of ['start', 'end', 'scan', 'all', 'clear', 'format']) {
             const control = getUiElement(`af3-download-${id}`);
-            if (control) control.disabled = busy;
+            if (control) control.disabled = busy || (['all', 'clear'].includes(id) && (!downloadState.complete || !downloadState.jobs.length));
         }
         const apply = getUiElement('af3-download-apply');
         if (apply) apply.disabled = busy || !downloadState.complete || downloadState.selected.size === 0;
@@ -2273,8 +2288,8 @@
         const applyActions = document.createElement('div'); applyActions.className = 'af3-download-actions';
         for (const [id, key, action] of [
             ['scan', 'downloadScan', scanDownloadJobs],
-            ['all', 'downloadAll', () => { if (downloadState.busy || isRunning) return; resetDownloadQueue(); downloadState.selected = new Set(downloadState.jobs.map(job => job.key)); setDownloadMessage('downloadFound'); }],
-            ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning) return; resetDownloadQueue(); downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
+            ['all', 'downloadAll', () => { if (downloadState.busy || isRunning || !downloadState.complete || !downloadState.jobs.length) return; resetDownloadQueue(); downloadState.selected = new Set(downloadState.jobs.map(job => job.key)); setDownloadMessage('downloadFound'); }],
+            ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning || !downloadState.complete || !downloadState.jobs.length) return; resetDownloadQueue(); downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
             ['apply', 'downloadApply', () => applySelectionToWebsite()],
             ['next', 'downloadNext', () => applySelectionToWebsite(true)],
             ['stop', 'stopButton', () => { downloadState.stop = true; updateDownloadControls(); }],

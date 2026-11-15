@@ -42,6 +42,8 @@ button,input{margin:4px}td,th{padding:8px}mat-icon{display:inline-block}
 <script>
 'use strict';
 const id=new URLSearchParams(location.search).get('id');
+const officialLinks=id.startsWith('download-official-links')||id==='download-individual-official-links';
+const invalidLinkCases=['download-official-links-foreign','download-official-links-non-http','download-official-links-malformed','download-official-links-collision','download-official-links-ambiguous-row'];
 if(id==='download-account-change'||id==='download-account-queue')window.WIZ_global_data={oPEP7c:'first@example.com'};
 const restore=new URLSearchParams(location.search).get('restore');
 const formatKey='af3-dev-panel-download-format';
@@ -74,7 +76,8 @@ const jobs=[
  {id:'older',name:'outside_older',modified:'2026-11-11 23:59'}
 ];
 if(id==='download-unknown-date')jobs[3]={...jobs[3],modified:'unknown'};
-if(['download-duplicate','download-stable-ids','download-official-links'].includes(id))jobs[3]={...jobs[3],name:jobs[2].name,modified:jobs[2].modified};
+if(officialLinks||['download-duplicate','download-stable-ids'].includes(id))jobs[3]={...jobs[3],name:jobs[2].name,modified:jobs[2].modified};
+if(id==='download-official-links-cross-page')jobs[2]={...jobs[2],name:jobs[1].name,modified:jobs[1].modified};
 if(id==='download-calendar-invalid')jobs[3]={...jobs[3],modified:'2026-02-30 12:00'};
 if(id==='download-clock-invalid')jobs[3]={...jobs[3],modified:'2026-11-12 24:00'};
 if(id==='download-stable-collision')jobs[3]={...jobs[3],id:jobs[2].id};
@@ -143,7 +146,22 @@ function renderRows(){
   const icon=document.createElement('mat-icon');icon.textContent='more_vert';menu.append(icon);options.append(menu);
   menu.onclick=event=>{event.stopPropagation();state.menus.push(job.id);const download=document.createElement('a');download.textContent='Download';download.href='data:application/zip;base64,UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==';download.setAttribute('role','menuitem');download.onclick=event=>{event.preventDefault();state.downloads.push(job.id)};document.getElementById('overlay').replaceChildren(download)};
   row.append(select,statusCell,name,modified,options);body.append(row);row.onclick=()=>state.rowOpens++;
-  if(id==='download-official-links'){const link=document.createElement('a');link.href='/fold/'+job.id;link.textContent='Open job';row.append(link)}
+  if(officialLinks){
+   const link=document.createElement('a');
+   const jobId=id==='download-official-links-collision'&&job.id==='start-late'?'end-early':job.id;
+   const path='/fold/'+jobId;
+   const variants=[path,location.origin+path,'fold/'+jobId,'//'+location.host+path,path+'/0?view=results#model',path+'/'];
+   link.href=id==='download-official-links'?path:variants[(state.visited.length+jobs.indexOf(job))%variants.length];
+   if(id==='download-official-links-absolute')link.href=location.origin+path;
+   if(id==='download-official-links-foreign')link.href='https://unrelated.invalid'+path;
+   if(id==='download-official-links-non-http')link.href='javascript:void('+jobs.indexOf(job)+')';
+   if(id==='download-official-links-malformed')link.href=['/fold/'+job.id+'%ZZ','/fold/'+job.id+'%2Fbad','/fold/'+job.id+'%5Cbad','/fold/'][jobs.indexOf(job)%4];
+   // Like the site, inject an empty router link beside the table cells.
+   row.append(link);
+   if(id==='download-official-links-ambiguous-row'&&job.id==='end-early'){
+    const extra=document.createElement('a');extra.href='/fold/different-job';row.append(extra);
+   }
+  }
  }
  const first=document.querySelector('[aria-label="First page"]'),previous=document.querySelector('[aria-label="Previous page"]'),next=document.querySelector('[aria-label="Next page"]'),last=document.querySelector('[aria-label="Last page"]');
  first.disabled=previous.disabled=state.page===0;next.disabled=last.disabled=state.page===state.pages.length-1;
@@ -183,6 +201,14 @@ const reviewChecks=()=>Array.from(ui('download-results').querySelectorAll('input
 const selectedReview=()=>reviewChecks().filter(element=>element.checked);
 function assertNoScriptDownload(){assert(state.downloads.length===manualRecords&&state.bulkDownloads.length===manualActions&&state.menus.length===0,'A script control triggered native download/menu action')}
 function assertRemovedControls(){for(const name of ['download-run','download-web-controls','download-web-run','download-web-stop','download-location'])assert(!ui(name),'Removed script download control remains: '+name)}
+function assertReviewUnavailable(){
+ const message=ui('download-status').textContent;
+ for(const name of ['download-all','download-clear']){
+  const button=ui(name);button.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+  assert(ui('download-status').textContent===message,'Selection control masked the scan result: '+name);
+  assert(button.disabled,'Selection control is enabled without completed results: '+name);
+ }
+}
 function setFormat(value){ui('download-format').value=value;ui('download-format').dispatchEvent(new Event('change',{bubbles:true}));assert(ui('download-format').value===value,'Download format was not selectable: '+value)}
 function assertAccountSwitchBlocked(){
  const login=ui('account-login');
@@ -224,7 +250,7 @@ async function checkIndividual(){
  const subset=id==='download-individual-subset',ids=subset?['start-late','start-early']:rangeIds;
  assertNativeIds([ids[0]]);assertQueueAt(1,ids.length);
  assert(selectedReview().length===ids.length,'Individual Apply lost the reviewed queue');
- if(id==='download-individual-sequence'||subset){
+ if(id==='download-individual-sequence'||id==='download-individual-official-links'||subset){
   for(let index=0;index<ids.length;index++){
    assertNativeIds([ids[index]]);assertQueueAt(index+1,ids.length);
    assert(selectedReview().length===ids.length,'Next changed the frozen review selection');
@@ -352,13 +378,16 @@ async function checkIndividual(){
  }else if(id.startsWith('download-individual-')){
   await checkIndividual();
  }else if(id==='download-invalid-range'){
-  await scan('2026-11-14','2026-11-12');assert(state.changes===0&&ui('download-apply').disabled,'Reversed range was actionable');
-  await scan('','2026-11-13');assert(state.changes===0&&ui('download-apply').disabled,'Empty range was actionable');
+  await scan('2026-11-14','2026-11-12');assert(state.changes===0&&ui('download-apply').disabled,'Reversed range was actionable');assertReviewUnavailable();
+  await scan('','2026-11-13');assert(state.changes===0&&ui('download-apply').disabled,'Empty range was actionable');assertReviewUnavailable();
  }else if(id==='download-zero'||id==='download-empty-history'){
-  await scan('2020-01-01','2020-01-01');assert(reviewChecks().length===0&&ui('download-apply').disabled,'Zero matches allowed application');
- }else if(['download-duplicate','download-stable-collision','download-stale-page','download-repeating-page','download-stop-scan','download-context-change','download-noncompleted','download-examples-filter'].includes(id)){
-  await scan();assert(ui('download-apply').disabled,'Incomplete/ambiguous/unsupported scan allowed application');
-  assert(state.nativeCheckboxClicks===0&&state.nativeClears===0,'Failed scan modified native selection');
+  await scan('2020-01-01','2020-01-01');assert(reviewChecks().length===0&&ui('download-apply').disabled,'Zero matches allowed application');assertReviewUnavailable();
+ }else if([...invalidLinkCases,'download-duplicate','download-stable-collision','download-stale-page','download-repeating-page','download-stop-scan','download-context-change','download-noncompleted','download-examples-filter'].includes(id)){
+  const selected=[...state.selected];
+  await scan();assert(ui('download-apply').disabled,'Incomplete/ambiguous/unsupported scan allowed application');assertReviewUnavailable();
+  assert(state.nativeCheckboxClicks===0&&state.nativeInputChanges===0&&state.nativeClears===0,'Failed scan modified native selection');assertNativeIds(selected);
+  ui('download-apply').disabled=false;await apply();
+  assert(state.nativeCheckboxClicks===0&&state.nativeInputChanges===0&&state.nativeClears===0,'Forced Apply bypassed a failed scan');assertNativeIds(selected);
  }else if(id==='download-ready-states'){
   await until(()=>/就绪|ready/i.test(ui('download-ready-text').textContent));
   setFilter('draft');await until(()=>/待命|待机|等待|waiting|standby/i.test(ui('download-ready-text').textContent));
@@ -369,7 +398,8 @@ async function checkIndividual(){
  }else{
   const single=id==='download-single-day';await scan(single?'2026-11-13':'2026-11-12','2026-11-13');
   const expected=id==='download-over-fifty'?51:single?2:['download-unknown-date','download-calendar-invalid','download-clock-invalid'].includes(id)?3:4;
-  assert(reviewChecks().length===expected,'Wrong date range count: '+reviewChecks().length+' expected '+expected);
+  assert(reviewChecks().length===expected,'Wrong date range count: '+reviewChecks().length+' expected '+expected+'; '+ui('download-status').textContent);
+  assert(new Set(reviewChecks().map(input=>input.dataset.jobKey)).size===expected,'Distinct review tasks share an identity');
   assertNoScriptDownload();assert(state.nativeCheckboxClicks===0&&state.nativeClears===0,'Scanning changed native selection');
   assert(new Set(state.visited).size===3,'Scan omitted a native page');
   if(['download-unknown-date','download-calendar-invalid','download-clock-invalid'].includes(id))assert(/无法|识别|未知|unknown|unreadable|invalid/i.test(ui('download-status').textContent),'Unrecognized date was not reported');
@@ -424,6 +454,14 @@ async function checkIndividual(){
    await apply();
    const targetIds=single?['end-late','end-early']:id==='download-over-fifty'?jobs.map(job=>job.id):rangeIds.filter(jobId=>!(['download-unknown-date','download-calendar-invalid','download-clock-invalid'].includes(id)&&jobId==='start-late'));
    assertNativeIds(targetIds);assert(selectedReview().length===expected,'Application lost review choices');
+   if(officialLinks){
+    for(const jobId of ['end-early','start-late']){
+     ui('download-clear').click();
+     const choice=reviewChecks().find(input=>input.dataset.jobKey==='id:'+jobId);
+     assert(choice,'Website job ID was not normalized: '+jobId);choice.click();
+     await apply();assertNativeIds([jobId]);
+    }
+   }
    if(id==='download-preselection'||id==='download-late-preselection')assert(state.nativeClears===1,'Prior native selection was not globally replaced');
    if(id==='download-repeat-apply'){await apply();assertNativeIds(rangeIds);assert(state.nativeClears===1,'Repeat apply failed to reconcile existing selection')}
    if(id==='download-over-fifty'){
@@ -454,7 +492,10 @@ SCENARIOS = [
     'download-day-selection', 'download-zero', 'download-invalid-range',
     'download-unknown-date', 'download-calendar-invalid', 'download-clock-invalid',
     'download-duplicate', 'download-stable-ids', 'download-stable-collision',
-    'download-official-links', 'download-preselection', 'download-late-preselection',
+    'download-official-links', 'download-official-links-absolute', 'download-official-links-mixed', 'download-official-links-cross-page',
+    'download-official-links-foreign', 'download-official-links-non-http', 'download-official-links-malformed',
+    'download-official-links-collision', 'download-official-links-ambiguous-row',
+    'download-preselection', 'download-late-preselection',
     'download-noncompleted', 'download-examples-filter', 'download-stop-scan',
     'download-context-change', 'download-busy', 'download-stale-page',
     'download-repeating-page', 'download-loading-page', 'download-loading-paginator',
@@ -466,7 +507,7 @@ SCENARIOS = [
     'download-repeat-apply', 'download-over-fifty', 'download-manual-native',
     'download-ready-states',
     'download-format-default', 'download-format-persistence',
-    'download-individual-sequence', 'download-individual-subset',
+    'download-individual-sequence', 'download-individual-official-links', 'download-individual-subset',
     'download-individual-preselection', 'download-individual-repeat-apply',
     'download-individual-item-change', 'download-individual-day-change',
     'download-individual-clear-all', 'download-individual-all-change',
