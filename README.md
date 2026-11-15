@@ -4,14 +4,14 @@
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 3.0.0-dev.9](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 3.0.0-dev.10](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 3.0 的账户管理、按日期勾选、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行，并在 Edge 扩展详情中开启“允许在 InPrivate 中使用”。
 3. 若要在普通窗口与 InPrivate 共用账号目录，在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `3.0.0-dev.9`。更新后至少在普通窗口打开一次官网，以导入普通窗口原有账户列表。网站控件与通知仍需使用英文。
+4. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `3.0.0-dev.10`。更新后至少在普通窗口打开一次官网，以导入普通窗口原有账户列表。网站控件与通知仍需使用英文。
 5. 在 History 中仅选中 `Saved draft` 才显示“就绪: 提交草稿”，仅选中 `Failed` 才显示失败重跑就绪；混选或未选标签时待机并禁用启动。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 6. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 7. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
@@ -25,6 +25,12 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 在 Tampermonkey 的脚本设置中启用检查更新即可接收后续开发版；也可以手动“检查更新”。
 
 ## 本轮改动
+
+### 3.0.0-dev.10 从原生菜单读取任务 ID
+
+官网实际历史行可能既没有 ID 属性，也不包含结果链接；dev.9 的链接格式兼容不能解决这种情况。现在先读取行内 ID；没有时，只打开该行的原生“三点菜单”，读取其 `Open results` 链接中的任务 ID，再通过同一个按钮关闭菜单，不点击菜单项、不打开结果、不发起下载。名称和 Modified 时间相同的不同任务保留为独立条目。
+
+查找和应用期间可看到原生菜单短暂打开、关闭；任务较多时需要逐项读取，请勿同时操作官网。已有菜单或对话框打开、菜单归属变化、读取期间任务行被替换或账号/筛选变化时停止，不接管用户菜单；按停止后仍清理自己打开的菜单。勾选后官网重建同一任务行时，会重新读取候选任务的菜单 ID，确认唯一一致后才继续；不读取已脱离页面的旧复选框。每次应用及逐个切换均重新验证 ID 与复选框，不按页码、行号或缓存的 DOM 编号猜选。
 
 ### 3.0.0-dev.9 同名下载任务识别
 
@@ -81,11 +87,11 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 邮箱、备注和额度记录保存在 Tampermonkey 的本机脚本存储中，同一浏览器配置内的标签页共用；不同浏览器配置不会共享记录。清除 Tampermonkey 扩展数据会删除记录。旧网站存储会在首次运行时合并导入；内容损坏时不会自动覆盖。手动添加账号只记录邮箱和备注，不支持免登录查询其他账号额度。
 
-### 按日期勾选，再用官网下载（DEV 3.0.0-dev.9）
+### 按日期勾选，再用官网下载（DEV 3.0.0-dev.10）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。面板会扫描当前搜索结果的所有分页，保留官网已有的复选框选中状态。
 2. 在面板下方常驻的“下载任务”区域，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。
-3. 查找完成后，按天或逐个任务核对勾选，也可用“全选”“清空选择”。优先通过官网结果链接中的唯一任务 ID 区分任务，同名且 Modified 时间相同不影响不同 ID 的任务分别选择。日期无法识别的任务不纳入结果；若同名同时间的任务没有可读取的唯一 ID，仍需缩小官网搜索范围或手动勾选下载。查找失败或结果为空时，“全选 / 清空选择”不可用，原始提示会保留。
+3. 查找完成后，按天或逐个任务核对勾选，也可用“全选”“清空选择”。优先读取行内 ID；没有时会逐行打开原生三点菜单、只读取 `Open results` 中的 ID，再关闭自己的菜单。同名且 Modified 时间相同的不同 ID 任务分别保留。日期无法识别的任务不纳入结果；无法安全读取菜单或任务身份冲突时停止。查找失败或结果为空时，“全选 / 清空选择”不可用，原始提示会保留。
 4. 选择“合并一个 ZIP（官网最多 50 个）”或“分开下载（逐个勾选）”，再点击“应用到官网勾选”并确认替换提示。合并模式勾选全部已核对任务；分开模式每次只勾选一个任务。两种模式都**只应用勾选，不发起下载**。
 5. 合并模式：手动点击官网原生批量 `Download`。分开模式：核对面板显示的当前任务名称、Modified 时间与序号，手动点击官网原生 `Download`；完成后点面板“下一任务”切换勾选，再手动下载。到最后一个任务时“下一任务”禁用。也可直接使用官网任务行的 `Download`。
 

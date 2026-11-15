@@ -1,7 +1,9 @@
 """Account-free browser tests for date selection and native checkbox application.
 
 The script may scan pages and apply reviewed website selections. It must never
-open a download menu, click a download button, or transfer a file. Only explicit
+activate a download menu item, click a download button, or transfer a file.
+Menu-identity cases may open More options solely to read its Open results link.
+Only explicit
 manual-native scenarios click synthetic website Download controls afterward.
 AF_DOWNLOAD_TEST_CASES selects comma-separated scenarios.
 """
@@ -43,8 +45,10 @@ button,input{margin:4px}td,th{padding:8px}mat-icon{display:inline-block}
 'use strict';
 const id=new URLSearchParams(location.search).get('id');
 const officialLinks=id.startsWith('download-official-links')||id==='download-individual-official-links';
+const menuIdentity=id.startsWith('download-menu-')||id.startsWith('download-individual-menu');
+const failedMenuCases=['download-menu-stop-before-binding','download-menu-missing','download-menu-conflict','download-menu-foreign','download-menu-malformed','download-menu-collision','download-menu-stop','download-menu-context','download-menu-account','download-menu-row-replaced','download-menu-busy','download-menu-preopened','download-menu-takeover','download-menu-panel-replaced','download-menu-owner-changed'];
 const invalidLinkCases=['download-official-links-foreign','download-official-links-non-http','download-official-links-malformed','download-official-links-collision','download-official-links-ambiguous-row'];
-if(id==='download-account-change'||id==='download-account-queue')window.WIZ_global_data={oPEP7c:'first@example.com'};
+if(id==='download-account-change'||id==='download-account-queue'||id==='download-menu-account')window.WIZ_global_data={oPEP7c:'first@example.com'};
 const restore=new URLSearchParams(location.search).get('restore');
 const formatKey='af3-dev-panel-download-format';
 if(id==='download-format-default')localStorage.setItem(formatKey,'unsupported-format');
@@ -76,18 +80,60 @@ const jobs=[
  {id:'older',name:'outside_older',modified:'2026-11-11 23:59'}
 ];
 if(id==='download-unknown-date')jobs[3]={...jobs[3],modified:'unknown'};
-if(officialLinks||['download-duplicate','download-stable-ids'].includes(id))jobs[3]={...jobs[3],name:jobs[2].name,modified:jobs[2].modified};
-if(id==='download-official-links-cross-page')jobs[2]={...jobs[2],name:jobs[1].name,modified:jobs[1].modified};
+if(officialLinks||menuIdentity||['download-duplicate','download-stable-ids'].includes(id))jobs[3]={...jobs[3],name:jobs[2].name,modified:jobs[2].modified};
+if(id==='download-official-links-cross-page'||id==='download-menu-cross-page')jobs[2]={...jobs[2],name:jobs[1].name,modified:jobs[1].modified};
 if(id==='download-calendar-invalid')jobs[3]={...jobs[3],modified:'2026-02-30 12:00'};
 if(id==='download-clock-invalid')jobs[3]={...jobs[3],modified:'2026-11-12 24:00'};
 if(id==='download-stable-collision')jobs[3]={...jobs[3],id:jobs[2].id};
-if(['download-preselection','download-cancel-apply','download-clear-failure','download-confirm-context-change','download-individual-preselection'].includes(id)){state.selected.add('older');state.selected.add('hidden-old-selection')}
+if(['download-preselection','download-menu-preselection','download-cancel-apply','download-clear-failure','download-confirm-context-change','download-individual-preselection'].includes(id)){state.selected.add('older');state.selected.add('hidden-old-selection')}
 if(id==='download-over-fifty')jobs.splice(0,jobs.length,...Array.from({length:51},(_,index)=>({id:'many-'+index,name:'batch_'+index,modified:'2026-11-13 12:00'})));
 const pageSize=id==='download-over-fifty'?20:2;
 const pageOption=document.querySelector('mat-paginator select option');pageOption.value=String(pageSize);pageOption.textContent=String(pageSize);
 state.pages=Array.from({length:Math.ceil(jobs.length/pageSize)},(_,index)=>jobs.slice(index*pageSize,(index+1)*pageSize));
 if(id==='download-reset-first')state.page=2;
 const submissionStatuses=[];
+let closedIdentityMenus=0;
+function showIdentityMenu(button,job){
+ const panel=document.createElement('div');panel.id='native-menu-'+state.menus.length;panel.setAttribute('role','menu');panel.tabIndex=-1;
+ const bind=()=>{if(panel.isConnected){button.setAttribute('aria-expanded','true');button.setAttribute('aria-controls',panel.id)}};
+ const close=()=>{
+  if(button.getAttribute('aria-controls')!==panel.id)return;
+  button.setAttribute('aria-expanded','false');button.removeAttribute('aria-controls');panel.remove();closedIdentityMenus++;
+  if(id==='download-menu-replaced-before-click'&&state.phase==='active'&&job.id==='end-late'&&!state.stopTriggered){
+   state.stopTriggered=true;job.publicId='replacement-job';renderRows();
+  }
+ };
+ panel.onkeydown=event=>{if(event.key==='Escape'){event.stopPropagation();close()}};
+ const addLink=()=>{
+  if(!panel.isConnected||id==='download-menu-missing')return;
+  const result=document.createElement('a');result.setAttribute('role','menuitem');result.textContent='Open results';
+  const jobId=id==='download-menu-collision'&&job.id==='start-late'?'end-early':job.publicId||job.id;
+  result.href=(id==='download-menu-foreign'?'https://unrelated.invalid':'')+'/fold/'+jobId;
+  if(id==='download-menu-malformed')result.href='/fold/'+jobId+'%2Fwrong';
+  result.onclick=event=>{event.preventDefault();state.rowOpens++};panel.append(result);
+  if(id==='download-menu-equivalent'){const extra=result.cloneNode(true);extra.href=location.origin+'/fold/'+jobId+'/0';extra.onclick=result.onclick;panel.append(extra)}
+  if(id==='download-menu-conflict'){const extra=result.cloneNode(true);extra.href='/fold/conflicting-job';extra.onclick=result.onclick;panel.append(extra)}
+ };
+ const download=document.createElement('a');download.href='/_/v2/folds/'+job.id+'/folds.zip';download.setAttribute('download','');download.setAttribute('role','menuitem');download.textContent='Download';download.onclick=event=>{event.preventDefault();state.downloads.push(job.id)};panel.append(download);
+ for(const [label,key] of [['Clone and reuse','clones'],['Delete','deletes']]){const action=document.createElement('button');action.textContent=label;action.onclick=()=>state[key]++;panel.append(action)}
+ document.getElementById('overlay').append(panel);
+ if(id==='download-menu-aria-delayed'||id==='download-menu-stop-before-binding')setTimeout(bind,80);else bind();
+ const first=state.menus.length===1;
+ if(first&&id==='download-menu-stop-before-binding')setTimeout(()=>ui('download-stop').click(),10);
+ if(first&&['download-menu-stop','download-menu-context','download-menu-account','download-menu-row-replaced','download-menu-takeover','download-menu-panel-replaced','download-menu-owner-changed'].includes(id))setTimeout(()=>{
+  if(id==='download-menu-stop')ui('download-stop').click();
+  else if(id==='download-menu-context')setFilter('draft');
+  else if(id==='download-menu-account')window.WIZ_global_data.oPEP7c='second@example.com';
+  else if(id==='download-menu-row-replaced')renderRows();
+  else if(id==='download-menu-panel-replaced'){
+   const user=panel.cloneNode(true);user.dataset.userOwned='true';user.textContent='User menu';panel.replaceWith(user);closedIdentityMenus++;
+  }else if(id==='download-menu-owner-changed'){
+   const user=document.createElement('button');user.setAttribute('aria-expanded','true');user.setAttribute('aria-controls',panel.id);document.body.append(user);
+   panel.dataset.userOwned='true';panel.onkeydown=()=>{state.userMenuEvents=(state.userMenuEvents||0)+1};
+  }else{close();const user=document.createElement('div');user.id='user-owned-menu';user.setAttribute('role','menu');user.textContent='User menu';document.getElementById('overlay').append(user)}
+ },10);
+ setTimeout(addLink,first&&failedMenuCases.includes(id)?60:id==='download-menu-delayed'?80:0);
+}
 function recordReadiness(){const text=ui('download-ready-text')?.textContent;if(text)state.readiness.push(text);const top=ui('status-text')?.textContent;if(top)submissionStatuses.push(top)}
 function nativeCheckbox(jobId){return Array.from(document.querySelectorAll('tbody tr')).find(row=>row.dataset.fixtureJob===jobId)?.querySelector('.mat-column-selected input')}
 function setFilter(name){for(const element of document.querySelectorAll('#filters button'))element.setAttribute('aria-selected',String(element.id===name+'-filter'))}
@@ -115,6 +161,10 @@ function renderNativeSelection(){
 }
 function nativeSelectionChanged(job,checkbox){
  state.nativeInputChanges++;checkbox.checked?state.selected.add(job.id):state.selected.delete(job.id);renderNativeSelection();recordReadiness();
+ if(id==='download-menu-rerender'||id==='download-individual-menu-rerender'){state.rerenders=(state.rerenders||0)+1;renderRows()}
+ if(id==='download-menu-replaced-after-click'&&state.phase==='active'&&job.id==='end-late'&&!state.stopTriggered){
+  state.stopTriggered=true;job.publicId='replacement-job';renderRows();return;
+ }
  if(id==='download-individual-stop-next'&&state.phase==='next'&&!state.stopTriggered){state.stopTriggered=true;setTimeout(()=>ui('download-stop').click(),10);return}
  if(state.phase!=='active'||state.stopTriggered)return;
  if(['download-stop-apply','download-stop-restart','download-apply-native-change','download-apply-context-change','download-apply-metadata-change','download-apply-offpage-metadata-change'].includes(id)){
@@ -142,9 +192,10 @@ function renderRows(){
   const name=document.createElement('td');name.className='mat-column-name';name.textContent=job.name;
   const modified=document.createElement('td');modified.className='mat-column-date';modified.textContent=job.modified;
   const options=document.createElement('td');options.className='mat-column-options';
-  const menu=document.createElement('button');menu.className='mat-mdc-menu-trigger';menu.setAttribute('aria-label','More options');
+  const menu=document.createElement('button');menu.className='mat-mdc-menu-trigger'+(menuIdentity?' fold-actions':'');menu.setAttribute('aria-label','More options');
+  if(menuIdentity){menu.setAttribute('aria-haspopup','menu');menu.setAttribute('aria-expanded','false')}
   const icon=document.createElement('mat-icon');icon.textContent='more_vert';menu.append(icon);options.append(menu);
-  menu.onclick=event=>{event.stopPropagation();state.menus.push(job.id);const download=document.createElement('a');download.textContent='Download';download.href='data:application/zip;base64,UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==';download.setAttribute('role','menuitem');download.onclick=event=>{event.preventDefault();state.downloads.push(job.id)};document.getElementById('overlay').replaceChildren(download)};
+  menu.onclick=event=>{event.stopPropagation();if(menuIdentity&&menu.getAttribute('aria-expanded')==='true'){document.getElementById(menu.getAttribute('aria-controls'))?.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));return}state.menus.push(job.id);if(menuIdentity){showIdentityMenu(menu,job);return}const download=document.createElement('a');download.textContent='Download';download.href='data:application/zip;base64,UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==';download.setAttribute('role','menuitem');download.onclick=event=>{event.preventDefault();state.downloads.push(job.id)};document.getElementById('overlay').replaceChildren(download)};
   row.append(select,statusCell,name,modified,options);body.append(row);row.onclick=()=>state.rowOpens++;
   if(officialLinks){
    const link=document.createElement('a');
@@ -156,7 +207,7 @@ function renderRows(){
    if(id==='download-official-links-foreign')link.href='https://unrelated.invalid'+path;
    if(id==='download-official-links-non-http')link.href='javascript:void('+jobs.indexOf(job)+')';
    if(id==='download-official-links-malformed')link.href=['/fold/'+job.id+'%ZZ','/fold/'+job.id+'%2Fbad','/fold/'+job.id+'%5Cbad','/fold/'][jobs.indexOf(job)%4];
-   // Like the site, inject an empty router link beside the table cells.
+   // Direct-link variant; real Material rows can omit this link entirely.
    row.append(link);
    if(id==='download-official-links-ambiguous-row'&&job.id==='end-early'){
     const extra=document.createElement('a');extra.href='/fold/different-job';row.append(extra);
@@ -193,13 +244,17 @@ selectAll.onchange=()=>{for(const job of state.pages[state.page])selectAll.check
 if(id==='download-noncompleted')setFilter('draft');
 if(id==='download-examples-filter')document.getElementById('examples-filter').setAttribute('aria-selected','true');
 renderRows();
+if(id==='download-menu-busy'||id==='download-menu-preopened'){
+ const user=document.createElement('div');user.id='user-owned-menu';user.setAttribute('role','menu');user.textContent='User menu';document.getElementById('overlay').append(user);
+ if(id==='download-menu-preopened'){const trigger=document.querySelector('button.fold-actions');trigger.setAttribute('aria-expanded','true');trigger.setAttribute('aria-controls',user.id)}
+}
 if(id==='download-empty-history'){
  document.querySelector('table').remove();document.querySelector('mat-paginator').remove();
  const empty=document.createElement('div');empty.className='no-results';empty.textContent='No jobs found with filters specified';document.querySelector('gdm-af-history').append(empty);
 }
 const reviewChecks=()=>Array.from(ui('download-results').querySelectorAll('input[type="checkbox"][data-job-key]'));
 const selectedReview=()=>reviewChecks().filter(element=>element.checked);
-function assertNoScriptDownload(){assert(state.downloads.length===manualRecords&&state.bulkDownloads.length===manualActions&&state.menus.length===0,'A script control triggered native download/menu action')}
+function assertNoScriptDownload(){assert(state.downloads.length===manualRecords&&state.bulkDownloads.length===manualActions&&(menuIdentity||state.menus.length===0),'A script control triggered native download/menu action')}
 function assertRemovedControls(){for(const name of ['download-run','download-web-controls','download-web-run','download-web-stop','download-location'])assert(!ui(name),'Removed script download control remains: '+name)}
 function assertReviewUnavailable(){
  const message=ui('download-status').textContent;
@@ -246,11 +301,15 @@ async function assertInvalidNext(){
 async function checkIndividual(){
  await scan();assert(reviewChecks().length===4,'Individual scan lost date matches');assertNoScriptDownload();
  if(id==='download-individual-subset')ui('download-results').querySelector('input[data-day="2026-11-13"]').click();
+ if(id==='download-individual-menu-swap'){
+  ui('download-clear').click();
+  for(const jobId of ['end-early','start-late'])reviewChecks().find(input=>input.dataset.jobKey==='id:'+jobId).click();
+ }
  await apply();
- const subset=id==='download-individual-subset',ids=subset?['start-late','start-early']:rangeIds;
+ const subset=id==='download-individual-subset',ids=id==='download-individual-menu-swap'?['end-early','start-late']:subset?['start-late','start-early']:rangeIds;
  assertNativeIds([ids[0]]);assertQueueAt(1,ids.length);
  assert(selectedReview().length===ids.length,'Individual Apply lost the reviewed queue');
- if(id==='download-individual-sequence'||id==='download-individual-official-links'||subset){
+ if(id==='download-individual-sequence'||id==='download-individual-official-links'||id==='download-individual-menu'||id==='download-individual-menu-rerender'||subset){
   for(let index=0;index<ids.length;index++){
    assertNativeIds([ids[index]]);assertQueueAt(index+1,ids.length);
    assert(selectedReview().length===ids.length,'Next changed the frozen review selection');
@@ -268,10 +327,11 @@ async function checkIndividual(){
  }else if(id==='download-individual-repeat-apply'){
   await next();assertNativeIds([ids[1]]);assertQueueAt(2,ids.length);
   await apply();assertNativeIds([ids[0]]);assertQueueAt(1,ids.length);
- }else if(id==='download-individual-native-identity-swap'){
+ }else if(id==='download-individual-native-identity-swap'||id==='download-individual-menu-swap'){
   const clears=state.nativeClears,changes=state.nativeInputChanges;
-  state.selected.clear();state.selected.add('newer');renderNativeSelection();
-  await next();assertNativeIds(['newer']);
+  const swapped=id==='download-individual-menu-swap'?'start-late':'newer';
+  state.selected.clear();state.selected.add(swapped);renderNativeSelection();
+  await next();assertNativeIds([swapped]);
   assert(state.nativeClears===clears&&state.nativeInputChanges===changes,'Next cleared or replaced a silently changed native identity');
   assert(ui('download-next').disabled&&ui('download-queue').hidden,'Native identity mismatch did not invalidate the individual queue');
  }else if(id==='download-individual-stop-next'||id==='download-individual-error-next'){
@@ -382,7 +442,7 @@ async function checkIndividual(){
   await scan('','2026-11-13');assert(state.changes===0&&ui('download-apply').disabled,'Empty range was actionable');assertReviewUnavailable();
  }else if(id==='download-zero'||id==='download-empty-history'){
   await scan('2020-01-01','2020-01-01');assert(reviewChecks().length===0&&ui('download-apply').disabled,'Zero matches allowed application');assertReviewUnavailable();
- }else if([...invalidLinkCases,'download-duplicate','download-stable-collision','download-stale-page','download-repeating-page','download-stop-scan','download-context-change','download-noncompleted','download-examples-filter'].includes(id)){
+ }else if([...invalidLinkCases,...failedMenuCases,'download-duplicate','download-stable-collision','download-stale-page','download-repeating-page','download-stop-scan','download-context-change','download-noncompleted','download-examples-filter'].includes(id)){
   const selected=[...state.selected];
   await scan();assert(ui('download-apply').disabled,'Incomplete/ambiguous/unsupported scan allowed application');assertReviewUnavailable();
   assert(state.nativeCheckboxClicks===0&&state.nativeInputChanges===0&&state.nativeClears===0,'Failed scan modified native selection');assertNativeIds(selected);
@@ -435,6 +495,11 @@ async function checkIndividual(){
    assertNativeIds(['older','hidden-old-selection']);assert(selectedReview().length===4,'Confirmation context change lost review choices');
   }else if(id==='download-clear-failure'){
    await apply();assert(state.nativeClears===1&&state.nativeCheckboxClicks===0&&selectedReview().length===4,'Failed native clear did not abort safely');
+  }else if(id==='download-menu-replaced-before-click'||id==='download-menu-replaced-after-click'){
+   await apply();assert(state.stopTriggered,'Row identity replacement was not exercised');
+   assert(state.nativeInputChanges===(id==='download-menu-replaced-after-click'?1:0),'A replacement row was clicked or counted from a detached checkbox');
+   assert(ui('download-apply').disabled&&selectedReview().length===4,'Row replacement retained an actionable scan or lost reviews');
+   const changes=state.nativeInputChanges;await pause(200);assert(state.nativeInputChanges===changes,'Row replacement allowed late checkbox actions');
   }else if(id==='download-partial-error'){
    await apply();assertNativeIds(['end-late']);assert(selectedReview().length===4,'Partial apply lost review choices');
   }else if(['download-stop-apply','download-stop-restart','download-apply-native-change','download-apply-context-change','download-apply-metadata-change','download-apply-offpage-metadata-change'].includes(id)){
@@ -449,12 +514,13 @@ async function checkIndividual(){
    const changes=state.nativeInputChanges;await pause(300);assert(state.nativeInputChanges===changes,'Stop/change allowed a late checkbox action');
    if(id==='download-stop-restart'){await apply();assertNativeIds(rangeIds)}
   }else{
-   if(id==='download-preselection')assertNativeIds(['older','hidden-old-selection']);
+   if(id==='download-preselection'||id==='download-menu-preselection')assertNativeIds(['older','hidden-old-selection']);
    if(id==='download-late-preselection'){state.selected.add('older');renderNativeSelection()}
    await apply();
    const targetIds=single?['end-late','end-early']:id==='download-over-fifty'?jobs.map(job=>job.id):rangeIds.filter(jobId=>!(['download-unknown-date','download-calendar-invalid','download-clock-invalid'].includes(id)&&jobId==='start-late'));
    assertNativeIds(targetIds);assert(selectedReview().length===expected,'Application lost review choices');
-   if(officialLinks){
+   if(id==='download-menu-preselection')assert(state.nativeClears===1,'Menu-ID application did not globally replace the old native selection');
+   if(officialLinks||menuIdentity){
     for(const jobId of ['end-early','start-late']){
      ui('download-clear').click();
      const choice=reviewChecks().find(input=>input.dataset.jobKey==='id:'+jobId);
@@ -475,7 +541,16 @@ async function checkIndividual(){
  }
  assertRemovedControls();
  assertNoScriptDownload();
- assert(state.menus.length===0,'Script opened a native task menu');
+ assert(menuIdentity||state.menus.length===0,'Script opened a native task menu');
+ if(menuIdentity){
+  const transferred=id==='download-menu-owner-changed';
+  assert(closedIdentityMenus===state.menus.length-(transferred?1:0),'An identity menu was left open');
+  assert(!document.querySelector('[role="menu"]:not(#user-owned-menu):not([data-user-owned])'),'Owned menu was not cleaned up');
+  if(['download-menu-busy','download-menu-preopened','download-menu-takeover'].includes(id))assert(document.getElementById('user-owned-menu'),'An unrelated user menu was closed');
+  if(['download-menu-busy','download-menu-preopened'].includes(id))assert(state.menus.length===0,'An existing user menu was toggled');
+  if(transferred||id==='download-menu-panel-replaced')assert(document.querySelector('[role="menu"][data-user-owned]')&&!state.userMenuEvents,'A taken-over menu received scripted actions');
+ }
+ if(id==='download-menu-rerender'||id==='download-individual-menu-rerender')assert(state.rerenders===state.nativeInputChanges&&state.rerenders>=4,'Unchanged-ID row replacement was not exercised for every selected job');
  assert(state.transportCalls.length===0,'Independent transfer was invoked: '+state.transportCalls);
  assert(state.submits===0&&state.clones===0&&state.deletes===0&&state.rowOpens===0,'Unrelated native action: '+JSON.stringify(state));
  assert(state.errors.length===0,state.errors.join('; '));
@@ -492,6 +567,11 @@ SCENARIOS = [
     'download-day-selection', 'download-zero', 'download-invalid-range',
     'download-unknown-date', 'download-calendar-invalid', 'download-clock-invalid',
     'download-duplicate', 'download-stable-ids', 'download-stable-collision',
+    'download-menu-ids', 'download-menu-cross-page', 'download-menu-delayed', 'download-menu-aria-delayed', 'download-menu-stop-before-binding', 'download-menu-preselection',
+    'download-menu-rerender', 'download-individual-menu-rerender',
+    'download-menu-replaced-before-click', 'download-menu-replaced-after-click', 'download-individual-menu', 'download-individual-menu-swap',
+    'download-menu-missing', 'download-menu-conflict', 'download-menu-foreign', 'download-menu-malformed', 'download-menu-collision', 'download-menu-equivalent',
+    'download-menu-stop', 'download-menu-context', 'download-menu-account', 'download-menu-row-replaced', 'download-menu-busy', 'download-menu-preopened', 'download-menu-takeover', 'download-menu-panel-replaced', 'download-menu-owner-changed',
     'download-official-links', 'download-official-links-absolute', 'download-official-links-mixed', 'download-official-links-cross-page',
     'download-official-links-foreign', 'download-official-links-non-http', 'download-official-links-malformed',
     'download-official-links-collision', 'download-official-links-ambiguous-row',
@@ -525,7 +605,7 @@ def main():
     runner.__globals__.update(
         CASE=CASE,
         SCENARIOS=SCENARIOS,
-        PAGE=harness['PAGE'].replace('85000', '25000').replace('85 seconds', '25 seconds'),
+        PAGE=harness['PAGE'].replace('85000', "id.includes('-menu')?60000:25000").replace('85 seconds', 'the case deadline'),
     )
     os.environ['AF_TEST_CASES'] = os.environ.get('AF_DOWNLOAD_TEST_CASES', ','.join(SCENARIOS))
     runner()

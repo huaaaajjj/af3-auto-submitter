@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.9
+// @version      3.0.0-dev.10
 // @description  3.0 开发版：浅色科研工作台、固定导航与响应式分区；保留跨普通与 InPrivate 的账户记录、提交确认、按日期勾选和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.9';
+    const SCRIPT_VERSION = '3.0.0-dev.10';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -618,6 +618,8 @@
         downloadNoHistory: 'Cannot identify one history table with Name and Modified columns.',
         downloadPageError: 'Pagination did not finish or repeated a page. Find jobs again after checking the website.',
         downloadContextChanged: 'The history filters, search, order, or page size changed. Find jobs again.',
+        downloadMenuBusy: 'A website menu or dialog is open. Close it before finding or selecting jobs.',
+        downloadMenuIdentity: 'Could not safely read or close this job’s result menu. Check the website and find jobs again.',
         downloadIdentityConflict: 'The website row has conflicting job IDs. Refresh the history and find jobs again.',
         downloadAmbiguous: 'Some jobs have identical names and Modified times, but no readable unique job ID. Narrow the website search or select and download those jobs manually.',
         downloadNoSelection: 'Select at least one job from a completed scan.',
@@ -662,6 +664,8 @@
             downloadNoHistory: '未能识别唯一的 Name / Modified 历史列表。',
             downloadPageError: '分页未完成或重复，请核对官网后重新查找任务。',
             downloadContextChanged: '官网的筛选、搜索、排序或每页数量已变化，请重新查找任务。',
+            downloadMenuBusy: '官网菜单或对话框已打开，请先关闭，再查找或应用勾选。',
+            downloadMenuIdentity: '未能安全读取或关闭该任务的结果菜单，已停止；请检查官网后重新查找。',
             downloadIdentityConflict: '官网任务行的唯一标识有冲突，已停止；请刷新官网历史列表后重新查找。',
             downloadAmbiguous: '有同名且 Modified 时间相同的任务，但未能读取官网唯一任务 ID。请缩小官网搜索范围，或在官网手动勾选下载。',
             downloadNoSelection: '请先完成查找，并至少勾选一个任务。',
@@ -1788,6 +1792,25 @@
         checkDownloadActive();
     }
 
+    function readDownloadIdentity(root) {
+        const ids = new Set();
+        const declaredId = root.getAttribute('data-job-id');
+        if (declaredId) ids.add(declaredId);
+        for (const anchor of root.querySelectorAll('a[href]')) {
+            let url, linkId;
+            try {
+                url = new URL(anchor.getAttribute('href'), document.baseURI);
+                const path = /^\/(?:job|jobs|fold)\/([^/]+)(?:\/\d+)?\/?$/.exec(url.pathname);
+                if (!/^https?:$/.test(url.protocol) || url.origin !== location.origin || url.username || url.password || !path) continue;
+                linkId = decodeURIComponent(path[1]);
+            } catch (_) { continue; }
+            if (!linkId || /[\\/\s?#\x00-\x1f\x7f]/.test(linkId)) continue;
+            ids.add(linkId);
+        }
+        if (ids.size > 1) throw new Error(t('downloadIdentityConflict'));
+        return ids.values().next().value;
+    }
+
     function readDownloadPage() {
         const { table, root, nameIndex, dateIndex } = getDownloadHistory();
         const rows = Array.from(table?.querySelectorAll('tbody tr, tr.mat-mdc-row, tr[mat-row]') || []).filter(downloadVisible);
@@ -1797,32 +1820,10 @@
             const modified = downloadText(cells[dateIndex]);
             const match = /^(\d{4}-\d{2}-\d{2})(?:\s+(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?)?$/.exec(modified);
             const day = match && validDownloadDay(match[1]) ? match[1] : null;
-            // Normalize public result links to the job ID, not their URL spelling.
-            // Never use a row index: identical names/times can move across pages.
-            const ids = new Set();
-            const declaredId = row.getAttribute('data-job-id');
-            if (declaredId) ids.add(declaredId);
-            for (const anchor of row.querySelectorAll('a[href]')) {
-                let url, linkId;
-                try {
-                    url = new URL(anchor.getAttribute('href'), document.baseURI);
-                    const path = /^\/(?:job|jobs|fold)\/([^/]+)(?:\/\d+)?\/?$/.exec(url.pathname);
-                    if (!/^https?:$/.test(url.protocol) || url.origin !== location.origin || url.username || url.password || !path) continue;
-                    linkId = decodeURIComponent(path[1]);
-                } catch (_) { continue; }
-                if (!linkId || /[\\/\s?#\x00-\x1f\x7f]/.test(linkId)) continue;
-                ids.add(linkId);
-            }
-            if (ids.size > 1) throw new Error(t('downloadIdentityConflict'));
-            const id = ids.values().next().value;
+            const id = readDownloadIdentity(row);
             if (!name) throw new Error(t('downloadNoHistory'));
             return { key: id ? `id:${id}` : `row:${JSON.stringify([name, modified])}`, id: Boolean(id), name, modified, day, row };
         });
-        const keys = new Set();
-        for (const job of jobs) {
-            if (keys.has(job.key)) throw new Error(t(job.id ? 'downloadPageError' : 'downloadAmbiguous'));
-            keys.add(job.key);
-        }
         const paginators = Array.from(root.querySelectorAll('mat-paginator')).filter(downloadVisible);
         if (paginators.length > 1) throw new Error(t('downloadPageError'));
         const paginator = paginators[0] || null;
@@ -1833,6 +1834,110 @@
         if (paginator && (!previous || !next)) throw new Error(t('downloadPageError'));
         const range = paginator?.querySelector('.mat-mdc-paginator-range-label')?.textContent?.trim() || '';
         return { jobs, first, previous, next, signature: JSON.stringify([range, jobs.map(job => [job.key, job.modified])]) };
+    }
+
+    async function readDownloadMenuIdentity(row) {
+        const triggers = row.querySelectorAll('td.mat-column-options button.fold-actions[aria-haspopup="menu"]');
+        if (!triggers.length) return null;
+        if (triggers.length !== 1) throw new Error(t('downloadMenuIdentity'));
+        const trigger = triggers[0];
+        const visibleMenus = () => Array.from(document.querySelectorAll('[role="menu"]')).filter(downloadVisible);
+        if (trigger.getAttribute('aria-expanded') === 'true' || visibleMenus().length ||
+            Array.from(document.querySelectorAll('[role="dialog"], mat-dialog-container')).some(downloadVisible)) throw new Error(t('downloadMenuBusy'));
+        if (!downloadButtonEnabled(trigger) || trigger.querySelector('mat-icon')?.textContent.trim() !== 'more_vert') throw new Error(t('downloadMenuIdentity'));
+        let panel = null, panelId = null, pendingPanel = null;
+        const capturePanel = () => {
+            const menus = visibleMenus();
+            if (!pendingPanel && menus.length === 1) pendingPanel = menus[0];
+            const id = trigger.getAttribute('aria-controls');
+            if (id && !panelId) panelId = id;
+            if (panelId && !panel) panel = document.getElementById(panelId);
+            return id;
+        };
+        const associated = () => row.contains(trigger) && trigger.getAttribute('aria-expanded') === 'true' &&
+            trigger.getAttribute('aria-controls') === panelId && document.getElementById(panelId) === panel &&
+            !Array.from(document.querySelectorAll('button[aria-controls]')).some(button => button !== trigger &&
+                button.getAttribute('aria-expanded') === 'true' && button.getAttribute('aria-controls') === panelId);
+        try {
+            checkDownloadActive();
+            trigger.click();
+            const deadline = Date.now() + 2500;
+            while (Date.now() < deadline) {
+                const id = capturePanel();
+                checkDownloadActive();
+                if (!downloadVisible(row) || !trigger.isConnected || (panelId && id !== panelId) ||
+                    (pendingPanel && (!pendingPanel.isConnected || (panel && pendingPanel !== panel))) ||
+                    (panel && (!associated() || panel.getAttribute('role') !== 'menu' || visibleMenus().some(menu => menu !== panel))) ||
+                    visibleMenus().length > 1) throw new Error(t('downloadMenuIdentity'));
+                if (panel && downloadVisible(panel)) {
+                    const jobId = readDownloadIdentity(panel);
+                    if (jobId) return jobId;
+                }
+                await downloadDelay(30);
+            }
+            throw new Error(t('downloadMenuIdentity'));
+        } finally {
+            // Material can attach the panel before updating aria-controls, even when Stop was pressed.
+            const bindingDeadline = Date.now() + 2500;
+            while (!panel && trigger.isConnected && visibleMenus().length <= 1 && Date.now() < bindingDeadline) {
+                capturePanel();
+                if (panel || (pendingPanel && !pendingPanel.isConnected)) break;
+                await sleep(30);
+            }
+            // Toggle only our exact row trigger; Material routes Escape through the overlay dispatcher.
+            if (panel && associated() && (!pendingPanel || pendingPanel === panel) && !visibleMenus().some(menu => menu !== panel)) {
+                trigger.click();
+                const deadline = Date.now() + 1200;
+                while (downloadVisible(panel) && Date.now() < deadline) {
+                    if (document.getElementById(panelId) !== panel || visibleMenus().some(menu => menu !== panel)) throw new Error(t('downloadMenuIdentity'));
+                    await sleep(30);
+                }
+                if (downloadVisible(panel) || visibleMenus().length) throw new Error(t('downloadMenuIdentity'));
+            } else if (panelId) throw new Error(t('downloadMenuIdentity'));
+        }
+    }
+
+    async function resolveDownloadJob(job) {
+        checkDownloadActive();
+        if (!job?.row) throw new Error(t('downloadMissing'));
+        const page = readDownloadPage(), jobs = page.jobs;
+        let fresh = jobs.find(item => item.row === job.row);
+        if (!fresh) {
+            const matches = jobs.filter(item => item.key === job.key);
+            if (matches.length === 1) fresh = matches[0];
+        }
+        if (!fresh && job.id) {
+            // Metadata only narrows candidates; a fresh menu ID must prove the match after rerender.
+            const matches = [];
+            for (const candidate of jobs.filter(item => item.name === job.name && item.modified === job.modified)) {
+                if (!downloadVisible(candidate.row)) throw new Error(t('downloadMissing'));
+                const resolved = await resolveDownloadJob(candidate);
+                if (resolved.key === job.key) matches.push(resolved);
+            }
+            const current = readDownloadPage();
+            if (matches.length !== 1 || current.signature !== page.signature ||
+                current.jobs.some((item, index) => item.row !== jobs[index]?.row)) throw new Error(t('downloadMissing'));
+            return matches[0];
+        }
+        if (!fresh || fresh.name !== job.name || fresh.modified !== job.modified) throw new Error(t('downloadMissing'));
+        const row = fresh.row;
+        const id = readDownloadIdentity(row) || await readDownloadMenuIdentity(row);
+        checkDownloadActive();
+        fresh = readDownloadPage().jobs.find(item => item.row === row);
+        if (!fresh || fresh.name !== job.name || fresh.modified !== job.modified || (fresh.id && fresh.key !== `id:${id}`)) throw new Error(t('downloadMissing'));
+        return id ? { ...fresh, key: `id:${id}`, id: true } : fresh;
+    }
+
+    async function resolveDownloadPage(page) {
+        const jobs = [], keys = new Set();
+        for (const job of page.jobs) {
+            const resolved = await resolveDownloadJob(job);
+            if (keys.has(resolved.key)) throw new Error(t(resolved.id ? 'downloadPageError' : 'downloadAmbiguous'));
+            keys.add(resolved.key); jobs.push(resolved);
+        }
+        const fresh = readDownloadPage();
+        if (fresh.signature !== page.signature || fresh.jobs.some((job, index) => job.row !== page.jobs[index]?.row)) throw new Error(t('downloadPageError'));
+        return { ...page, jobs };
     }
 
     function downloadButtonEnabled(button) {
@@ -1947,19 +2052,20 @@
         const visited = new Set();
         let selected = 0;
         while (targets.size) {
+            page = await resolveDownloadPage(page);
             checkDownloadActive();
             if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
             visited.add(page.signature);
             for (const job of page.jobs) {
                 const target = targets.get(job.key);
                 if (!target) continue;
-                const fresh = readDownloadPage().jobs.find(item => item.key === job.key);
+                const fresh = await resolveDownloadJob(job);
                 if (!sameDownloadJob(fresh, target)) throw new Error(t('downloadMissing'));
                 const checkbox = nativeDownloadCheckbox(fresh);
                 if (checkbox.checked) throw new Error(t('downloadNativeMismatch'));
                 mutateNativeSelection(() => checkbox.click());
                 await downloadDelay(70);
-                const checked = readDownloadPage().jobs.find(item => item.key === job.key);
+                const checked = await resolveDownloadJob(fresh);
                 if (!sameDownloadJob(checked, target) || !nativeDownloadCheckbox(checked).checked) throw new Error(t('downloadMissing'));
                 selected++;
                 if (getNativeDownloadToolbar().count !== selected) throw new Error(t('downloadNativeMismatch'));
@@ -1979,11 +2085,13 @@
         const records = [], identities = new Set(), visited = new Set();
         let page = await firstDownloadPage();
         while (true) {
+            page = await resolveDownloadPage(page);
             checkDownloadActive();
             if (getNativeDownloadToolbar().count !== expected) throw new Error(t('downloadNativeMismatch'));
             if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
             visited.add(page.signature);
-            for (const job of page.jobs) {
+            for (const cached of page.jobs) {
+                const job = await resolveDownloadJob(cached);
                 if (identities.has(job.key)) throw new Error(t(job.id ? 'downloadPageError' : 'downloadAmbiguous'));
                 identities.add(job.key);
                 if (nativeDownloadCheckbox(job).checked) {
@@ -2161,6 +2269,7 @@
             const visited = new Set(), identities = new Map(), matches = [];
             let page = await firstDownloadPage();
             while (true) {
+                page = await resolveDownloadPage(page);
                 checkDownloadActive();
                 if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
                 visited.add(page.signature);
