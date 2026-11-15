@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.7
-// @description  3.0 开发版：账户管理跨普通与 Edge InPrivate 本地保存账号、备注与额度记录；保留分区提交、按日期勾选下载、提交确认和可调面板。
+// @version      3.0.0-dev.8
+// @description  3.0 开发版：浅色科研工作台、固定导航与响应式分区；保留跨普通与 InPrivate 的账户记录、提交确认、按日期勾选和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.7';
+    const SCRIPT_VERSION = '3.0.0-dev.8';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -59,11 +59,12 @@
             submissionUncertain: "提交结果尚未确认，已停止且锁定启动。请先人工核对历史记录与额度，再刷新页面；不要直接重试。",
             submissionServerError: "官网报告提交错误：{message}。已停止且锁定启动，请核对历史记录与额度后刷新。",
             draftListUnchanged: "官网已报告成功，但草稿列表未更新。已停止且锁定启动，未再次提交；请核对历史记录后刷新。",
-            headerDev: '🧪 AF3 自动助手 DEV',
+            headerDev: 'AF3 自动助手',
             headerProd: '🤖 AF3 自动助手',
             languageTitle: '界面语言',
+            batchCount: '本次数量',
             initializing: '初始化...',
-            startButton: '🚀 启动',
+            startButton: '启动',
             runningButton: '运行中...',
             pausedButton: '已暂停',
             stoppingButton: '停止中...',
@@ -147,11 +148,12 @@
             submissionUncertain: "Submission is unconfirmed. The batch stopped and Start is locked. Check history and quota manually before reloading; do not retry blindly.",
             submissionServerError: "Server reported a submission error: {message}. The batch stopped and Start is locked. Check history and quota before reloading.",
             draftListUnchanged: "The server reported success, but the draft list did not update. The batch stopped and Start is locked. No repeat submission was sent; check history before reloading.",
-            headerDev: '🧪 AF3 Auto Submitter DEV',
+            headerDev: 'AF3 Auto Submitter',
             headerProd: '🤖 AF3 Auto Submitter',
             languageTitle: 'Language',
+            batchCount: 'Jobs this run',
             initializing: 'Initializing...',
-            startButton: '🚀 Start',
+            startButton: 'Start',
             runningButton: 'Running...',
             pausedButton: 'Paused',
             stoppingButton: 'Stopping...',
@@ -235,11 +237,12 @@
             submissionUncertain: "送信結果を確認できません。処理を停止し、開始をロックしました。履歴と残り枠を手動で確認してから再読み込みしてください。確認せず再試行しないでください。",
             submissionServerError: "サーバーの送信エラー：{message}。処理を停止し、開始をロックしました。履歴と残り枠を確認してから再読み込みしてください。",
             draftListUnchanged: "サーバーは成功を報告しましたが、下書き一覧が更新されませんでした。開始をロックし、再送信せず停止しました。履歴を確認してから再読み込みしてください。",
-            headerDev: '🧪 AF3 自動送信 DEV',
+            headerDev: 'AF3 自動送信',
             headerProd: '🤖 AF3 自動送信',
             languageTitle: '言語',
+            batchCount: '今回の件数',
             initializing: '初期化中...',
-            startButton: '🚀 開始',
+            startButton: '開始',
             runningButton: '実行中...',
             pausedButton: '一時停止中',
             stoppingButton: '停止中...',
@@ -323,11 +326,12 @@
             submissionUncertain: "제출 결과를 확인하지 못했습니다. 중지하고 시작 버튼을 잠갔습니다. 기록과 잔여 할당량을 직접 확인한 뒤 새로고침하세요. 무작정 재시도하지 마세요.",
             submissionServerError: "서버 제출 오류: {message}. 중지하고 시작 버튼을 잠갔습니다. 기록과 할당량을 확인한 뒤 새로고침하세요.",
             draftListUnchanged: "서버는 성공을 보고했지만 초안 목록이 갱신되지 않았습니다. 재제출하지 않고 중지하고 시작 버튼을 잠갔습니다. 기록 확인 후 새로고침하세요.",
-            headerDev: '🧪 AF3 자동 제출 DEV',
+            headerDev: 'AF3 자동 제출',
             headerProd: '🤖 AF3 자동 제출',
             languageTitle: '언어',
+            batchCount: '처리할 작업 수',
             initializing: '초기화 중...',
-            startButton: '🚀 시작',
+            startButton: '시작',
             runningButton: '실행 중...',
             pausedButton: '일시정지됨',
             stoppingButton: '중지 중...',
@@ -411,11 +415,12 @@
             submissionUncertain: "No se confirmó el envío. El lote se detuvo e Iniciar quedó bloqueado. Revisa el historial y la cuota antes de recargar; no reintentes sin comprobarlos.",
             submissionServerError: "Error de envío del servidor: {message}. El lote se detuvo e Iniciar quedó bloqueado. Revisa el historial y la cuota antes de recargar.",
             draftListUnchanged: "El servidor informó de éxito, pero la lista de borradores no se actualizó. Se detuvo el lote y se bloqueó Iniciar sin repetir el envío. Revisa el historial antes de recargar.",
-            headerDev: '🧪 AF3 Auto Submitter DEV',
+            headerDev: 'AF3 Auto Submitter',
             headerProd: '🤖 AF3 Auto Submitter',
             languageTitle: 'Idioma',
+            batchCount: 'Tareas por ejecutar',
             initializing: 'Inicializando...',
-            startButton: '🚀 Iniciar',
+            startButton: 'Iniciar',
             runningButton: 'Ejecutando...',
             pausedButton: 'Pausado',
             stoppingButton: 'Deteniendo...',
@@ -499,11 +504,12 @@
             submissionUncertain: "L’envoi n’est pas confirmé. Le lot est arrêté et Démarrer est verrouillé. Vérifiez l’historique et le quota avant de recharger ; ne réessayez pas sans vérifier.",
             submissionServerError: "Erreur d’envoi du serveur : {message}. Le lot est arrêté et Démarrer est verrouillé. Vérifiez l’historique et le quota avant de recharger.",
             draftListUnchanged: "Le serveur a signalé un succès, mais la liste des brouillons n’a pas changé. Le lot est arrêté et Démarrer est verrouillé, sans nouvel envoi. Vérifiez l’historique avant de recharger.",
-            headerDev: '🧪 AF3 Auto Submitter DEV',
+            headerDev: 'AF3 Auto Submitter',
             headerProd: '🤖 AF3 Auto Submitter',
             languageTitle: 'Langue',
+            batchCount: 'Tâches à traiter',
             initializing: 'Initialisation...',
-            startButton: '🚀 Démarrer',
+            startButton: 'Démarrer',
             runningButton: 'En cours...',
             pausedButton: 'En pause',
             stoppingButton: 'Arrêt...',
@@ -792,18 +798,23 @@
     }
 
     function applyLanguage() {
-        const header = getUiElement('af3-header');
+        const header = getUiElement('af3-header-title');
         const languageSelect = getUiElement('af3-language-select');
         const input = getUiElement('af3-v20-count');
         const footer = getUiElement('af3-footer-msg');
         const statusText = getUiElement('af3-status-text');
 
-        if (header) header.textContent = `${t('headerDev')} ${SCRIPT_VERSION}`;
+        if (header) header.textContent = t('headerDev');
+        const countLabel = getUiElement('af3-count-label');
+        if (countLabel) countLabel.textContent = t('batchCount');
+        const panel = getUiElement(PANEL_ROOT_ID);
+        if (panel) panel.lang = currentLanguage;
         const submitTitle = getUiElement('af3-submission-title');
         if (submitTitle) submitTitle.textContent = t('submitTitle');
         if (languageSelect) {
             languageSelect.value = currentLanguage;
             languageSelect.title = t('languageTitle');
+            languageSelect.setAttribute('aria-label', t('languageTitle'));
         }
         if (input) input.title = t('confirmPlan', { count: input.value || 0 });
         const resizeHandle = getUiElement('af3-resize-handle');
@@ -870,7 +881,7 @@
         } catch (e) {
             // Storage may be disabled or contain an outdated value.
         }
-        return panelSize = { width: 360, height: 760 };
+        return panelSize = { width: 392, height: 800 };
     }
 
     function clampPanelSize(size) {
@@ -1239,23 +1250,24 @@
             parent.appendChild(node);
             return node;
         };
-        append(page, 'h2', 'accounts-title');
-        append(page, 'p', 'accounts-intro', { class: 'af3-account-help' });
-        const actions = append(page, 'div', '', { class: 'af3-account-actions' });
+        const overview = append(page, 'div', '', { class: 'af3-card' });
+        append(overview, 'h2', 'accounts-title');
+        append(overview, 'p', 'accounts-intro', { class: 'af3-account-help' });
+        const actions = append(overview, 'div', '', { class: 'af3-account-actions' });
         append(actions, 'button', 'account-refresh', { type: 'button' });
         append(actions, 'button', 'account-login', { type: 'button' });
-        append(page, 'p', 'account-login-help', { class: 'af3-account-help' });
-        const form = append(page, 'form', 'account-form', { novalidate: '' });
+        append(overview, 'p', 'account-login-help', { class: 'af3-account-help' });
+        append(page, 'p', 'accounts-message', { role: 'status', 'aria-live': 'polite' });
+        append(page, 'h3', 'accounts-count');
+        append(page, 'div', 'accounts-list');
+        const form = append(page, 'form', 'account-form', { novalidate: '', class: 'af3-card' });
         append(form, 'label', 'account-email-label', { for: 'af3-account-input' });
         append(form, 'input', 'account-input', { type: 'email', maxlength: '254', autocomplete: 'off', required: '' });
         append(form, 'label', 'account-note-label', { for: 'af3-account-note' });
         append(form, 'input', 'account-note', { type: 'text', maxlength: '200', autocomplete: 'off' });
         const formActions = append(form, 'div', '', { class: 'af3-account-actions' });
-        append(formActions, 'button', 'account-save', { type: 'submit' });
+        append(formActions, 'button', 'account-save', { type: 'submit', class: 'af3-primary' });
         append(formActions, 'button', 'account-cancel', { type: 'button', hidden: '' });
-        append(page, 'p', 'accounts-message', { role: 'status', 'aria-live': 'polite' });
-        append(page, 'h3', 'accounts-count');
-        append(page, 'div', 'accounts-list');
         const login = page.querySelector('#af3-account-login');
         login.onclick = openAccountSwitch;
         page.querySelector('#af3-account-form').onsubmit = event => {
@@ -1388,7 +1400,10 @@
         const toggle = getUiElement('af3-log-toggle');
         const body = getUiElement('af3-log-body');
 
-        if (toggle) toggle.textContent = `${logExpanded ? '▼' : '▶'} ${t('logLabel')} (${logEntries.length})`;
+        if (toggle) {
+            toggle.textContent = `${t('logLabel')} (${logEntries.length})`;
+            toggle.setAttribute('aria-expanded', String(logExpanded));
+        }
         if (!body) return;
 
         body.style.display = logExpanded ? 'block' : 'none';
@@ -1970,19 +1985,19 @@
     }
 
     function downloadReadiness() {
-        if (downloadState.busy) return { key: downloadState.phase === 'scan' ? 'downloadRunningScan' : 'downloadRunningApply', color: '#fbbc04' };
-        if (isRunning) return { key: 'downloadSubmissionBusy', color: '#fbbc04' };
+        if (downloadState.busy) return { key: downloadState.phase === 'scan' ? 'downloadRunningScan' : 'downloadRunningApply', color: 'var(--af3-warning)' };
+        if (isRunning) return { key: 'downloadSubmissionBusy', color: 'var(--af3-warning)' };
         let context;
         try { context = getDownloadContext(); }
-        catch (_) { return { key: 'downloadStandby', color: '#f28b82' }; }
-        if (downloadState.complete && context !== downloadState.scanContext) return { key: 'downloadContextChanged', color: '#fbbc04' };
+        catch (_) { return { key: 'downloadStandby', color: 'var(--af3-muted)' }; }
+        if (downloadState.complete && context !== downloadState.scanContext) return { key: 'downloadContextChanged', color: 'var(--af3-warning)' };
         try {
             const { count } = getNativeDownloadToolbar();
-            if (count > 50) return { key: 'downloadLimit', color: '#fbbc04' };
-            if (count === 1 && downloadState.queue) return { key: 'downloadReadyIndividual', color: '#81c995' };
-            if (count) return { key: 'downloadReadyWeb', vars: { count }, color: '#8ab4f8' };
-            return { key: !downloadState.complete ? 'downloadReadyFind' : downloadState.selected.size ? 'downloadReadyApply' : 'downloadReadySelect', color: '#81c995' };
-        } catch (_) { return { key: 'downloadNativeMissing', color: '#fbbc04' }; }
+            if (count > 50) return { key: 'downloadLimit', color: 'var(--af3-warning)' };
+            if (count === 1 && downloadState.queue) return { key: 'downloadReadyIndividual', color: 'var(--af3-primary)' };
+            if (count) return { key: 'downloadReadyWeb', vars: { count }, color: 'var(--af3-info)' };
+            return { key: !downloadState.complete ? 'downloadReadyFind' : downloadState.selected.size ? 'downloadReadyApply' : 'downloadReadySelect', color: 'var(--af3-primary)' };
+        } catch (_) { return { key: 'downloadNativeMissing', color: 'var(--af3-warning)' }; }
     }
 
     function updateDownloadReadiness() {
@@ -2060,7 +2075,8 @@
             for (const [day, jobs] of [...groups].sort((a, b) => b[0].localeCompare(a[0]))) {
                 const group = document.createElement('div');
                 const groupHeader = document.createElement('label');
-                Object.assign(groupHeader.style, { display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 0', fontWeight: 'bold' });
+                group.className = 'af3-day-group';
+                groupHeader.className = 'af3-day-heading';
                 const master = document.createElement('input');
                 master.type = 'checkbox'; master.dataset.day = day;
                 master.setAttribute('aria-label', t('downloadDay', { day, count: jobs.length }));
@@ -2075,7 +2091,7 @@
                 group.appendChild(groupHeader);
                 for (const job of jobs) {
                     const label = document.createElement('label');
-                    Object.assign(label.style, { display: 'flex', gap: '6px', alignItems: 'start', padding: '5px 2px', overflowWrap: 'anywhere' });
+                    label.className = 'af3-job';
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox'; checkbox.dataset.jobKey = job.key;
                     checkbox.onchange = () => {
@@ -2084,7 +2100,10 @@
                         checkbox.checked ? downloadState.selected.add(job.key) : downloadState.selected.delete(job.key);
                         renderDownloadSection();
                     };
-                    const text = document.createElement('span'); text.textContent = `${job.name} · ${job.modified}`;
+                    const text = document.createElement('span');
+                    const name = document.createElement('span'); name.className = 'af3-job-name'; name.textContent = job.name;
+                    const modified = document.createElement('span'); modified.className = 'af3-job-date'; modified.textContent = job.modified;
+                    text.append(name, modified);
                     label.append(checkbox, text); group.appendChild(label);
                 }
                 list.appendChild(group);
@@ -2223,30 +2242,26 @@
     function createDownloadSection() {
         const section = document.createElement('section');
         section.id = 'af3-download-section';
+        section.className = 'af3-card';
         section.setAttribute('aria-labelledby', 'af3-download-title');
-        Object.assign(section.style, { borderTop: '1px solid #555', paddingTop: '8px', flexShrink: '0', fontSize: '14px', lineHeight: '1.5', overflowWrap: 'anywhere' });
         const translated = (tag, key) => {
             const node = document.createElement(tag); node.dataset.downloadI18n = key; node.textContent = t(key); return node;
         };
         const title = translated('h2', 'downloadTitle');
         title.id = 'af3-download-title';
-        Object.assign(title.style, { margin: '0', fontSize: '14px', color: '#8ab4f8', fontWeight: 'bold' });
         section.appendChild(title);
-        const ready = document.createElement('div');
-        Object.assign(ready.style, { display: 'flex', gap: '6px', alignItems: 'center', marginTop: '8px' });
-        const light = document.createElement('span'); light.id = 'af3-download-ready-light';
-        Object.assign(light.style, { width: '8px', height: '8px', borderRadius: '50%', flexShrink: '0' });
+        const ready = document.createElement('div'); ready.className = 'af3-readiness';
+        const light = document.createElement('span'); light.id = 'af3-download-ready-light'; light.className = 'af3-status-dot';
+        light.setAttribute('aria-hidden', 'true');
         const readyText = document.createElement('span'); readyText.id = 'af3-download-ready-text'; readyText.setAttribute('role', 'status');
         ready.append(light, readyText); section.appendChild(ready);
-        section.appendChild(translated('p', 'downloadNote'));
-        const dates = document.createElement('div');
-        Object.assign(dates.style, { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' });
+        const note = translated('p', 'downloadNote'); note.className = 'af3-help'; section.appendChild(note);
+        const dates = document.createElement('div'); dates.className = 'af3-dates';
         const today = new Date();
         const day = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         for (const [id, key] of [['start', 'downloadStart'], ['end', 'downloadEnd']]) {
-            const label = document.createElement('label'); label.appendChild(translated('span', key));
+            const label = document.createElement('label'); label.className = 'af3-field'; label.appendChild(translated('span', key));
             const input = document.createElement('input'); input.type = 'date'; input.id = `af3-download-${id}`; input.value = day;
-            Object.assign(input.style, { display: 'block', boxSizing: 'border-box', width: '100%', minWidth: '0', padding: '6px 2px', border: '1px solid #666', borderRadius: '4px', background: '#303134', color: '#fff', fontSize: '14px', colorScheme: 'dark' });
             input.onchange = () => {
                 resetDownloadQueue();
                 downloadState.complete = false; downloadState.jobs = []; downloadState.selected.clear(); setDownloadMessage('downloadIdle');
@@ -2254,25 +2269,8 @@
             label.appendChild(input); dates.appendChild(label);
         }
         section.appendChild(dates);
-        const formatLabel = document.createElement('label');
-        Object.assign(formatLabel.style, { display: 'block', marginTop: '8px' });
-        formatLabel.appendChild(translated('span', 'downloadFormat'));
-        const format = document.createElement('select');
-        format.id = 'af3-download-format';
-        for (const [value, key] of [['combined', 'downloadCombined'], ['individual', 'downloadIndividual']]) {
-            const option = translated('option', key); option.value = value; format.appendChild(option);
-        }
-        format.value = downloadState.format;
-        Object.assign(format.style, { display: 'block', boxSizing: 'border-box', width: '100%', minWidth: '0', padding: '6px 4px', border: '1px solid #666', borderRadius: '4px', background: '#303134', color: '#fff', fontSize: '14px' });
-        format.onchange = () => {
-            downloadState.format = format.value === 'individual' ? 'individual' : 'combined';
-            try { localStorage.setItem(DOWNLOAD_FORMAT_KEY, downloadState.format); } catch (_) {}
-            resetDownloadQueue('downloadQueueInvalid');
-            renderDownloadSection();
-        };
-        formatLabel.appendChild(format); section.appendChild(formatLabel);
-        const actions = document.createElement('div');
-        Object.assign(actions.style, { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' });
+        const actions = document.createElement('div'); actions.className = 'af3-download-tools';
+        const applyActions = document.createElement('div'); applyActions.className = 'af3-download-actions';
         for (const [id, key, action] of [
             ['scan', 'downloadScan', scanDownloadJobs],
             ['all', 'downloadAll', () => { if (downloadState.busy || isRunning) return; resetDownloadQueue(); downloadState.selected = new Set(downloadState.jobs.map(job => job.key)); setDownloadMessage('downloadFound'); }],
@@ -2282,17 +2280,32 @@
             ['stop', 'stopButton', () => { downloadState.stop = true; updateDownloadControls(); }],
         ]) {
             const button = translated('button', key); button.type = 'button'; button.id = `af3-download-${id}`;
-            stylePanelButton(button, id === 'stop' ? '#b3261e' : id === 'apply' ? '#137333' : '#3c4043');
-            button.onclick = action; actions.appendChild(button);
+            button.className = id === 'apply' ? 'af3-primary' : id === 'stop' ? 'af3-danger' : id === 'all' || id === 'clear' ? 'af3-quiet' : '';
+            button.onclick = action;
+            (id === 'apply' || id === 'next' ? applyActions : actions).appendChild(button);
         }
         section.appendChild(actions);
-        const status = document.createElement('p'); status.id = 'af3-download-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
-        Object.assign(status.style, { overflowWrap: 'anywhere', color: '#dfe1e5', margin: '8px 0' }); section.appendChild(status);
-        const queue = document.createElement('p'); queue.id = 'af3-download-queue'; queue.setAttribute('role', 'status'); queue.setAttribute('aria-live', 'polite');
-        Object.assign(queue.style, { overflowWrap: 'anywhere', color: '#8ab4f8', margin: '8px 0' }); section.appendChild(queue);
-        const list = document.createElement('div'); list.id = 'af3-download-results';
-        Object.assign(list.style, { maxHeight: '240px', overflow: 'auto' }); section.appendChild(list);
-        const hint = translated('p', 'downloadHint'); hint.style.color = '#bdc1c6'; section.appendChild(hint);
+        const status = document.createElement('p'); status.id = 'af3-download-status'; status.className = 'af3-help';
+        status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); section.appendChild(status);
+        const list = document.createElement('div'); list.id = 'af3-download-results'; section.appendChild(list);
+        const formatLabel = document.createElement('label'); formatLabel.className = 'af3-field';
+        formatLabel.appendChild(translated('span', 'downloadFormat'));
+        const format = document.createElement('select'); format.id = 'af3-download-format';
+        for (const [value, key] of [['combined', 'downloadCombined'], ['individual', 'downloadIndividual']]) {
+            const option = translated('option', key); option.value = value; format.appendChild(option);
+        }
+        format.value = downloadState.format;
+        format.onchange = () => {
+            downloadState.format = format.value === 'individual' ? 'individual' : 'combined';
+            try { localStorage.setItem(DOWNLOAD_FORMAT_KEY, downloadState.format); } catch (_) {}
+            resetDownloadQueue('downloadQueueInvalid');
+            renderDownloadSection();
+        };
+        formatLabel.appendChild(format); section.appendChild(formatLabel);
+        section.appendChild(applyActions);
+        const queue = document.createElement('p'); queue.id = 'af3-download-queue';
+        queue.setAttribute('role', 'status'); queue.setAttribute('aria-live', 'polite'); section.appendChild(queue);
+        const hint = translated('p', 'downloadHint'); hint.className = 'af3-help af3-download-hint'; section.appendChild(hint);
         return section;
     }
 
@@ -2377,20 +2390,6 @@
         });
     }
 
-    function stylePanelButton(button, backgroundColor, color = '#fff') {
-        Object.assign(button.style, {
-            padding: '7px 8px',
-            backgroundColor,
-            color,
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            fontSize: '14px',
-            transition: 'all 0.2s'
-        });
-    }
-
     // --- UI ---
     function ensureUI() {
         if (!document.documentElement || !document.body) return;
@@ -2411,71 +2410,147 @@
         const shadow = host.attachShadow({ mode: 'open' });
         const styles = document.createElement('style');
         styles.textContent = `
+            :host {
+                --af3-canvas: #eef3f6; --af3-surface: #fff; --af3-ink: #182f40;
+                --af3-muted: #5a6d7b; --af3-border: #d8e2e8;
+                --af3-primary: #08777c; --af3-primary-hover: #06686d; --af3-primary-soft: #e7f4f3;
+                --af3-info: #285fa5; --af3-info-soft: #edf3fc;
+                --af3-warning: #8a5a12; --af3-warning-soft: #fff5e2;
+                --af3-danger: #b33e49; --af3-danger-soft: #fff0f1;
+                --af3-mono: 'Cascadia Code', Consolas, monospace;
+                color-scheme: light;
+            }
+            *, *::before, *::after { box-sizing: border-box; }
             [hidden] { display: none !important; }
-            .af3-page { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex-shrink: 0; }
-            .af3-tabs { display: flex; gap: 6px; }
-            .af3-tabs button, #af3-accounts-page button, #af3-account-login { box-sizing: border-box; font: inherit; font-size: 14px; border: 1px solid #5f6368; border-radius: 6px; padding: 7px 9px; background: #303134; color: #e8eaed; cursor: pointer; overflow-wrap: anywhere; }
-            .af3-tabs button[aria-selected="true"], #af3-accounts-page #af3-account-save { background: #1a73e8; border-color: #1a73e8; color: white; }
-            #af3-accounts-page button:disabled { opacity: .5; cursor: not-allowed; }
-            .af3-tabs button:focus-visible, #af3-accounts-page :focus-visible { outline: 2px solid #8ab4f8; outline-offset: 2px; }
-            #af3-accounts-page h2, #af3-accounts-page h3 { margin: 0; font-size: 14px; color: #8ab4f8; }
-            #af3-accounts-page p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
-            .af3-account-help, .af3-account-card time { font-size: 13px; color: #bdc1c6; line-height: 1.5; }
-            .af3-account-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-            #af3-account-login { text-decoration: none; display: inline-block; }
-            #af3-account-login[aria-disabled="true"] { opacity: 0.6; cursor: not-allowed; }
-            #af3-account-form { display: grid; gap: 7px; margin: 0; padding: 10px; border: 1px solid #5f6368; border-radius: 8px; }
-            #af3-account-form input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: 7px; border: 1px solid #5f6368; border-radius: 5px; color: #e8eaed; background: #292a2d; }
-            #af3-account-input[readonly] { color: #bdc1c6; }
+            #af3-dev-panel-root {
+                all: initial; box-sizing: border-box; display: flex; flex-direction: column;
+                width: 100%; height: 100%; min-height: 0; overflow: hidden;
+                border: 1px solid var(--af3-border); border-radius: 18px;
+                background: var(--af3-canvas); color: var(--af3-ink);
+                box-shadow: 0 16px 48px #182f4026, 0 2px 8px #182f4012;
+                font: 14px/1.5 'Segoe UI Variable Text', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+                color-scheme: light; container-type: inline-size;
+            }
+            h2, h3, p { margin: 0; overflow-wrap: anywhere; }
+            h2, h3 { font: 600 15px/1.4 'Bahnschrift', 'Segoe UI', 'Microsoft YaHei', sans-serif; }
+            button, input, select { min-width: 0; max-width: 100%; font: inherit; }
+            button {
+                min-height: 36px; padding: 7px 12px; border: 1px solid var(--af3-border); border-radius: 9px;
+                background: var(--af3-surface); color: var(--af3-ink); font-weight: 600;
+                cursor: pointer; overflow-wrap: anywhere; line-height: 1.4;
+                transition: background-color .15s, border-color .15s, box-shadow .15s;
+            }
+            button:hover:not(:disabled) { background: var(--af3-primary-soft); border-color: var(--af3-primary); }
+            .af3-primary { background: var(--af3-primary); border-color: var(--af3-primary); color: #fff; }
+            .af3-primary:hover:not(:disabled) { background: var(--af3-primary-hover); border-color: var(--af3-primary-hover); }
+            .af3-danger { background: var(--af3-danger-soft); color: var(--af3-danger); border-color: #eac8cc; }
+            .af3-danger:hover:not(:disabled) { background: var(--af3-danger); border-color: var(--af3-danger); color: #fff; }
+            .af3-quiet { background: transparent; border-color: transparent; color: var(--af3-muted); padding-inline: 7px; }
+            button:disabled { background: #eaf0f3; border-color: #e0e8ed; color: var(--af3-muted); cursor: not-allowed; box-shadow: none; }
+            input:not([type="checkbox"]), select {
+                display: block; width: 100%; min-height: 38px; padding: 7px 9px;
+                background: var(--af3-surface); color: var(--af3-ink);
+                border: 1px solid #a9bac6; border-radius: 8px; color-scheme: light;
+            }
+            input:disabled, select:disabled, input[readonly] { background: var(--af3-canvas); color: var(--af3-muted); }
+            input[type="checkbox"] { accent-color: var(--af3-primary); width: 16px; height: 16px; margin: 3px 0 0; flex-shrink: 0; }
+            :focus-visible { outline: 2px solid var(--af3-primary); outline-offset: 3px; }
+            #af3-header {
+                display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding: 16px 16px 12px;
+                background: var(--af3-surface); cursor: move; user-select: none;
+            }
+            .af3-wordmark {
+                display: grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0;
+                border-radius: 11px; background: var(--af3-primary-soft); color: var(--af3-primary);
+                font: 600 17px/1 'Bahnschrift', 'Segoe UI', sans-serif; letter-spacing: -.7px;
+            }
+            .af3-header-copy { min-width: 0; }
+            #af3-header-title { font: 600 17px/1.3 'Bahnschrift', 'Segoe UI', 'Microsoft YaHei', sans-serif; overflow-wrap: anywhere; }
+            .af3-version { display: block; margin-top: 3px; font: 11px/1.4 var(--af3-mono); color: var(--af3-muted); }
+            .af3-navigation { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 16px 12px; background: var(--af3-surface); flex-shrink: 0; }
+            .af3-tabs { display: flex; flex: 1; min-width: 0; padding: 3px; gap: 3px; border-radius: 10px; background: var(--af3-canvas); }
+            .af3-tabs button { flex: 1; min-height: 32px; padding: 5px 8px; border-color: transparent; background: transparent; color: var(--af3-muted); }
+            .af3-tabs button[aria-selected="true"] { background: var(--af3-surface); color: var(--af3-primary); box-shadow: 0 1px 4px #182f4017; }
+            #af3-language-select { width: auto; max-width: 110px; min-height: 36px; font-size: 12px; padding: 5px 6px; border-color: var(--af3-border); }
+            #af3-account-email { padding: 9px 12px; margin-bottom: 12px; border: 1px solid var(--af3-border); border-radius: 10px; background: var(--af3-surface); color: var(--af3-muted); font-size: 12px; }
+            .af3-workspace { overflow: auto; overscroll-behavior: contain; flex: 1; min-height: 0; padding: 14px 14px 30px; scrollbar-width: thin; scrollbar-color: #adbec8 transparent; }
+            .af3-page { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+            .af3-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px; border: 1px solid var(--af3-border); border-radius: 13px; background: var(--af3-surface); }
+            .af3-readiness { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--af3-muted); font-size: 13px; }
+            .af3-status-dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: currentColor; }
+            #af3-submission-section { --af3-state-color: var(--af3-muted); --af3-state-bg: var(--af3-canvas); }
+            #af3-submission-section[data-state="draft"], #af3-submission-section[data-state="running"] { --af3-state-color: var(--af3-primary); --af3-state-bg: var(--af3-primary-soft); }
+            #af3-submission-section[data-state="failed"] { --af3-state-color: var(--af3-info); --af3-state-bg: var(--af3-info-soft); }
+            #af3-submission-section[data-state="blocked"] { --af3-state-color: var(--af3-danger); --af3-state-bg: var(--af3-danger-soft); }
+            #af3-submission-section[data-state="paused"] { --af3-state-color: var(--af3-warning); --af3-state-bg: var(--af3-warning-soft); }
+            #af3-submission-status { padding: 7px 9px; border-radius: 8px; color: var(--af3-state-color); background: var(--af3-state-bg); }
+            #af3-quota { color: var(--af3-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+            .af3-submit-controls { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(0, 1.5fr); gap: 10px; align-items: end; }
+            .af3-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--af3-muted); font-size: 12px; }
+            .af3-field input, .af3-field select { font-size: 14px; }
+            #af3-v20-count { font-weight: 600; font-variant-numeric: tabular-nums; }
+            #af3-v20-btn { min-height: 38px; }
+            #af3-run-controls { gap: 8px; flex-wrap: wrap; }
+            #af3-run-controls button { flex: 1; }
+            #af3-footer-msg { color: var(--af3-muted); font-size: 12px; }
+            #af3-submission-section[data-state="blocked"] #af3-footer-msg { padding: 9px; border-radius: 8px; background: var(--af3-danger-soft); color: var(--af3-danger); }
+            .af3-help, .af3-account-help, .af3-account-card time { font-size: 12px; color: var(--af3-muted); line-height: 1.6; overflow-wrap: anywhere; }
+            .af3-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(135px, 100%), 1fr)); gap: 8px; }
+            .af3-download-tools, .af3-download-actions, .af3-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+            #af3-download-scan { margin-right: auto; }
+            #af3-download-apply { width: 100%; }
+            #af3-download-next { flex: 1; }
+            #af3-download-queue { padding: 9px; border-radius: 8px; background: var(--af3-info-soft); color: var(--af3-info); font-size: 12px; }
+            .af3-download-hint { padding-top: 10px; border-top: 1px solid var(--af3-border); }
+            #af3-download-results { max-height: 240px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+            #af3-download-results:empty { display: none; }
+            .af3-day-group + .af3-day-group { margin-top: 8px; }
+            .af3-day-heading { display: flex; align-items: start; gap: 8px; padding: 7px 8px; border-radius: 7px; background: var(--af3-canvas); font-size: 12px; font-weight: 600; }
+            .af3-job { display: flex; gap: 8px; align-items: start; padding: 8px; border-bottom: 1px solid var(--af3-border); cursor: pointer; overflow-wrap: anywhere; }
+            .af3-job > span { min-width: 0; }
+            .af3-job-name { display: block; font-size: 13px; }
+            .af3-job-date { display: block; margin-top: 2px; color: var(--af3-muted); font: 11px/1.5 var(--af3-mono); }
+            #af3-account-form { display: grid; gap: 8px; margin: 0; }
+            #af3-account-form > label { color: var(--af3-muted); font-size: 12px; }
             #af3-accounts-message:empty { display: none; }
-            #af3-accounts-message { color: #fdd663; }
+            #af3-accounts-message { padding: 10px; border: 1px solid #e9d6b1; border-radius: 9px; color: var(--af3-warning); background: var(--af3-warning-soft); font-size: 13px; }
+            #af3-accounts-count { padding-inline: 2px; color: var(--af3-muted); font-size: 13px; }
             #af3-accounts-list { display: grid; gap: 10px; }
-            .af3-account-card { display: grid; gap: 6px; padding: 11px; border: 1px solid #5f6368; border-radius: 8px; min-width: 0; overflow-wrap: anywhere; }
-            .af3-account-card strong { font-size: 14px; }
-            .af3-account-current, .af3-account-live { color: #81c995; }
-            .af3-account-current { font-size: 13px; }
-            .af3-account-history { color: #bdc1c6; }
+            #af3-accounts-list > p { padding: 12px; border: 1px dashed #adbec8; border-radius: 10px; color: var(--af3-muted); font-size: 13px; }
+            .af3-account-card { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--af3-border); border-radius: 12px; background: var(--af3-surface); min-width: 0; overflow-wrap: anywhere; }
+            .af3-account-card:has(.af3-account-current) { border-left: 3px solid var(--af3-primary); }
+            .af3-account-card strong { font-size: 13px; }
+            .af3-account-card p { font-size: 13px; }
+            .af3-account-current { justify-self: start; padding: 2px 7px; border-radius: 5px; background: var(--af3-primary-soft); color: var(--af3-primary); font-size: 11px; font-weight: 600; }
+            .af3-account-live { color: var(--af3-primary); font-weight: 600; }
+            .af3-account-history { color: var(--af3-muted); }
+            .af3-account-actions button { font-size: 12px; }
+            button[data-action="remove"] { color: var(--af3-danger); }
+            #af3-log-toggle { width: 100%; min-height: 32px; display: flex; align-items: center; gap: 8px; padding: 4px; border: 0; background: transparent; color: var(--af3-muted); text-align: left; font-size: 12px; }
+            #af3-log-toggle::before { content: '›'; font-size: 18px; line-height: 1; }
+            #af3-log-toggle[aria-expanded="true"]::before { transform: rotate(90deg); }
+            #af3-log-body { max-height: 160px; overflow: auto; margin: 6px 0 0; padding: 10px; border: 1px solid var(--af3-border); border-radius: 9px; background: var(--af3-surface); color: var(--af3-muted); white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.6 var(--af3-mono); }
+            #af3-resize-handle { position: absolute; right: 5px; bottom: 5px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--af3-surface); color: var(--af3-muted); font: 18px/1 sans-serif; cursor: nwse-resize; user-select: none; touch-action: none; z-index: 1; }
+            @container (max-width: 280px) {
+                #af3-header { padding: 12px; } .af3-navigation { padding: 0 12px 10px; }
+                .af3-tabs { flex-basis: 100%; } #af3-language-select { margin-left: auto; }
+                .af3-workspace { padding: 10px 10px 30px; } .af3-card { padding: 11px; }
+                .af3-dates { grid-template-columns: minmax(0, 1fr); }
+                #af3-account-email { padding-inline: 12px; }
+            }
+            @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
         `;
         shadow.appendChild(styles);
-        const container = document.createElement('div');
-        container.id = PANEL_ROOT_ID;
-        Object.assign(container.style, {
-            all: 'initial',
-            boxSizing: 'border-box',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            width: '100%',
-            height: '100%',
-            minHeight: '0',
-            overflow: 'auto',
-            padding: '15px 15px 30px',
-            backgroundColor: 'rgba(32, 33, 36, 0.97)',
-            borderRadius: '12px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-            border: '1px solid #5f6368',
-            fontFamily: 'Roboto, Arial, sans-serif',
-            fontSize: '14px',
-            color: '#fff',
-            lineHeight: 'normal'
-        });
-
-        const header = document.createElement('div');
-        header.id = 'af3-header';
-        Object.assign(header.style, {
-            textAlign: 'center', cursor: 'move', paddingBottom: '8px',
-            borderBottom: '1px solid #444', fontWeight: 'bold', color: '#eee', fontSize: '16px', overflowWrap: 'anywhere'
-        });
-        header.textContent = `${t('headerDev')} ${SCRIPT_VERSION}`;
+        const container = document.createElement('div'); container.id = PANEL_ROOT_ID;
+        const header = document.createElement('div'); header.id = 'af3-header';
+        const wordmark = document.createElement('span'); wordmark.className = 'af3-wordmark'; wordmark.textContent = 'AF₃'; wordmark.setAttribute('aria-hidden', 'true');
+        const headerCopy = document.createElement('div'); headerCopy.className = 'af3-header-copy';
+        const headerTitle = document.createElement('div'); headerTitle.id = 'af3-header-title'; headerTitle.textContent = t('headerDev');
+        const version = document.createElement('span'); version.className = 'af3-version'; version.textContent = `DEV / ${SCRIPT_VERSION}`;
+        headerCopy.append(headerTitle, version); header.append(wordmark, headerCopy);
 
         const languageRow = document.createElement('div');
-        Object.assign(languageRow.style, {
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center', gap: '8px', flexWrap: 'wrap', flexShrink: '0',
-            marginTop: '-4px',
-            marginBottom: '-2px'
-        });
+        languageRow.className = 'af3-navigation';
         const tabs = document.createElement('nav');
         tabs.className = 'af3-tabs'; tabs.setAttribute('role', 'tablist');
         for (const page of ['tasks', 'accounts']) {
@@ -2502,16 +2577,6 @@
             languageSelect.appendChild(option);
         });
         languageSelect.value = currentLanguage;
-        Object.assign(languageSelect.style, {
-            width: '108px',
-            padding: '2px 4px',
-            borderRadius: '4px',
-            border: '1px solid #3c4043',
-            backgroundColor: '#2b2c30',
-            color: '#cfd2d6',
-            fontSize: '13px',
-            outline: 'none'
-        });
         languageSelect.onchange = () => {
             currentLanguage = I18N[languageSelect.value] ? languageSelect.value : 'zh';
             saveLanguage(currentLanguage);
@@ -2523,74 +2588,58 @@
         account.id = 'af3-account-email';
         account.setAttribute('role', 'status');
         account.setAttribute('aria-live', 'polite');
-        Object.assign(account.style, { margin: '0', fontSize: '14px', color: '#dfe1e5', overflowWrap: 'anywhere', lineHeight: '1.5', flexShrink: '0' });
         account.textContent = t('accountUnknown');
 
         const submission = document.createElement('section');
         submission.id = 'af3-submission-section';
         submission.setAttribute('aria-labelledby', 'af3-submission-title');
-        Object.assign(submission.style, { display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: '0' });
+        submission.className = 'af3-card';
         const submissionTitle = document.createElement('h2');
         submissionTitle.id = 'af3-submission-title';
         submissionTitle.textContent = t('submitTitle');
-        Object.assign(submissionTitle.style, { margin: '0', fontSize: '14px', color: '#8ab4f8', fontWeight: 'bold' });
 
         const statusRow = document.createElement('div');
-        Object.assign(statusRow.style, { display: 'flex', alignItems: 'center', gap: '8px', padding: '0 4px' });
+        statusRow.id = 'af3-submission-status'; statusRow.className = 'af3-readiness';
         const statusLight = document.createElement('div');
         statusLight.id = 'af3-status-light';
-        Object.assign(statusLight.style, {
-            width: '10px', height: '10px', borderRadius: '50%',
-            backgroundColor: '#f44336', flexShrink: '0', transition: 'all 0.3s'
-        });
+        statusLight.className = 'af3-status-dot'; statusLight.setAttribute('aria-hidden', 'true');
         const statusText = document.createElement('span');
         statusText.id = 'af3-status-text';
         statusText.textContent = t('initializing');
-        Object.assign(statusText.style, { fontSize: '14px', color: '#bbb', minWidth: '0', overflowWrap: 'anywhere', lineHeight: '1.5' });
+        statusText.setAttribute('role', 'status');
         statusRow.appendChild(statusLight); statusRow.appendChild(statusText);
 
         const quota = document.createElement('p');
         quota.id = 'af3-quota';
         quota.setAttribute('role', 'status');
         quota.setAttribute('aria-live', 'polite');
-        Object.assign(quota.style, {
-            margin: '0', fontSize: '14px', color: '#dfe1e5',
-            overflowWrap: 'anywhere', lineHeight: '1.5', flexShrink: '0'
-        });
         quota.textContent = t('quotaUnknown');
 
-        const controls = document.createElement('div');
-        Object.assign(controls.style, { display: 'flex', alignItems: 'center', gap: '8px' });
+        const controls = document.createElement('div'); controls.className = 'af3-submit-controls';
+        const countField = document.createElement('label'); countField.className = 'af3-field'; countField.htmlFor = 'af3-v20-count';
+        const countLabel = document.createElement('span'); countLabel.id = 'af3-count-label'; countLabel.textContent = t('batchCount');
         const input = document.createElement('input');
-        input.type = 'number'; input.value = '10'; input.id = 'af3-v20-count';
-        Object.assign(input.style, {
-            width: '50px', padding: '8px', borderRadius: '6px', border: '1px solid #555',
-            textAlign: 'center', fontWeight: 'bold', backgroundColor: '#333', color: '#fff', fontSize: '14px'
-        });
+        input.type = 'number'; input.value = '10'; input.id = 'af3-v20-count'; input.min = '1'; input.step = '1';
+        countField.append(countLabel, input);
         const btn = document.createElement('button');
-        btn.id = 'af3-v20-btn'; btn.textContent = t('startButton');
-        Object.assign(btn.style, {
-            flex: '1', padding: '8px', backgroundColor: '#666', color: '#aaa',
-            border: 'none', borderRadius: '6px', cursor: 'not-allowed',
-            fontWeight: 'bold', fontSize: '16px', transition: 'all 0.3s'
-        });
+        btn.id = 'af3-v20-btn'; btn.type = 'button'; btn.className = 'af3-primary'; btn.textContent = t('startButton');
         btn.disabled = true; btn.onclick = mainProcess;
-        controls.appendChild(input); controls.appendChild(btn);
+        controls.append(countField, btn);
 
         const runControls = document.createElement('div');
         runControls.id = 'af3-run-controls';
-        Object.assign(runControls.style, { display: 'none', gap: '8px' });
+        runControls.style.display = 'none';
 
         const pauseBtn = document.createElement('button');
         pauseBtn.id = 'af3-pause-btn';
         pauseBtn.textContent = t('pauseButton');
-        stylePanelButton(pauseBtn, '#5f6368');
+        pauseBtn.type = 'button';
         pauseBtn.onclick = togglePause;
 
         const stopBtn = document.createElement('button');
         stopBtn.id = 'af3-stop-btn';
         stopBtn.textContent = t('stopButton');
-        stylePanelButton(stopBtn, '#d93025');
+        stopBtn.type = 'button'; stopBtn.className = 'af3-danger';
         stopBtn.onclick = requestStop;
 
         runControls.appendChild(pauseBtn);
@@ -2599,58 +2648,28 @@
         const footer = document.createElement('div');
         footer.id = 'af3-footer-msg';
         footer.textContent = t('devFooter');
-        Object.assign(footer.style, {
-            fontSize: '13px', color: '#fdd835', textAlign: 'center', marginTop: '4px', overflowWrap: 'anywhere'
-        });
-
         const logPanel = document.createElement('div');
-        Object.assign(logPanel.style, { borderTop: '1px solid #444', paddingTop: '6px' });
 
         const logToggle = document.createElement('button');
         logToggle.id = 'af3-log-toggle';
         logToggle.type = 'button';
-        logToggle.textContent = `▶ ${t('logLabel')} (0)`;
-        Object.assign(logToggle.style, {
-            width: '100%',
-            padding: '4px 0',
-            background: 'transparent',
-            border: 'none',
-            color: '#9aa0a6',
-            textAlign: 'left',
-            cursor: 'pointer',
-            fontSize: '13px',
-            fontWeight: 'bold'
-        });
+        logToggle.setAttribute('aria-controls', 'af3-log-body');
+        logToggle.setAttribute('aria-expanded', 'false');
         logToggle.onclick = toggleLogPanel;
 
         const logBody = document.createElement('pre');
         logBody.id = 'af3-log-body';
-        Object.assign(logBody.style, {
-            display: 'none',
-            maxHeight: '120px',
-            overflow: 'auto',
-            margin: '6px 0 0',
-            padding: '8px',
-            backgroundColor: 'rgba(0,0,0,0.25)',
-            border: '1px solid #3c4043',
-            borderRadius: '6px',
-            color: '#dfe1e5',
-            whiteSpace: 'pre-wrap',
-            overflowWrap: 'anywhere',
-            minHeight: '60px',
-            fontFamily: 'Consolas, monospace',
-            fontSize: '13px',
-            lineHeight: '1.35'
-        });
+        logBody.style.display = 'none';
         logPanel.appendChild(logToggle);
         logPanel.appendChild(logBody);
 
-        container.appendChild(header); container.appendChild(languageRow); container.appendChild(account);
+        container.appendChild(header); container.appendChild(languageRow);
         const tasksPage = document.createElement('div'); tasksPage.id = 'af3-tasks-page'; tasksPage.className = 'af3-page';
         tasksPage.setAttribute('role', 'tabpanel'); tasksPage.setAttribute('aria-labelledby', 'af3-tasks-tab');
         submission.append(submissionTitle, statusRow, quota, controls, runControls, footer);
         tasksPage.append(submission, createDownloadSection(), logPanel);
-        container.append(tasksPage, createAccountPage());
+        const workspace = document.createElement('div'); workspace.className = 'af3-workspace';
+        workspace.append(account, tasksPage, createAccountPage()); container.appendChild(workspace);
         shadow.appendChild(container);
         const resizeHandle = document.createElement('span');
         resizeHandle.id = 'af3-resize-handle';
@@ -2659,12 +2678,6 @@
         resizeHandle.textContent = '↘';
         resizeHandle.title = t('resizePanel');
         resizeHandle.setAttribute('aria-label', t('resizePanel'));
-        Object.assign(resizeHandle.style, {
-            position: 'absolute', right: '5px', bottom: '5px', width: '22px', height: '22px',
-            display: 'grid', placeItems: 'center', fontSize: '18px', borderRadius: '4px',
-            backgroundColor: '#3c4043', color: '#fff', cursor: 'nwse-resize',
-            userSelect: 'none', touchAction: 'none', zIndex: '1'
-        });
         shadow.appendChild(resizeHandle);
         document.body.appendChild(host);
         makeDraggable(host, header);
@@ -2685,17 +2698,15 @@
         const light = getUiElement('af3-status-light');
         const text = getUiElement('af3-status-text');
         const footer = getUiElement('af3-footer-msg');
+        const section = getUiElement('af3-submission-section');
 
         if (!btn || !light || !text || isRunning) return;
 
         if (submissionBlockReason) {
             btn.disabled = true;
             btn.textContent = t('submissionLocked');
-            btn.style.cursor = 'not-allowed';
-            light.style.backgroundColor = '#f44336';
-            light.style.boxShadow = '0 0 8px #f44336';
+            section.dataset.state = 'blocked';
             text.textContent = t('submissionLocked');
-            text.style.color = '#ef5350';
             footer.textContent = submissionBlockReason;
             return;
         }
@@ -2705,25 +2716,22 @@
 
         if (status === 'saved draft') {
             currentMode = 'DRAFT';
-            light.style.backgroundColor = '#00e676'; // Green
-            light.style.boxShadow = '0 0 8px #00e676';
-            text.textContent = t('readyDraftStatus'); text.style.color = '#00e676';
+            section.dataset.state = 'draft';
+            text.textContent = t('readyDraftStatus');
             footer.textContent = t('modeDraftFooter');
-            btn.disabled = false; btn.style.backgroundColor = '#1a73e8'; btn.style.color = 'white'; btn.style.cursor = 'pointer';
+            btn.disabled = false;
         } else if (status === 'failed') {
             currentMode = 'FAILED';
-            light.style.backgroundColor = '#2979ff'; // Blue
-            light.style.boxShadow = '0 0 8px #2979ff';
-            text.textContent = t('readyFailedStatus'); text.style.color = '#2979ff';
+            section.dataset.state = 'failed';
+            text.textContent = t('readyFailedStatus');
             footer.textContent = t('modeFailedFooter');
-            btn.disabled = false; btn.style.backgroundColor = '#1565c0'; btn.style.color = 'white'; btn.style.cursor = 'pointer';
+            btn.disabled = false;
         } else {
             currentMode = 'NONE';
-            light.style.backgroundColor = '#f44336'; // Red
-            light.style.boxShadow = '0 0 8px #f44336';
-            text.textContent = t('standbyStatus'); text.style.color = '#ef5350';
+            section.dataset.state = 'standby';
+            text.textContent = t('standbyStatus');
             footer.textContent = t('standbyFooter');
-            btn.disabled = true; btn.style.backgroundColor = '#444'; btn.style.color = '#888'; btn.style.cursor = 'not-allowed';
+            btn.disabled = true;
         }
     }
 
@@ -2946,16 +2954,19 @@
         const stopBtn = getUiElement('af3-stop-btn');
 
         if (runControls) runControls.style.display = isRunning ? 'flex' : 'none';
+        if (isRunning) {
+            const section = getUiElement('af3-submission-section');
+            if (section) section.dataset.state = isPaused ? 'paused' : 'running';
+            const status = getUiElement('af3-status-text');
+            if (status) status.textContent = t(shouldStop ? 'stoppingButton' : isPaused ? 'pausedButton' : 'runningButton');
+        }
         if (pauseBtn) {
             pauseBtn.textContent = isPaused ? t('resumeButton') : t('pauseButton');
-            pauseBtn.style.backgroundColor = isPaused ? '#188038' : '#5f6368';
+            pauseBtn.classList.toggle('af3-primary', isPaused);
             pauseBtn.disabled = !isRunning || shouldStop;
-            pauseBtn.style.opacity = pauseBtn.disabled ? '0.6' : '1';
         }
         if (stopBtn) {
             stopBtn.disabled = !isRunning || shouldStop;
-            stopBtn.style.opacity = stopBtn.disabled ? '0.6' : '1';
-            stopBtn.style.cursor = stopBtn.disabled ? 'not-allowed' : 'pointer';
         }
     }
 

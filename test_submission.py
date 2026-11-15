@@ -202,6 +202,14 @@ async function checkPanelUi(){
   const handle=ui('resize-handle');
   assert(handle,'Panel resize handle is missing');
   assert(handle.getAttribute('role')==='button'&&handle.tabIndex===0,'Resize handle is not keyboard accessible');
+  const luminance=color=>color.match(/[\d.]+/g).slice(0,3).map(value=>{
+    const channel=Number(value)/255;return channel<=0.04045?channel/12.92:((channel+0.055)/1.055)**2.4;
+  }).reduce((sum,value,index)=>sum+value*[0.2126,0.7152,0.0722][index],0);
+  await until(()=>ui('v20-btn').getAnimations().length===0,2500);
+  for(const [foreground,background] of [['status-text','submission-status'],['v20-btn','v20-btn']]){
+    const a=luminance(getComputedStyle(ui(foreground)).color),b=luminance(getComputedStyle(ui(background)).backgroundColor);
+    assert((Math.max(a,b)+0.05)/(Math.min(a,b)+0.05)>=4.5,foreground+' contrast is below 4.5:1 ('+getComputedStyle(ui(foreground)).color+' on '+getComputedStyle(ui(background)).backgroundColor+'; '+ui(background).getAnimations().length+' active animations)');
+  }
   const points=document.querySelector('gdm-af-request .points');
   points.textContent='Remaining jobs: 24';
   await until(()=>/24\s*个/.test(quota()),2500);
@@ -273,9 +281,50 @@ async function checkPanelUi(){
   dispatchEvent(new Event('resize'));await pause(1200);
   const small=rect();
   assert(small.left>=0&&small.top>=0&&small.right<=innerWidth+1&&small.bottom<=innerHeight+1,'Panel escapes a small viewport');
+  const workspace=root().querySelector('.af3-workspace');
+  assert(workspace,'Scrollable panel workspace is missing');
+  const controls={
+    tasks:['v20-count','v20-btn','download-start','download-end','download-format','download-scan','download-apply','download-all','download-clear','log-toggle'],
+    accounts:['account-login','account-refresh','account-input','account-note','account-save'],
+  };
+  const originalLanguage=ui('language-select').value;
+  try{
+    for(const [width,height] of [[340,400],[264,284]]){
+      frame.style.width=width+'px';frame.style.height=height+'px';
+      await until(()=>innerWidth===width&&innerHeight===height,2500);
+      dispatchEvent(new Event('resize'));await pause(50);
+      const headerTop=ui('header').getBoundingClientRect().top;
+      for(const language of ['zh','en','ja','ko','es','fr']){
+        ui('language-select').value=language;ui('language-select').dispatchEvent(new Event('change'));
+        assert(ui('v20-count').labels.length&&ui('count-label').textContent,'Quantity input lacks a visible label');
+        assert(ui('language-select').getAttribute('aria-label'),'Language selector lacks an accessible name');
+        for(const [page,names] of Object.entries(controls)){
+          ui(page+'-tab').click();
+          const active=ui(page+'-page');
+          assert(!active.hidden&&active.scrollWidth<=active.clientWidth+1,language+' '+page+' page overflows horizontally');
+          assert(workspace.scrollWidth<=workspace.clientWidth+1,language+' workspace overflows horizontally');
+          for(const name of names){
+            const control=ui(name);control.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+            const box=control.getBoundingClientRect(),viewport=workspace.getBoundingClientRect();
+            assert(box.width>0&&box.height>0,language+' '+name+' is not rendered');
+            assert(box.left>=viewport.left-1&&box.right<=viewport.right+1,language+' '+name+' is clipped horizontally');
+            assert(box.top>=viewport.top-1&&box.bottom<=viewport.bottom+1,language+' '+name+' cannot scroll into view');
+            assert(Math.abs(ui('header').getBoundingClientRect().top-headerTop)<1,'Scrolling content moved panel navigation');
+          }
+        }
+      }
+    }
+  }finally{
+    ui('language-select').value=originalLanguage;ui('language-select').dispatchEvent(new Event('change'));
+  }
+  assert(localStorage.getItem('af3-dev-panel-language')===originalLanguage,'Panel UI check did not restore the saved language');
+  ui('tasks-tab').click();ui('log-toggle').click();
+  assert(ui('log-toggle').getAttribute('aria-expanded')==='true'&&ui('log-body').getClientRects().length,'Expanded log state is not accessible');
+  ui('log-toggle').click();
+  assert(ui('log-toggle').getAttribute('aria-expanded')==='false','Collapsed log state is not accessible');
   assert(state.calls===0&&state.opened.length===0,'Panel controls submitted a job');
   assert(state.errors.length===0,state.errors.join('; '));
-  parent.postMessage({type:'af3-case-result',result:{passed:true,message:'live quota, pointer/keyboard resize, restore and viewport bounds; 0 submits'}},location.origin);
+  parent.postMessage({type:'af3-case-result',result:{passed:true,message:'live quota, resize/restore, six-language narrow/minimum layout and accessible controls; 0 submits'}},location.origin);
   return false;
 }
 renderRows();

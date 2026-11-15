@@ -4,14 +4,14 @@
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 3.0.0-dev.7](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 3.0.0-dev.8](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 3.0 的账户管理、按日期勾选、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行，并在 Edge 扩展详情中开启“允许在 InPrivate 中使用”。
 3. 若要在普通窗口与 InPrivate 共用账号目录，在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `3.0.0-dev.7`。更新后至少在普通窗口打开一次官网，以导入普通窗口原有账户列表。网站控件与通知仍需使用英文。
+4. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `3.0.0-dev.8`。更新后至少在普通窗口打开一次官网，以导入普通窗口原有账户列表。网站控件与通知仍需使用英文。
 5. 在 History 中仅选中 `Saved draft` 才显示“就绪: 提交草稿”，仅选中 `Failed` 才显示失败重跑就绪；混选或未选标签时待机并禁用启动。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 6. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 7. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
@@ -25,6 +25,14 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 在 Tampermonkey 的脚本设置中启用检查更新即可接收后续开发版；也可以手动“检查更新”。
 
 ## 本轮改动
+
+### 3.0.0-dev.8 现代化面板
+
+- 浅色卡片布局、蓝墨文字与青绿色主操作；标题、版本和导航固定在顶部，内容单独滚动。
+- 提交区新增可见的“本次数量”标签；下载区按“日期查找 → 核对任务 → 选择方式并应用”排列，任务名称与 Modified 时间分行显示。
+- 账户页先展示已保存账号，再显示添加/编辑表单；当前账号使用青绿侧线和文字标记，实时额度与历史记录仍明确区分。
+- 保留提交确认、锁定警告、暂停/继续/停止、官网手动下载、账户存储和拖动缩放，不新增依赖。已有面板位置与尺寸继续生效。
+- 补齐数量输入、语言选择和日志展开的无障碍信息，并在本地浏览器中检查六种语言的窄面板布局、操作可达性与固定导航。
 
 ### 3.0.0-dev.7 InPrivate 直接打开官网首页
 
@@ -67,7 +75,7 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 邮箱、备注和额度记录保存在 Tampermonkey 的本机脚本存储中，同一浏览器配置内的标签页共用；不同浏览器配置不会共享记录。清除 Tampermonkey 扩展数据会删除记录。旧网站存储会在首次运行时合并导入；内容损坏时不会自动覆盖。手动添加账号只记录邮箱和备注，不支持免登录查询其他账号额度。
 
-### 按日期勾选，再用官网下载（DEV 3.0.0-dev.7）
+### 按日期勾选，再用官网下载（DEV 3.0.0-dev.8）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。面板会扫描当前搜索结果的所有分页，保留官网已有的复选框选中状态。
 2. 在面板下方常驻的“下载任务”区域，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。
@@ -96,7 +104,7 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 ### 面板字体、尺寸与位置
 
-面板正文、日期输入和主要操作按钮放大到 **14px**，标题与启动按钮为 **16px**，辅助文字为 **13px**。状态和长任务名称可换行，日期在窄面板中自动排成一列；内容较多时可在面板内滚动查看。
+面板采用浅色工作台布局，标题 **17px**、分区标题 **15px**、日期输入和主要操作 **14px**，状态与任务名称 **13px**，辅助说明 **12px**。顶部标题和导航固定，正文独立滚动；长文本可换行，窄面板日期自动排成一列。首次使用默认尺寸为 **392 × 800px**，已有位置与尺寸记录不会被覆盖。
 
 按住标题栏可移动面板；拖动右下角尺寸手柄可调整大小。手柄也可用键盘操作：按 Tab 聚焦后，使用方向键调节尺寸。位置与尺寸保存在当前浏览器本地，刷新后会恢复。窄屏、窗口变小或网页缩放时，面板会约束在视口内。
 
