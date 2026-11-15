@@ -46,6 +46,7 @@ button,input{margin:4px}td,th{padding:8px}mat-icon{display:inline-block}
 const id=new URLSearchParams(location.search).get('id');
 const officialLinks=id.startsWith('download-official-links')||id==='download-individual-official-links';
 const menuIdentity=id.startsWith('download-menu-')||id.startsWith('download-individual-menu');
+const dateScan=id.startsWith('download-menu-date-');
 const failedMenuCases=['download-menu-stop-before-binding','download-menu-missing','download-menu-conflict','download-menu-foreign','download-menu-malformed','download-menu-collision','download-menu-stop','download-menu-context','download-menu-account','download-menu-row-replaced','download-menu-busy','download-menu-preopened','download-menu-takeover','download-menu-panel-replaced','download-menu-owner-changed'];
 const invalidLinkCases=['download-official-links-foreign','download-official-links-non-http','download-official-links-malformed','download-official-links-collision','download-official-links-ambiguous-row'];
 if(id==='download-account-change'||id==='download-account-queue'||id==='download-menu-account')window.WIZ_global_data={oPEP7c:'first@example.com'};
@@ -87,10 +88,27 @@ if(id==='download-clock-invalid')jobs[3]={...jobs[3],modified:'2026-11-12 24:00'
 if(id==='download-stable-collision')jobs[3]={...jobs[3],id:jobs[2].id};
 if(['download-preselection','download-menu-preselection','download-cancel-apply','download-clear-failure','download-confirm-context-change','download-individual-preselection'].includes(id)){state.selected.add('older');state.selected.add('hidden-old-selection')}
 if(id==='download-over-fifty')jobs.splice(0,jobs.length,...Array.from({length:51},(_,index)=>({id:'many-'+index,name:'batch_'+index,modified:'2026-11-13 12:00'})));
+if(dateScan){
+ document.querySelector('table').setAttribute('mat-table','');
+ jobs.push(...Array.from({length:4},(_,index)=>({id:'old-tail-'+index,name:'old_tail_'+index,modified:'2026-11-10 12:00'})));
+ if(id==='download-menu-date-aria')document.querySelector('th.mat-column-date').setAttribute('aria-sort','descending');
+ if(id==='download-menu-date-ascending'){jobs.reverse();document.querySelector('th.mat-column-date').setAttribute('aria-sort','ascending')}
+ if(['download-menu-date-name','download-menu-date-search','download-menu-date-generic'].includes(id)){
+  const late=jobs.splice(2,3);jobs.push(...late);
+  if(id==='download-menu-date-name')document.querySelector('th.mat-column-name').setAttribute('aria-sort','descending');
+  if(id==='download-menu-date-search')document.getElementById('history-search').value='fixture query';
+  if(id==='download-menu-date-generic')document.querySelector('table').removeAttribute('mat-table');
+ }
+ if(id==='download-menu-date-unknown')jobs[0].modified='unknown';
+ if(id==='download-menu-date-disorder')[jobs[0],jobs[1]]=[jobs[1],jobs[0]];
+ if(id==='download-menu-date-boundary')for(const [index,value] of [[1,'2026-11-08 23:59'],[2,'2026-11-08 12:00'],[3,'2026-11-08 00:00'],[4,'2026-11-07 23:59'],[5,'2026-11-06 00:00']])jobs[index].modified=value;
+ if(id==='download-menu-date-boundary')for(const job of jobs.slice(6))job.modified='2026-11-05 12:00';
+}
 const pageSize=id==='download-over-fifty'?20:2;
 const pageOption=document.querySelector('mat-paginator select option');pageOption.value=String(pageSize);pageOption.textContent=String(pageSize);
 state.pages=Array.from({length:Math.ceil(jobs.length/pageSize)},(_,index)=>jobs.slice(index*pageSize,(index+1)*pageSize));
 if(id==='download-reset-first')state.page=2;
+if(id==='download-menu-date-reset')state.page=state.pages.length-1;
 const submissionStatuses=[];
 let closedIdentityMenus=0;
 function showIdentityMenu(button,job){
@@ -222,11 +240,12 @@ function renderRows(){
 function changePage(target){
  state.changes++;recordReadiness();
  if(id==='download-stale-page')return;
- if(id==='download-loading-page'||id==='download-loading-paginator'){
+ if(id==='download-menu-date-sort-change'&&target===1)document.querySelector('th.mat-column-date').setAttribute('aria-sort','ascending');
+ if(id==='download-loading-page'||id==='download-loading-paginator'||id==='download-menu-date-loading'){
   const table=document.querySelector('gdm-af-history table'),paginator=document.querySelector('mat-paginator');
   const spinner=document.createElement('mat-spinner');spinner.style.cssText='display:block;width:20px;height:20px';
-  if(id==='download-loading-page'){table.before(spinner);table.remove();paginator.remove()}else paginator.replaceWith(spinner);
-  setTimeout(()=>{id==='download-loading-page'?spinner.replaceWith(table,paginator):spinner.replaceWith(paginator);state.page=target;renderRows()},350);return;
+  if(id!=='download-loading-paginator'){table.before(spinner);table.remove();paginator.remove()}else paginator.replaceWith(spinner);
+  setTimeout(()=>{id!=='download-loading-paginator'?spinner.replaceWith(table,paginator):spinner.replaceWith(paginator);state.page=target;renderRows()},350);return;
  }
  if(id==='download-repeating-page'&&state.page===1&&target===2)target=0;
  const wait=['download-stop-scan','download-context-change','download-busy'].includes(id)?500:75;
@@ -437,6 +456,29 @@ async function checkIndividual(){
   assert(state.nativeInputChanges===changes&&state.nativeClears===clears,'Account change applied previous account selection');
  }else if(id.startsWith('download-individual-')){
   await checkIndividual();
+ }else if(dateScan){
+  state.selected.add('older');state.selected.add('hidden-old-selection');renderNativeSelection();
+  const before=[...state.selected];state.visited=[];
+  const boundary=id==='download-menu-date-boundary',future=id==='download-menu-date-future';
+  const start=boundary?'2026-11-08':future?'2027-01-01':'2026-11-12';
+  const end=boundary?'2026-11-08':future?'2027-01-02':'2026-11-13';
+  await scan(start,end);
+  assertNativeIds(before);
+  assert(state.nativeCheckboxClicks===0&&state.nativeInputChanges===0&&state.nativeClears===0,'Date scan changed the website selection');
+  if(id==='download-menu-date-sort-change'){
+   assert(reviewChecks().length===0&&ui('download-apply').disabled,'Changed sort published an incomplete scan');assertReviewUnavailable();
+  }else{
+   const expected=jobs.filter(job=>/^\d{4}-\d{2}-\d{2}/.test(job.modified)&&job.modified.slice(0,10)>=start&&job.modified.slice(0,10)<=end).map(job=>job.id);
+   assert(reviewChecks().length===expected.length,'Date fast path lost matches: '+ui('download-status').textContent);
+   assert(reviewChecks().every(input=>expected.includes(input.dataset.jobKey.slice(3))),'Date fast path chose an outside job');
+   assert(state.menus.length===expected.length&&state.menus.every(jobId=>expected.includes(jobId)),'Scan resolved IDs outside its date range');
+   const fallback=['download-menu-date-ascending','download-menu-date-name','download-menu-date-search','download-menu-date-generic','download-menu-date-unknown','download-menu-date-disorder'].includes(id);
+   const pages=fallback?state.pages.length:future?1:3;
+   assert(new Set([0,...state.visited]).size===pages,'Wrong scanned page count: '+state.visited+' expected '+pages);
+   assert(state.page===0,'Date scan did not return to the first page');
+   if(id==='download-menu-date-unknown')assert(/1\s*个/.test(ui('download-status').textContent),'Unreadable date was not counted');
+   if(future)assertReviewUnavailable();
+  }
  }else if(id==='download-invalid-range'){
   await scan('2026-11-14','2026-11-12');assert(state.changes===0&&ui('download-apply').disabled,'Reversed range was actionable');assertReviewUnavailable();
   await scan('','2026-11-13');assert(state.changes===0&&ui('download-apply').disabled,'Empty range was actionable');assertReviewUnavailable();
@@ -568,6 +610,9 @@ SCENARIOS = [
     'download-unknown-date', 'download-calendar-invalid', 'download-clock-invalid',
     'download-duplicate', 'download-stable-ids', 'download-stable-collision',
     'download-menu-ids', 'download-menu-cross-page', 'download-menu-delayed', 'download-menu-aria-delayed', 'download-menu-stop-before-binding', 'download-menu-preselection',
+    'download-menu-date-desc', 'download-menu-date-aria', 'download-menu-date-boundary', 'download-menu-date-future',
+    'download-menu-date-ascending', 'download-menu-date-name', 'download-menu-date-search', 'download-menu-date-generic',
+    'download-menu-date-unknown', 'download-menu-date-disorder', 'download-menu-date-reset', 'download-menu-date-loading', 'download-menu-date-sort-change',
     'download-menu-rerender', 'download-individual-menu-rerender',
     'download-menu-replaced-before-click', 'download-menu-replaced-after-click', 'download-individual-menu', 'download-individual-menu-swap',
     'download-menu-missing', 'download-menu-conflict', 'download-menu-foreign', 'download-menu-malformed', 'download-menu-collision', 'download-menu-equivalent',

@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 开发版 3.0.0-dev.10：修复真实官网任务行没有可读 ID 的情况，必要时只打开原生三点菜单读取结果 ID，再关闭菜单，同名同时间任务分别保留。保留浅色工作台、账户记录、提交确认和拖动缩放；下载仍由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">本 fork 开发版 3.0.0-dev.11：按日期查找不再逐个读取范围外任务的菜单，确认 Modified 倒序后越过开始日即停止翻页。排序不确定时仍遍历所有分页，保留同名任务识别、账户记录和提交确认；下载仍由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
             <p class="version-note">main 的 2.24.1 仍为旧行为基线，不包含这些 DEV 功能。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 3.0.0-dev.10</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 3.0.0-dev.11</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
@@ -257,7 +257,7 @@
             <div class="features-grid">
                 <div class="feature-card">
                     <h3>📅 按日期应用勾选</h3>
-                    <p>按 Modified 日期扫描当前 Completed 搜索结果的所有分页，按天或逐项核对后应用到官网复选框。合并模式一次勾选全部，分开模式逐个勾选并提供“下一任务”；下载使用官网原生控件，由你手动点击。</p>
+                    <p>按 Modified 日期查找 Completed 任务，确认倒序后越过开始日即结束，排序不确定时扫描所有分页。按天或逐项核对后应用到官网复选框；合并模式一次勾选全部，分开模式逐个勾选并提供“下一任务”。下载仍由你手动使用官网原生控件。</p>
                 </div>
                 <div class="feature-card">
                     <h3>🖐️ 可移动、可调尺寸</h3>
@@ -295,8 +295,10 @@
         </section>
 
         <section>
-            <h2>✨ DEV 3.0.0-dev.10 更新重点</h2>
+            <h2>✨ DEV 3.0.0-dev.11 更新重点</h2>
             <ul class="release-list">
+                <li>按日期查找只为范围内任务读取唯一 ID；未搜索的官网默认 Modified 倒序列表或明确的 Modified 降序，在越过开始日后停止翻页并返回首页。起止当天均包含，不跳过开始日的其他任务。</li>
+                <li>搜索结果没有明确倒序标记、其他排序、通用表格、日期无法识别或顺序异常时继续全量扫描，避免漏选；未知日期数量只统计已扫描页面。应用勾选及逐个队列的完整身份核验不变。</li>
                 <li>真实官网的任务行可能没有结果链接：没有行内 ID 时，只打开该行原生三点菜单，读取 Open results 中的任务 ID，再关闭自己的菜单；不点击菜单项或触发下载。同名同时间任务分别保留，应用和逐个切换时重新核对身份。</li>
                 <li>菜单读取期间请勿同时操作官网。已有菜单或对话框打开、菜单归属改变、读取期间任务行替换、账号或筛选变化时停止，不接管用户菜单；停止后仍清理自己打开的菜单。勾选后官网重建同一任务行时，重新读取候选行的菜单 ID，确认唯一一致后再继续，不读取已脱离页面的旧复选框。</li>
                 <li>查找失败或结果为空时禁用“全选 / 清空选择”，保留真实原因，不再覆盖为“匹配 0 个”。</li>
@@ -382,7 +384,7 @@
 
             <h3>3. 按日期勾选，再用官网下载</h3>
             <ol>
-                <li>在官网 History 中<strong>仅选中 Completed</strong>，按需填写 <code>Search History</code>。查找会遍历当前搜索结果的所有分页，并保留官网已有的复选框选中状态。</li>
+                <li>在官网 History 中<strong>仅选中 Completed</strong>，按需填写 <code>Search History</code>。未搜索的官网默认 Modified 倒序列表或明确的 Modified 降序，在越过开始日后提前结束；排序不确定时遍历所有分页，保留官网已有的复选框选中状态。</li>
                 <li>在面板下方常驻的“下载任务”区域，选择开始、结束日期，再点<strong>查找任务</strong>。按官网 <code>Modified</code> 显示日期筛选，包含起止当天；填写同一天即可选择一天。</li>
                 <li>核对结果，按天或逐个任务勾选，也可点<strong>全选</strong>或<strong>清空选择</strong>。没有行内 ID 时会逐行打开原生三点菜单、读取 <code>Open results</code> 中的 ID，再关闭自己的菜单；不激活菜单项。同名同时间的不同 ID 任务分别保留。日期无法识别的任务不纳入结果，身份冲突或菜单无法安全读取时停止；查找失败或为空时保留原始提示。</li>
                 <li>选择<strong>合并一个 ZIP（官网最多 50 个）</strong>或<strong>分开下载（逐个勾选）</strong>，再点<strong>应用到官网勾选</strong>并确认替换提示。合并模式勾选全部已核对任务，分开模式每次只勾选一个任务，均<strong>只应用勾选，不发起下载</strong>。</li>
@@ -425,7 +427,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 3.0.0-dev.10 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 3.0.0-dev.11 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -435,7 +437,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter DEV 3.0.0-dev.10 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter DEV 3.0.0-dev.11 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

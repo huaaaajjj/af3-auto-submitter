@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.10
+// @version      3.0.0-dev.11
 // @description  3.0 开发版：浅色科研工作台、固定导航与响应式分区；保留跨普通与 InPrivate 的账户记录、提交确认、按日期勾选和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.10';
+    const SCRIPT_VERSION = '3.0.0-dev.11';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -584,11 +584,11 @@
 
     const downloadEnglish = {
         submitTitle: 'Submit jobs', downloadTitle: 'Download jobs', downloadStart: 'From', downloadEnd: 'Through',
-        downloadNote: 'Modified date, including both days. Scan all pages of the current Completed search results.',
+        downloadNote: 'Includes both Modified dates. Confirmed newest-first history stops after older dates; other orders scan all pages.',
         downloadScan: 'Find jobs', downloadAll: 'Select all', downloadClear: 'Clear selection',
         downloadIdle: 'Choose dates, find jobs, then apply your reviewed selection to the website.',
         downloadScanning: 'Scanning page {page}… {count} matches',
-        downloadFound: '{count} matches; {selected} selected. Unknown dates skipped: {unknown}.',
+        downloadFound: '{count} matches; {selected} selected. Unreadable dates skipped on scanned pages: {unknown}.',
         downloadHint: 'Apply replaces the website checkboxes. Combined: click the website Download for one ZIP (up to 50 jobs). Separate: download the current job on the website, then click Next job to select another. Next job only changes checkboxes; it does not verify saved files.',
         downloadFormat: 'Download mode', downloadCombined: 'Combined ZIP (website limit: 50)', downloadIndividual: 'Separate ZIPs (select one at a time)',
         downloadNext: 'Next job', downloadQueue: 'Current job {index}/{total}: {name} · {modified}',
@@ -630,11 +630,11 @@
     const downloadTranslations = {
         zh: {
             submitTitle: '提交任务', downloadTitle: '下载任务', downloadStart: '开始日期', downloadEnd: '结束日期',
-            downloadNote: '按官网 Modified 日期，包含起止当天。扫描当前 Completed 搜索结果的所有分页。',
+            downloadNote: '按官网 Modified 日期，包含起止当天。确认日期倒序后越过开始日即停止；排序不确定时扫描所有分页。',
             downloadScan: '查找任务', downloadAll: '全选', downloadClear: '清空选择',
             downloadIdle: '先选择日期并查找任务，核对后将勾选应用到官网。',
             downloadScanning: '正在扫描第 {page} 页…已找到 {count} 个',
-            downloadFound: '匹配 {count} 个，已选 {selected} 个；日期无法识别、未纳入 {unknown} 个。',
+            downloadFound: '匹配 {count} 个，已选 {selected} 个；已扫描页面中日期无法识别、未纳入 {unknown} 个。',
             downloadHint: '应用会替换官网勾选。合并：手动点击官网 Download，最多 50 个任务合成一个 ZIP。分开：在官网下载当前任务后，点“下一任务”切换勾选；此按钮只切换任务，不检测文件是否保存。',
             downloadFormat: '下载方式', downloadCombined: '合并一个 ZIP（官网最多 50 个）', downloadIndividual: '分开下载（逐个勾选）',
             downloadNext: '下一任务', downloadQueue: '当前第 {index}/{total} 个：{name} · {modified}',
@@ -1928,9 +1928,9 @@
         return id ? { ...fresh, key: `id:${id}`, id: true } : fresh;
     }
 
-    async function resolveDownloadPage(page) {
+    async function resolveDownloadPage(page, candidates = page.jobs) {
         const jobs = [], keys = new Set();
-        for (const job of page.jobs) {
+        for (const job of candidates) {
             const resolved = await resolveDownloadJob(job);
             if (keys.has(resolved.key)) throw new Error(t(resolved.id ? 'downloadPageError' : 'downloadAmbiguous'));
             keys.add(resolved.key); jobs.push(resolved);
@@ -2263,29 +2263,39 @@
         downloadState.selectionChanged = false;
         checkSystemStatus();
         try {
-            getDownloadHistory();
+            const history = getDownloadHistory();
             downloadState.context = getDownloadContext();
             downloadState.scanContext = downloadState.context;
+            const { sort, search } = JSON.parse(downloadState.context);
+            // Native unsearched MatTable data is sorted by Modified before pagination; search results need not be.
+            let newestFirst = history.root.matches?.('gdm-af-history') && (
+                (sort.length === 1 && sort[0][0] === 'Modified' && sort[0][1] === 'descending') ||
+                (!sort.length && !search && history.table?.hasAttribute('mat-table')));
+            let previousDay = null;
             const visited = new Set(), identities = new Map(), matches = [];
             let page = await firstDownloadPage();
             while (true) {
-                page = await resolveDownloadPage(page);
                 checkDownloadActive();
                 if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
                 visited.add(page.signature);
+                for (const job of page.jobs) {
+                    if (!job.day) { downloadState.unknown++; newestFirst = false; continue; }
+                    if (previousDay && job.day > previousDay) newestFirst = false;
+                    previousDay = job.day;
+                }
+                const pastStart = newestFirst && page.jobs.length > 0 && previousDay < start;
+                page = await resolveDownloadPage(page, page.jobs.filter(job => job.day && job.day >= start && job.day <= end));
+                checkDownloadActive();
                 for (const job of page.jobs) {
                     if (identities.has(job.key)) {
                         throw new Error(t(job.id ? 'downloadPageError' : 'downloadAmbiguous'));
                     }
                     identities.set(job.key, job);
-                    if (!job.day) { downloadState.unknown++; continue; }
-                    if (job.day >= start && job.day <= end) {
-                        const { row, ...record } = job;
-                        matches.push(record);
-                    }
+                    const { row, ...record } = job;
+                    matches.push(record);
                 }
                 setDownloadMessage('downloadScanning', { page: visited.size, count: matches.length });
-                if (!downloadButtonEnabled(page.next)) break;
+                if (pastStart || !downloadButtonEnabled(page.next)) break;
                 page = await moveDownloadPage(page.next, page.signature);
             }
             await firstDownloadPage();
