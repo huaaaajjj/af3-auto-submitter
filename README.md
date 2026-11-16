@@ -4,14 +4,14 @@
 
 ## 安装本 fork 的 DEV 版
 
-[安装或更新 DEV 3.0.0-dev.11](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 DEV 3.0.0-dev.12](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js) · [开发分支](https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 3.0 的账户管理、按日期勾选、提交确认、面板尺寸和实时额度功能均在 **`dev/confirmed-submission`**，尚未合并至 `main`。DEV 使用独立名称和 namespace；安装前请在 Tampermonkey 中禁用原版、旧 DEV 及其他 AlphaFold 自动提交脚本，只启用一份。
 
 1. 安装并启用 Tampermonkey，点击上方 DEV 安装链接并确认安装。如果浏览器只显示源码，可新建油猴脚本、完整粘贴源码并保存。
 2. 允许 Tampermonkey 在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行，并在 Edge 扩展详情中开启“允许在 InPrivate 中使用”。
 3. 若要在普通窗口与 InPrivate 共用账号目录，在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `3.0.0-dev.11`。更新后至少在普通窗口打开一次官网，以导入普通窗口原有账户列表。网站控件与通知仍需使用英文。
+4. 登录 AlphaFold Server 并刷新，确认面板显示 DEV `3.0.0-dev.12`。更新后至少在普通窗口打开一次官网，以导入普通窗口原有账户列表。网站控件与通知仍需使用英文。
 5. 在 History 中仅选中 `Saved draft` 才显示“就绪: 提交草稿”，仅选中 `Failed` 才显示失败重跑就绪；混选或未选标签时待机并禁用启动。面板会显示当前页面中官网提供的 `Remaining jobs`；先核对额度，再设置本次数量。
 6. 第一次只试 `1` 个。点击启动并核对模式和数量，保持页面打开，等待官网确认和运行汇总。
 7. 若提交结果未确认或启动按钮锁定，先人工检查历史记录与官网额度；不要再手动点 Confirm，也不要刷新后直接重试。
@@ -25,6 +25,12 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 在 Tampermonkey 的脚本设置中启用检查更新即可接收后续开发版；也可以手动“检查更新”。
 
 ## 本轮改动
+
+### 3.0.0-dev.12 修复隔离环境下的提交点击
+
+修复批量提交 Saved Drafts 在首次点击前报 `MouseEvent` 的 `view` 无法转换为 `Window` 的问题。共享点击函数不再向原生事件构造器传入油猴隔离环境的窗口对象，保留原有鼠标事件链与单次点击；失败任务克隆重提也使用同一修复。提交成功仍以官网新出现的成功通知为准，不增加重试或绕过确认。
+
+本地浏览器回归使用 Window 代理触发原生类型检查，分别验证草稿提交和失败重跑；不访问真实账号、不消耗官网额度。
 
 ### 3.0.0-dev.11 按日期提前结束查找
 
@@ -93,7 +99,7 @@ https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-sub
 
 邮箱、备注和额度记录保存在 Tampermonkey 的本机脚本存储中，同一浏览器配置内的标签页共用；不同浏览器配置不会共享记录。清除 Tampermonkey 扩展数据会删除记录。旧网站存储会在首次运行时合并导入；内容损坏时不会自动覆盖。手动添加账号只记录邮箱和备注，不支持免登录查询其他账号额度。
 
-### 按日期勾选，再用官网下载（DEV 3.0.0-dev.11）
+### 按日期勾选，再用官网下载（DEV 3.0.0-dev.12）
 
 1. 在官网 History 中**仅选中 `Completed`**，按需填写 `Search History`。未搜索的官网默认 Modified 倒序列表或明确的 Modified 降序，在越过开始日期后提前结束；排序无法确认时遍历所有分页，保留官网已有的复选框选中状态。
 2. 在面板下方常驻的“下载任务”区域，填写开始、结束日期，点击“查找任务”。日期按官网 **`Modified` 显示的日期**筛选，包含起止当天；两项填同一天即可选择一天。

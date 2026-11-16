@@ -119,6 +119,20 @@ window.confirm=()=>{if(id==='account-switch-confirm')window.WIZ_global_data.oPEP
 window.alert=message=>state.summaries.push(String(message));
 window.addEventListener('error',event=>state.errors.push(event.message));
 window.addEventListener('unhandledrejection',event=>state.errors.push(String(event.reason)));
+if(id.endsWith('sandbox-event-window')){
+  const NativeMouseEvent=window.MouseEvent;
+  const sandboxWindow=new Proxy(window,{});
+  // Exercise the browser's actual Window conversion, not a mocked exception.
+  let rejected=false;
+  try{new NativeMouseEvent('mouseover',{view:sandboxWindow})}
+  catch(error){rejected=error instanceof TypeError&&error.message.includes("convert value to 'Window'")}
+  assert(rejected,'Browser must reject a sandbox Window proxy for this regression');
+  window.MouseEvent=class extends NativeMouseEvent{
+    constructor(type,init){
+      super(type,init?.view===window?{...init,view:sandboxWindow}:init);
+    }
+  };
+}
 document.getElementById('mode').textContent=failed?'Failed':'Saved draft';
 function toast(message){
   let node=document.querySelector('mat-snack-bar-container');
@@ -543,7 +557,7 @@ async function checkAccountManager(){
     assert(state.calls===0,'Account switch during a batch still clicked Confirm');
     assert(ui('v20-btn').disabled,'Account change did not lock Start');
     assert(ui('footer-msg').textContent.includes('账号已变化'),'Account change did not explain why processing stopped');
-  }else if(['delayed-success','failed-success','paused-success'].includes(id)){
+  }else if(['delayed-success','failed-success','paused-success','sandbox-event-window','failed-sandbox-event-window'].includes(id)){
     assert(state.calls===1,'Confirm clicked '+state.calls+' times; expected exactly once');
     assert(successes===1,'Expected one confirmed launch: '+state.summaries.at(-1));
     assert(!ui('v20-btn').disabled,'Confirmed run cannot start a later batch');
@@ -567,8 +581,8 @@ async function checkAccountManager(){
 SCENARIOS = [
     'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-unavailable', 'account-login-busy', 'account-quota', 'account-persistence',
     'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-migration', 'account-switch-submission', 'account-switch-confirm',
-    'delayed-success', 'old-success', 'server-error', 'no-toast',
-    'failed-success', 'failed-error', 'stop-in-flight', 'stale-row',
+    'delayed-success', 'old-success', 'server-error', 'no-toast', 'sandbox-event-window',
+    'failed-success', 'failed-error', 'failed-sandbox-event-window', 'stop-in-flight', 'stale-row',
     'multi-success', 'paused-success',
 ]
 

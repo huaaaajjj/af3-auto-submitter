@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.11
+// @version      3.0.0-dev.12
 // @description  3.0 开发版：浅色科研工作台、固定导航与响应式分区；保留跨普通与 InPrivate 的账户记录、提交确认、按日期勾选和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.11';
+    const SCRIPT_VERSION = '3.0.0-dev.12';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -1621,8 +1621,8 @@
             element.style.transition = originalTrans;
         }, 300);
 
-        // 完整事件链
-        const opts = { bubbles: true, cancelable: true, view: window, buttons: 1 };
+        // ponytail: omit optional view; userscript Window proxies fail native type checks.
+        const opts = { bubbles: true, cancelable: true, buttons: 1 };
         element.dispatchEvent(new MouseEvent('mouseover', opts));
         element.dispatchEvent(new MouseEvent('mousedown', opts));
         element.dispatchEvent(new MouseEvent('mouseup', opts));
