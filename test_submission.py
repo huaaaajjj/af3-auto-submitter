@@ -85,12 +85,14 @@ if(id==='startup-trusted-types')window.WIZ_global_data={oPEP7c:'strict.page@exam
 // Leave room to grow in the 700px fixture, and verify existing saved sizes still work.
 if(id==='panel-ui'&&!new URLSearchParams(location.search).has('restore'))localStorage.setItem('af3-dev-panel-size',JSON.stringify({width:300,height:380}));
 const failed=id.startsWith('failed-');
+const draftBatch=id.startsWith('draft-batch-');
+const pagedBatch=draftBatch||id==='failed-batch-limit';
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const root=()=>document.getElementById('af3-dev-panel')?.shadowRoot;
 const ui=name=>root()?.getElementById('af3-'+name);
 const assert=(value,message)=>{if(!value)throw Error(message)};
 async function until(read,timeout=75000){const end=Date.now()+timeout;while(Date.now()<end){if(read())return;await pause(50)}throw Error('Timed out: '+(ui('log-body')?.textContent||''))}
-const state={calls:0,names:[],summaries:[],errors:[],opened:[],pausedConfirmed:false,earlySuccess:false};
+const state={calls:0,names:[],summaries:[],errors:[],opened:[],acknowledged:[],removed:[],prompts:[],pausedConfirmed:false,earlySuccess:false};
 window.__af3PrivateTabCalls=[];
 const cloneGMValue=value=>value===undefined?undefined:JSON.parse(JSON.stringify(value));
 window.GM_getValue=(key,defaultValue)=>top.__af3GMValues.has(key)?cloneGMValue(top.__af3GMValues.get(key)):defaultValue;
@@ -114,8 +116,13 @@ window.GM_openInTab=(url,options)=>{
   window.__af3PrivateTabCalls.push({url,options});
   return {closed:false,close(){}};
 };
-const queue=['draft_0','draft_1','draft_2'];let current;
-window.confirm=()=>{if(id==='account-switch-confirm')window.WIZ_global_data.oPEP7c='second@example.com';return true};
+const queue=pagedBatch?Array.from({length:['draft-batch-exhausted','draft-batch-loading','failed-batch-limit'].includes(id)?13:35},(_,i)=>'draft_'+i):['draft_0','draft_1','draft_2'];let current;
+window.confirm=message=>{state.prompts.push(String(message));if(id==='account-switch-confirm')window.WIZ_global_data.oPEP7c='second@example.com';return !['draft-batch-cancel','failed-batch-limit'].includes(id)};
+if(pagedBatch){
+  const paginator=document.createElement('mat-paginator');paginator.textContent='Items per page: 10 ';
+  const range=document.createElement('span');range.id='batch-range';range.className='mat-mdc-paginator-range-label';paginator.append(range);
+  document.getElementById('rows').closest('table').after(paginator);
+}
 window.alert=message=>state.summaries.push(String(message));
 window.addEventListener('error',event=>state.errors.push(event.message));
 window.addEventListener('unhandledrejection',event=>state.errors.push(String(event.reason)));
@@ -140,6 +147,10 @@ function toast(message){
   node.textContent=message;
 }
 function showContinue(name){
+  if(draftBatch&&state.opened.length){
+    const previous=state.opened.at(-1);
+    assert(state.acknowledged.includes(previous)&&state.removed.includes(previous),'Opened the next draft before acknowledgement and list refresh: '+previous);
+  }
   current=name;state.opened.push(name);
   if(id==='account-switch-submission')window.WIZ_global_data.oPEP7c='second@example.com';
   document.getElementById('overlay').replaceChildren();
@@ -149,7 +160,8 @@ function showContinue(name){
 }
 function renderRows(){
   const body=document.getElementById('rows');body.replaceChildren();
-  for(const name of queue){
+  if(pagedBatch)document.getElementById('batch-range').textContent=(queue.length?1:0)+' – '+Math.min(queue.length,10)+' of '+queue.length;
+  for(const name of queue.slice(0,pagedBatch?10:queue.length)){
     const row=document.createElement('tr');row.className='mat-mdc-row';row.dataset.name=name;
     const check=document.createElement('td');const input=document.createElement('input');input.type='checkbox';check.append(input);
     const label=document.createElement('td');label.className='mat-column-name';label.textContent=name;
@@ -165,7 +177,14 @@ function renderRows(){
 }
 function updateAfterSubmission(name){
   document.getElementById('overlay').replaceChildren();document.getElementById('request').replaceChildren();
-  if(!failed){queue.splice(queue.indexOf(name),1);renderRows()}
+  if(!failed){
+    queue.splice(queue.indexOf(name),1);
+    if(id==='draft-batch-loading'){
+      const body=document.getElementById('rows');body.replaceChildren();
+      const spinner=document.createElement('mat-progress-spinner');spinner.textContent='Loading jobs';body.closest('table').before(spinner);
+      setTimeout(()=>{renderRows();spinner.remove();state.removed.push(name)},350);
+    }else{renderRows();if(draftBatch)state.removed.push(name)}
+  }
 }
 function successCount(){const match=state.summaries.at(-1)?.match(/完成[：:]\s*(\d+)\s*个/);return match?Number(match[1]):-1}
 function showPreview(name){
@@ -179,7 +198,10 @@ function showPreview(name){
   confirm.onclick=()=>{
     state.calls++;state.names.push(name);
     if(state.names.filter(value=>value===name).length>1)return;
-    if(id==='delayed-success'){
+    if(draftBatch){
+      toast('Job launch pending.');
+      setTimeout(()=>{state.acknowledged.push(name);toast('Job successfully launched.');setTimeout(()=>updateAfterSubmission(name),350)},300);
+    }else if(id==='delayed-success'){
       setTimeout(()=>{toast('Job successfully launched.');updateAfterSubmission(name)},1800);
     }else if(id==='old-success'){
       // An old success toast, disappearance of modal, and a changed first row
@@ -497,7 +519,8 @@ async function checkAccountManager(){
   // The fixture authorizes only its script URL; it must not create a default
   // TrustedHTML policy that would hide unsafe HTML writes inside the userscript.
   const scriptPolicy=id==='startup-trusted-types'?trustedTypes.createPolicy('af3-fixture-script',{createScriptURL:value=>value}):null;
-  script.src=scriptPolicy?scriptPolicy.createScriptURL('/script.js'):'/script.js';
+  const scriptUrl='/script.js'+(draftBatch?'?fast-draft=1':'');
+  script.src=scriptPolicy?scriptPolicy.createScriptURL(scriptUrl):scriptUrl;
   await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Cannot load userscript'));document.head.append(script)});
   if(id==='startup-trusted-types'){
     assert(state.errors.length===0,'Startup error under the website CSP: '+state.errors.join('; '));
@@ -546,14 +569,43 @@ async function checkAccountManager(){
     assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Account change during confirmation started a batch');
     parent.postMessage({type:'af3-case-result',result:{passed:true,message:'account changed in confirmation; 0 task opens or submits'}},location.origin);return;
   }
-  ui('v20-count').value=['multi-success','stale-row','server-error','failed-error'].includes(id)?2:1;
+  const initialQueue=queue.slice();
+  if(pagedBatch)assert(document.querySelectorAll('#rows tr').length===10,'Expected exactly 10 visible rows, not the whole queue');
+  ui('v20-count').value=pagedBatch?30:['multi-success','stale-row','server-error','failed-error'].includes(id)?2:1;
   ui('v20-btn').click();
+  if(pagedBatch){
+    assert(state.prompts.length===1,'Expected one startup confirmation');
+    const prompt=state.prompts[0],planned=failed?10:30;
+    assert(/(?:识别到任务行|当前页识别任务行)：10\b/.test(prompt),'Wrong visible-row count: '+prompt);
+    assert(new RegExp('(?:计划处理数量|本次处理上限)：'+planned+'\\b').test(prompt),'Wrong batch limit: '+prompt);
+    if(['draft-batch-cancel','failed-batch-limit'].includes(id)){
+      await pause(1100);
+      assert(state.calls===0&&state.opened.length===0&&state.acknowledged.length===0&&state.removed.length===0,'Cancelled batch acted on a draft');
+      assert(state.summaries.length===0&&state.errors.length===0,'Cancelled batch produced a summary or error');
+      assert(JSON.stringify(queue)===JSON.stringify(initialQueue),'Cancellation changed the queue');
+      assert(!ui('v20-btn').disabled&&!ui('v20-count').disabled,'Cancellation left controls locked');
+      parent.postMessage({type:'af3-case-result',result:{passed:true,message:'10 visible rows, planned limit='+planned+', cancelled with 0 task actions'}},location.origin);return;
+    }
+    ui('v20-btn').disabled=false;ui('v20-btn').click();
+    assert(state.prompts.length===1,'Reentry started a second batch');
+  }
   await until(()=>state.summaries.length>0);
   // Two polling intervals must not silently re-enable a blocked start button.
   await pause(1100);
   const successes=successCount();
   assert(state.errors.length===0,state.errors.join('; '));
-  if(id==='account-switch-submission'){
+  if(draftBatch){
+    const expected=id==='draft-batch-30'?30:13;
+    const names=Array.from({length:expected},(_,i)=>'draft_'+i);
+    assert(state.calls===expected&&new Set(state.names).size===expected,'Wrong number of single-click submissions: '+state.calls);
+    for(const key of ['opened','names','acknowledged','removed'])assert(JSON.stringify(state[key])===JSON.stringify(names),'Wrong '+key+' sequence: '+state[key].join(','));
+    assert(successes===expected&&state.summaries.length===1,'Wrong confirmed count or duplicate summary: '+state.summaries.join('; '));
+    assert(/跳过：0 个/.test(state.summaries[0])&&/失败：0 个/.test(state.summaries[0]),'Unexpected skip or error: '+state.summaries[0]);
+    assert(JSON.stringify(queue)===JSON.stringify(initialQueue.slice(expected)),'Wrong drafts remain after the batch');
+    assert(document.querySelectorAll('#rows tr').length===Math.min(queue.length,10),'Final visible page differs from the queue');
+    assert(!ui('v20-btn').disabled&&!ui('v20-count').disabled,'Confirmed batch left controls locked');
+    if(expected<30)assert(state.summaries[0].includes('列表已空'),'Exhausted queue did not report an empty list');
+  }else if(id==='account-switch-submission'){
     assert(state.calls===0,'Account switch during a batch still clicked Confirm');
     assert(ui('v20-btn').disabled,'Account change did not lock Start');
     assert(ui('footer-msg').textContent.includes('账号已变化'),'Account change did not explain why processing stopped');
@@ -584,6 +636,7 @@ SCENARIOS = [
     'delayed-success', 'old-success', 'server-error', 'no-toast', 'sandbox-event-window',
     'failed-success', 'failed-error', 'failed-sandbox-event-window', 'stop-in-flight', 'stale-row',
     'multi-success', 'paused-success',
+    'draft-batch-30', 'draft-batch-exhausted', 'draft-batch-cancel', 'draft-batch-loading', 'failed-batch-limit',
 ]
 
 
@@ -596,6 +649,15 @@ def main():
     scenarios = [name.strip() for name in os.environ.get('AF_TEST_CASES', ','.join(SCENARIOS)).split(',') if name.strip()]
     if not scenarios or set(scenarios) - set(SCENARIOS):
         raise SystemExit('Unknown or empty AF_TEST_CASES selection.')
+    fast_script = script.replace(b'\r\n', b'\n')
+    if any(name.startswith('draft-batch-') for name in scenarios):
+        # Only shorten presentation delays; acknowledgements, polling and fixture timers stay real.
+        for old, new in [
+            (b'const WAIT_FOR_MODAL = 2000;', b'const WAIT_FOR_MODAL = 100;'),
+            (b"simulateClick(rows[0], 'rgba(0,0,255,0.2)');\n                await controlledSleep(500);", b"simulateClick(rows[0], 'rgba(0,0,255,0.2)');\n                await controlledSleep(100);"),
+        ]:
+            assert fast_script.count(old) == 1, 'Draft timing anchor changed'
+            fast_script = fast_script.replace(old, new, 1)
     page = PAGE.replace('__SCENARIOS__', json.dumps(scenarios)).encode('utf-8')
     candidates = [
         Path(os.environ.get('PROGRAMFILES(X86)', 'C:/Program Files (x86)')) / 'Microsoft/Edge/Application/msedge.exe',
@@ -620,7 +682,7 @@ def main():
             if path == '/case' and self.path.split('?', 1)[-1] == 'id=startup-trusted-types':
                 self.send_header('Content-Security-Policy', "require-trusted-types-for 'script'")
             self.end_headers()
-            self.wfile.write(script if path == '/script.js' else CASE.encode('utf-8') if path == '/case' else page)
+            self.wfile.write((fast_script if request.query == 'fast-draft=1' else script) if path == '/script.js' else CASE.encode('utf-8') if path == '/case' else page)
 
         def do_POST(self):
             if self.path != '/results':
@@ -657,7 +719,7 @@ def main():
             ], stdout=subprocess.DEVNULL, stderr=log)
             try:
                 # Larger suites share this runner; each case also has its own timeout.
-                deadline = time.monotonic() + max(300, 6 * len(scenarios))
+                deadline = time.monotonic() + max(300, 12 * len(scenarios))
                 while not finished.wait(0.25):
                     if process.poll() is not None or time.monotonic() >= deadline:
                         break

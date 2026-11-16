@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 开发版 3.0.0-dev.12：修复油猴隔离环境下批量提交草稿和失败重跑的 MouseEvent.view 窗口类型错误，保留单次提交与官网成功通知确认。按日期提前结束查找、同名任务识别和账户记录不变；下载仍由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">本 fork 开发版 3.0.0-dev.13：修复草稿批次被当前页 10 行截断的问题，按输入数量作为处理上限，并等待列表刷新后继续。保留单次提交与官网成功通知确认；Failed 重跑仍限当前页，下载仍由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
             <p class="version-note">main 的 2.24.1 仍为旧行为基线，不包含这些 DEV 功能。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 3.0.0-dev.12</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 3.0.0-dev.13</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
@@ -295,8 +295,9 @@
         </section>
 
         <section>
-            <h2>✨ DEV 3.0.0-dev.12 更新重点</h2>
+            <h2>✨ DEV 3.0.0-dev.13 更新重点</h2>
             <ul class="release-list">
+                <li>草稿本次数量不再受每页行数限制：输入 30 即以 30 为处理上限，等待官网成功通知和列表刷新后继续处理自动补入的草稿；加载空表不算耗尽，草稿用完时提前结束。确认框区分当前页行数与本次上限；Failed 重跑仍限当前页，不增加提交重试。</li>
                 <li>修复油猴隔离环境的窗口对象无法传入 MouseEvent.view、导致草稿提交首次点击前中断的问题；共享点击函数同时覆盖失败任务重跑。保留鼠标事件链、单次提交和官网成功通知确认，不增加提交重试。</li>
                 <li>按日期查找只为范围内任务读取唯一 ID；未搜索的官网默认 Modified 倒序列表或明确的 Modified 降序，在越过开始日后停止翻页并返回首页。起止当天均包含，不跳过开始日的其他任务。</li>
                 <li>搜索结果没有明确倒序标记、其他排序、通用表格、日期无法识别或顺序异常时继续全量扫描，避免漏选；未知日期数量只统计已扫描页面。应用勾选及逐个队列的完整身份核验不变。</li>
@@ -428,7 +429,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 3.0.0-dev.12 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 3.0.0-dev.13 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -438,7 +439,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter DEV 3.0.0-dev.12 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter DEV 3.0.0-dev.13 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

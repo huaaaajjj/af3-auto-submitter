@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.12
+// @version      3.0.0-dev.13
 // @description  3.0 开发版：浅色科研工作台、固定导航与响应式分区；保留跨普通与 InPrivate 的账户记录、提交确认、按日期勾选和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.12';
+    const SCRIPT_VERSION = '3.0.0-dev.13';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -103,8 +103,8 @@
             noRowsLog: '启动取消：未识别到可处理任务行',
             confirmTitle: '运行前确认',
             confirmMode: '当前模式：{mode}',
-            confirmRows: '识别到任务行：{count}',
-            confirmPlan: '计划处理数量：{count}',
+            confirmRows: '当前页识别任务行：{count}',
+            confirmPlan: '本次处理上限：{count}',
             confirmPrompt: '请确认当前列表和数量无误。',
             userCancelled: '用户取消启动',
             startConfirmed: '启动确认：{mode}，计划处理 {planned} 个，当前识别 {rows} 行',
@@ -192,8 +192,8 @@
             noRowsLog: 'Start cancelled: no processable task rows detected',
             confirmTitle: 'Pre-run confirmation',
             confirmMode: 'Mode: {mode}',
-            confirmRows: 'Detected rows: {count}',
-            confirmPlan: 'Planned jobs: {count}',
+            confirmRows: 'Rows on current page: {count}',
+            confirmPlan: 'Batch limit: {count}',
             confirmPrompt: 'Confirm that the current list and count are correct.',
             userCancelled: 'User cancelled start',
             startConfirmed: 'Start confirmed: {mode}, planned {planned}, detected {rows} rows',
@@ -281,8 +281,8 @@
             noRowsLog: '開始をキャンセル：処理可能な行がありません',
             confirmTitle: '実行前確認',
             confirmMode: 'モード：{mode}',
-            confirmRows: '検出行数：{count}',
-            confirmPlan: '処理予定数：{count}',
+            confirmRows: '現在のページの行数：{count}',
+            confirmPlan: '今回の処理上限：{count}',
             confirmPrompt: '現在のリストと件数が正しいことを確認してください。',
             userCancelled: 'ユーザーが開始をキャンセルしました',
             startConfirmed: '開始確認：{mode}、予定 {planned}、検出 {rows} 行',
@@ -370,8 +370,8 @@
             noRowsLog: '시작 취소: 처리 가능한 작업 행 없음',
             confirmTitle: '실행 전 확인',
             confirmMode: '모드: {mode}',
-            confirmRows: '감지된 행: {count}',
-            confirmPlan: '처리 예정: {count}',
+            confirmRows: '현재 페이지의 행: {count}',
+            confirmPlan: '이번 처리 상한: {count}',
             confirmPrompt: '현재 목록과 개수가 올바른지 확인하세요.',
             userCancelled: '사용자가 시작을 취소했습니다',
             startConfirmed: '시작 확인: {mode}, 예정 {planned}, 감지 {rows}행',
@@ -459,8 +459,8 @@
             noRowsLog: 'Inicio cancelado: no hay filas procesables',
             confirmTitle: 'Confirmación antes de ejecutar',
             confirmMode: 'Modo: {mode}',
-            confirmRows: 'Filas detectadas: {count}',
-            confirmPlan: 'Tareas previstas: {count}',
+            confirmRows: 'Filas en esta página: {count}',
+            confirmPlan: 'Límite del lote: {count}',
             confirmPrompt: 'Confirma que la lista y el número son correctos.',
             userCancelled: 'El usuario canceló el inicio',
             startConfirmed: 'Inicio confirmado: {mode}, previstas {planned}, detectadas {rows} filas',
@@ -548,8 +548,8 @@
             noRowsLog: 'Démarrage annulé : aucune ligne traitable',
             confirmTitle: 'Confirmation avant exécution',
             confirmMode: 'Mode : {mode}',
-            confirmRows: 'Lignes détectées : {count}',
-            confirmPlan: 'Tâches prévues : {count}',
+            confirmRows: 'Lignes de cette page : {count}',
+            confirmPlan: 'Limite du lot : {count}',
             confirmPrompt: 'Confirmez que la liste et le nombre sont corrects.',
             userCancelled: 'L’utilisateur a annulé le démarrage',
             startConfirmed: 'Démarrage confirmé : {mode}, prévues {planned}, {rows} lignes détectées',
@@ -1480,7 +1480,8 @@
     function confirmStart(maxJobs) {
         const rows = getRows();
         const rowCount = rows.length;
-        const plannedJobs = Math.min(maxJobs, rowCount);
+        // ponytail: submitted drafts refill this page; Failed only processes its current rows.
+        const plannedJobs = currentMode === 'DRAFT' ? maxJobs : Math.min(maxJobs, rowCount);
 
         if (rowCount === 0) {
             alert(t('noRowsAlert'));
@@ -1572,7 +1573,9 @@
         const deadline = Date.now() + SUBMISSION_TIMEOUT;
         // Check by name, not DOM-node identity: rerendering can replace an
         // unchanged row. Keep success counted if this secondary check fails.
-        while (getRows().some(row => getDraftIdentity(row) === identity)) {
+        // A loading table may be empty before its remaining drafts refill the page.
+        const history = document.querySelector('gdm-af-history') || document;
+        while (downloadHistoryLoading(history) || getRows().some(row => getDraftIdentity(row) === identity)) {
             if (Date.now() >= deadline || shouldStop) {
                 submissionBlockReason = t('draftListUnchanged');
                 if (shouldStop) throw makeStoppedError();
