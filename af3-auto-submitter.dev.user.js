@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter DEV (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.13
+// @version      3.0.0-dev.14
 // @description  3.0 开发版：浅色科研工作台、固定导航与响应式分区；保留跨普通与 InPrivate 的账户记录、提交确认、按日期勾选和可调面板。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.13';
+    const SCRIPT_VERSION = '3.0.0-dev.14';
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -987,6 +987,7 @@
         const email = readAccountEmail();
         const message = email ? t('accountEmail', { email }) : t('accountUnknown');
         if (target.textContent !== message) target.textContent = message;
+        if (target.title !== message) target.title = message;
         syncAccountManager(normalizeAccountEmail(email));
     }
 
@@ -2055,7 +2056,8 @@
         const visited = new Set();
         let selected = 0;
         while (targets.size) {
-            page = await resolveDownloadPage(page);
+            page = await resolveDownloadPage(page, page.jobs.filter(job =>
+                records.some(target => job.name === target.name && job.modified === target.modified)));
             checkDownloadActive();
             if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
             visited.add(page.signature);
@@ -2082,13 +2084,17 @@
         if (getNativeDownloadToolbar().count !== records.length) throw new Error(t('downloadNativeMismatch'));
     }
 
-    async function collectNativeDownloadSelection() {
+    async function collectNativeDownloadSelection(targets) {
         const expected = getNativeDownloadToolbar().count;
         if (!expected) throw new Error(t('downloadNoSelection'));
+        // Native history counts selected IDs globally. Fallback name/time identities still need a full ambiguity check.
+        const canStopEarly = targets.every(job => job.id) && getDownloadHistory().root.matches?.('gdm-af-history');
         const records = [], identities = new Set(), visited = new Set();
         let page = await firstDownloadPage();
         while (true) {
-            page = await resolveDownloadPage(page);
+            page = await resolveDownloadPage(page, page.jobs.filter(job =>
+                nativeDownloadCheckbox(job).checked || targets.some(target =>
+                    !target.id && job.name === target.name && job.modified === target.modified)));
             checkDownloadActive();
             if (getNativeDownloadToolbar().count !== expected) throw new Error(t('downloadNativeMismatch'));
             if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
@@ -2102,7 +2108,8 @@
                     records.push(record);
                 }
             }
-            if (!downloadButtonEnabled(page.next)) break;
+            if (records.length > expected) throw new Error(t('downloadNativeMismatch'));
+            if ((canStopEarly && records.length === expected) || !downloadButtonEnabled(page.next)) break;
             page = await moveDownloadPage(page.next, page.signature);
         }
         await firstDownloadPage();
@@ -2192,6 +2199,8 @@
         }
         const list = getUiElement('af3-download-results');
         if (list && (downloadState.renderedJobs !== downloadState.jobs || downloadState.renderedList !== list || downloadState.renderedLanguage !== currentLanguage)) {
+            // ponytail: native details handle disclosure; preserve open dates across language redraws.
+            const openDays = new Set(Array.from(list.querySelectorAll('details[open]'), group => group.dataset.day));
             list.replaceChildren();
             const groups = new Map();
             for (const job of downloadState.jobs) {
@@ -2199,9 +2208,10 @@
                 groups.get(job.day).push(job);
             }
             for (const [day, jobs] of [...groups].sort((a, b) => b[0].localeCompare(a[0]))) {
-                const group = document.createElement('div');
-                const groupHeader = document.createElement('label');
-                group.className = 'af3-day-group';
+                const group = document.createElement('details');
+                const groupHeader = document.createElement('summary');
+                group.className = 'af3-day-group'; group.dataset.day = day;
+                group.open = openDays.has(day);
                 groupHeader.className = 'af3-day-heading';
                 const master = document.createElement('input');
                 master.type = 'checkbox'; master.dataset.day = day;
@@ -2349,11 +2359,11 @@
             if (advance) {
                 // Verify the previous selection before replacing it. A count of
                 // one alone cannot establish which job the user has selected.
-                const current = await collectNativeDownloadSelection();
+                const current = await collectNativeDownloadSelection([previousQueue.records[previousQueue.index]]);
                 if (current.length !== 1 || !sameDownloadJob(current[0], previousQueue.records[previousQueue.index])) throw new Error(t('downloadNativeMismatch'));
             }
             await applyNativeDownloadSelection(records);
-            const verified = await collectNativeDownloadSelection();
+            const verified = await collectNativeDownloadSelection(records);
             const targets = new Map(records.map(job => [job.key, job]));
             if (verified.length !== records.length || verified.some(job => !sameDownloadJob(job, targets.get(job.key)))) throw new Error(t('downloadNativeMismatch'));
             checkDownloadActive();
@@ -2561,7 +2571,7 @@
             [hidden] { display: none !important; }
             #af3-dev-panel-root {
                 all: initial; box-sizing: border-box; display: flex; flex-direction: column;
-                width: 100%; height: 100%; min-height: 0; overflow: hidden;
+                width: 100%; height: 100%; min-height: 0; overflow: clip;
                 border: 1px solid var(--af3-border); border-radius: 18px;
                 background: var(--af3-canvas); color: var(--af3-ink);
                 box-shadow: 0 16px 48px #182f4026, 0 2px 8px #182f4012;
@@ -2601,7 +2611,8 @@
                 border-radius: 11px; background: var(--af3-primary-soft); color: var(--af3-primary);
                 font: 600 17px/1 'Bahnschrift', 'Segoe UI', sans-serif; letter-spacing: -.7px;
             }
-            .af3-header-copy { min-width: 0; }
+            .af3-header-copy { min-width: 0; flex: 1; }
+            .af3-header-line { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
             #af3-header-title { font: 600 17px/1.3 'Bahnschrift', 'Segoe UI', 'Microsoft YaHei', sans-serif; overflow-wrap: anywhere; }
             .af3-version { display: block; margin-top: 3px; font: 11px/1.4 var(--af3-mono); color: var(--af3-muted); }
             .af3-navigation { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 16px 12px; background: var(--af3-surface); flex-shrink: 0; }
@@ -2609,7 +2620,10 @@
             .af3-tabs button { flex: 1; min-height: 32px; padding: 5px 8px; border-color: transparent; background: transparent; color: var(--af3-muted); }
             .af3-tabs button[aria-selected="true"] { background: var(--af3-surface); color: var(--af3-primary); box-shadow: 0 1px 4px #182f4017; }
             #af3-language-select { width: auto; max-width: 110px; min-height: 36px; font-size: 12px; padding: 5px 6px; border-color: var(--af3-border); }
-            #af3-account-email { padding: 9px 12px; margin-bottom: 12px; border: 1px solid var(--af3-border); border-radius: 10px; background: var(--af3-surface); color: var(--af3-muted); font-size: 12px; }
+            #af3-account-email {
+                flex: 1 1 150px; min-width: 0; color: var(--af3-muted); font-size: 12px;
+                display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; max-height: 3em; overflow: hidden;
+            }
             .af3-workspace { overflow: auto; overscroll-behavior: contain; flex: 1; min-height: 0; padding: 14px 14px 30px; scrollbar-width: thin; scrollbar-color: #adbec8 transparent; }
             .af3-page { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
             .af3-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px; border: 1px solid var(--af3-border); border-radius: 13px; background: var(--af3-surface); }
@@ -2642,7 +2656,9 @@
             #af3-download-results { max-height: 240px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
             #af3-download-results:empty { display: none; }
             .af3-day-group + .af3-day-group { margin-top: 8px; }
-            .af3-day-heading { display: flex; align-items: start; gap: 8px; padding: 7px 8px; border-radius: 7px; background: var(--af3-canvas); font-size: 12px; font-weight: 600; }
+            .af3-day-heading { display: list-item; min-height: 36px; padding: 7px 8px; border-radius: 7px; background: var(--af3-canvas); font-size: 12px; font-weight: 600; cursor: pointer; }
+            .af3-day-heading::marker { color: var(--af3-primary); }
+            .af3-day-heading input[type="checkbox"] { margin: 0 8px 0 4px; vertical-align: middle; }
             .af3-job { display: flex; gap: 8px; align-items: start; padding: 8px; border-bottom: 1px solid var(--af3-border); cursor: pointer; overflow-wrap: anywhere; }
             .af3-job > span { min-width: 0; }
             .af3-job-name { display: block; font-size: 13px; }
@@ -2673,7 +2689,6 @@
                 .af3-tabs { flex-basis: 100%; } #af3-language-select { margin-left: auto; }
                 .af3-workspace { padding: 10px 10px 30px; } .af3-card { padding: 11px; }
                 .af3-dates { grid-template-columns: minmax(0, 1fr); }
-                #af3-account-email { padding-inline: 12px; }
             }
             @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
         `;
@@ -2682,9 +2697,10 @@
         const header = document.createElement('div'); header.id = 'af3-header';
         const wordmark = document.createElement('span'); wordmark.className = 'af3-wordmark'; wordmark.textContent = 'AF₃'; wordmark.setAttribute('aria-hidden', 'true');
         const headerCopy = document.createElement('div'); headerCopy.className = 'af3-header-copy';
+        const headerLine = document.createElement('div'); headerLine.className = 'af3-header-line';
         const headerTitle = document.createElement('div'); headerTitle.id = 'af3-header-title'; headerTitle.textContent = t('headerDev');
         const version = document.createElement('span'); version.className = 'af3-version'; version.textContent = `DEV / ${SCRIPT_VERSION}`;
-        headerCopy.append(headerTitle, version); header.append(wordmark, headerCopy);
+        headerCopy.append(headerLine, version); header.append(wordmark, headerCopy);
 
         const languageRow = document.createElement('div');
         languageRow.className = 'af3-navigation';
@@ -2726,6 +2742,7 @@
         account.setAttribute('role', 'status');
         account.setAttribute('aria-live', 'polite');
         account.textContent = t('accountUnknown');
+        headerLine.append(headerTitle, account);
 
         const submission = document.createElement('section');
         submission.id = 'af3-submission-section';
@@ -2806,7 +2823,7 @@
         submission.append(submissionTitle, statusRow, quota, controls, runControls, footer);
         tasksPage.append(submission, createDownloadSection(), logPanel);
         const workspace = document.createElement('div'); workspace.className = 'af3-workspace';
-        workspace.append(account, tasksPage, createAccountPage()); container.appendChild(workspace);
+        workspace.append(tasksPage, createAccountPage()); container.appendChild(workspace);
         shadow.appendChild(container);
         const resizeHandle = document.createElement('span');
         resizeHandle.id = 'af3-resize-handle';

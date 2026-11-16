@@ -367,12 +367,40 @@ renderRows();
 if(id==='old-success')toast('Job successfully launched.');
 async function checkAccountEmail(){
   assert(ui('account-email'),'Current account email display is missing');
+  assert(ui('header').contains(ui('account-email'))&&ui('account-email').parentElement===ui('header-title').parentElement,'Current account must sit beside the panel title, not in the workspace');
+  assert(ui('account-email').getAttribute('role')==='status'&&ui('account-email').getAttribute('aria-live')==='polite','Header account lost its live status semantics');
   const email=()=>ui('account-email').textContent;
   const shown=async value=>{await until(()=>email()==='当前账号：'+value,2500)};
   const unknown=async()=>{await until(()=>email().includes('未识别'),2500)};
   await unknown();
   const job=document.createElement('p');job.textContent='job.owner@example.com';document.getElementById('rows').append(job);
   window.WIZ_global_data={oPEP7c:'first.account@example.com'};await shown('first.account@example.com');
+  const host=document.getElementById('af3-dev-panel'),width=host.style.width;
+  host.style.width='700px';
+  const titleBox=ui('header-title').getBoundingClientRect(),accountBox=ui('account-email').getBoundingClientRect();
+  assert(accountBox.left>=titleBox.right&&accountBox.top<titleBox.bottom&&accountBox.bottom>titleBox.top,'Wide header did not place account next to title');
+  const longEmail='w'.repeat(64)+'@'+'w'.repeat(63)+'.'+'w'.repeat(63)+'.'+'w'.repeat(61);
+  window.WIZ_global_data.oPEP7c=longEmail;await shown(longEmail);
+  host.style.width='264px';
+  assert(ui('header').scrollWidth<=ui('header').clientWidth+1,'Long account overflows the narrow header');
+  assert(ui('account-email').textContent.includes(longEmail),'Narrow header lost the account address');
+  const frame=window.frameElement,frameWidth=frame.style.width,frameHeight=frame.style.height;
+  frame.style.width='264px';frame.style.height='284px';dispatchEvent(new Event('resize'));
+  await until(()=>host.getBoundingClientRect().width<=240&&host.getBoundingClientRect().height<=260,2500);
+  for(const language of ['zh','en','ja','ko','es','fr']){
+    ui('language-select').value=language;ui('language-select').dispatchEvent(new Event('change'));
+    const panelBox=host.getBoundingClientRect(),workspace=root().querySelector('.af3-workspace'),viewport=workspace.getBoundingClientRect();
+    assert(viewport.height>=38&&viewport.top>=panelBox.top&&viewport.bottom<=panelBox.bottom,'Long account hides the minimum-size workspace: '+language);
+    assert(ui('account-email').title.includes(longEmail)&&ui('account-email').textContent.includes(longEmail),'Full account is unavailable in the compact header: '+language);
+    for(const name of ['v20-count','download-scan','download-apply']){
+      ui(name).scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+      const box=ui(name).getBoundingClientRect();
+      assert(box.top>=viewport.top-1&&box.bottom<=viewport.bottom+1,'Long account makes '+name+' unreachable: '+language);
+    }
+  }
+  ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));
+  frame.style.width=frameWidth;frame.style.height=frameHeight;dispatchEvent(new Event('resize'));
+  host.style.width=width;
   window.WIZ_global_data.oPEP7c='second.account@example.com';await shown('second.account@example.com');
   const userMenu=document.createElement('gdm-af-user-menu');
   const accountButton=document.createElement('button');accountButton.setAttribute('aria-label','User menu: current.account@example.com');userMenu.append(accountButton);document.body.prepend(userMenu);

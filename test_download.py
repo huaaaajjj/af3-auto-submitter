@@ -44,9 +44,12 @@ button,input{margin:4px}td,th{padding:8px}mat-icon{display:inline-block}
 <script>
 'use strict';
 const id=new URLSearchParams(location.search).get('id');
+// Case iframes share storage; start locale-dependent assertions in Chinese.
+localStorage.setItem('af3-dev-panel-language','zh');
 const officialLinks=id.startsWith('download-official-links')||id==='download-individual-official-links';
 const menuIdentity=id.startsWith('download-menu-')||id.startsWith('download-individual-menu');
 const dateScan=id.startsWith('download-menu-date-');
+const applyRange=id.startsWith('download-menu-apply-')||id==='download-individual-menu-apply-range';
 const failedMenuCases=['download-menu-stop-before-binding','download-menu-missing','download-menu-conflict','download-menu-foreign','download-menu-malformed','download-menu-collision','download-menu-stop','download-menu-context','download-menu-account','download-menu-row-replaced','download-menu-busy','download-menu-preopened','download-menu-takeover','download-menu-panel-replaced','download-menu-owner-changed'];
 const invalidLinkCases=['download-official-links-foreign','download-official-links-non-http','download-official-links-malformed','download-official-links-collision','download-official-links-ambiguous-row'];
 if(id==='download-account-change'||id==='download-account-queue'||id==='download-menu-account')window.WIZ_global_data={oPEP7c:'first@example.com'};
@@ -86,8 +89,10 @@ if(id==='download-official-links-cross-page'||id==='download-menu-cross-page')jo
 if(id==='download-calendar-invalid')jobs[3]={...jobs[3],modified:'2026-02-30 12:00'};
 if(id==='download-clock-invalid')jobs[3]={...jobs[3],modified:'2026-11-12 24:00'};
 if(id==='download-stable-collision')jobs[3]={...jobs[3],id:jobs[2].id};
-if(['download-preselection','download-menu-preselection','download-cancel-apply','download-clear-failure','download-confirm-context-change','download-individual-preselection'].includes(id)){state.selected.add('older');state.selected.add('hidden-old-selection')}
+if(applyRange||['download-preselection','download-menu-preselection','download-cancel-apply','download-clear-failure','download-confirm-context-change','download-individual-preselection'].includes(id)){state.selected.add('older');state.selected.add('hidden-old-selection')}
 if(id==='download-over-fifty')jobs.splice(0,jobs.length,...Array.from({length:51},(_,index)=>({id:'many-'+index,name:'batch_'+index,modified:'2026-11-13 12:00'})));
+if(applyRange)jobs.push(...Array.from({length:4},(_,index)=>({id:'old-tail-'+index,name:'old_tail_'+index,modified:'2026-11-10 12:00'})));
+if(id==='download-menu-apply-ascending'){jobs.reverse();document.querySelector('th.mat-column-date').setAttribute('aria-sort','ascending')}
 if(dateScan){
  document.querySelector('table').setAttribute('mat-table','');
  jobs.push(...Array.from({length:4},(_,index)=>({id:'old-tail-'+index,name:'old_tail_'+index,modified:'2026-11-10 12:00'})));
@@ -164,7 +169,7 @@ function renderNativeSelection(){
  const clear=document.createElement('button');clear.setAttribute('aria-label','Clear selection');
  const close=document.createElement('mat-icon');close.textContent='close';clear.append(close);
  clear.onclick=()=>{state.nativeClears++;if(id!=='download-clear-failure')state.selected.clear();renderNativeSelection()};row.append(clear);
- row.append(document.createTextNode(' '+state.selected.size+' selected '));
+ row.append(document.createTextNode(id==='download-menu-apply-no-count'?' Selection active ':' '+state.selected.size+' selected '));
  const right=document.createElement('div');right.className='right';row.append(right);
  const download=document.createElement('button');download.className='download-button';download.textContent='Download';download.disabled=state.selected.size>50;
  download.onclick=()=>{
@@ -179,6 +184,7 @@ function renderNativeSelection(){
 }
 function nativeSelectionChanged(job,checkbox){
  state.nativeInputChanges++;checkbox.checked?state.selected.add(job.id):state.selected.delete(job.id);renderNativeSelection();recordReadiness();
+ if(id==='download-menu-apply-extra-selection'&&state.phase==='active'&&!state.stopTriggered){state.stopTriggered=true;state.selected.add('old-tail-0');renderNativeSelection()}
  if(id==='download-menu-rerender'||id==='download-individual-menu-rerender'){state.rerenders=(state.rerenders||0)+1;renderRows()}
  if(id==='download-menu-replaced-after-click'&&state.phase==='active'&&job.id==='end-late'&&!state.stopTriggered){
   state.stopTriggered=true;job.publicId='replacement-job';renderRows();return;
@@ -409,8 +415,53 @@ async function checkIndividual(){
   assert(Boolean(submission.compareDocumentPosition(download)&Node.DOCUMENT_POSITION_FOLLOWING),'Submission must be above download');
   for(const name of ['status-text','quota','v20-count','v20-btn','footer-msg'])assert(submission.contains(ui(name)),'Submission section lost '+name);
   for(const name of ['download-ready-text','download-start','download-end','download-format','download-scan','download-apply'])assert(download.contains(ui(name))&&ui(name).getClientRects().length,'Download control is hidden or outside its section: '+name);
-  await scan();assert(!download.querySelector('details'),'Download results must not need expansion');
-  assert(reviewChecks().length===4&&reviewChecks().every(node=>node.getClientRects().length),'Matching jobs must be visible without expansion');
+  await scan();
+  const groups=Array.from(download.querySelectorAll('details.af3-day-group'));
+  assert(groups.length===2&&groups.every(group=>!group.open&&group.firstElementChild.tagName==='SUMMARY'),'Date groups must start collapsed with visible summaries');
+  assert(groups.every(group=>group.firstElementChild.getClientRects().length),'Date headings must stay visible when collapsed');
+  assert(reviewChecks().length===4&&reviewChecks().every(node=>!node.checkVisibility()),'Only job rows should be hidden by date folding');
+ }else if(id==='download-date-folding'){
+  await scan();
+  const groups=()=>Array.from(ui('download-results').querySelectorAll('details.af3-day-group'));
+  const summary=group=>group.firstElementChild;
+  const master=group=>group.querySelector('input[data-day]');
+  const checks=group=>Array.from(group.querySelectorAll('input[data-job-key]'));
+  let [latest,earliest]=groups();
+  assert(latest&&earliest&&groups().length===2,'Expected one disclosure for each date');
+  assert(master(latest).dataset.day==='2026-11-13'&&master(earliest).dataset.day==='2026-11-12','Dates lost newest-first order');
+  assert(groups().every(group=>!group.open&&summary(group).tagName==='SUMMARY'),'Each date should start collapsed');
+  assert(groups().every(group=>master(group).getClientRects().length&&master(group).getAttribute('aria-label').includes(master(group).dataset.day)),'Collapsed day selections must stay visible and labelled');
+  assert(selectedReview().length===4&&reviewChecks().every(node=>!node.checkVisibility()),'Folding changed initial selection or exposed job rows');
+  summary(latest).focus();assert(root().activeElement===summary(latest),'Date toggle is not keyboard focusable');
+  assert(getComputedStyle(summary(latest)).display==='list-item'&&summary(latest).getBoundingClientRect().height>=32,'Native disclosure marker or usable target is missing');
+  summary(latest).click();
+  assert(latest.open&&!earliest.open&&checks(latest).every(node=>node.checkVisibility()),'Opening a date did not reveal only its jobs');
+  master(latest).click();
+  assert(latest.open&&selectedReview().length===2&&!master(latest).checked,'Day checkbox toggled disclosure or failed to deselect its jobs');
+  checks(latest)[0].click();
+  assert(master(latest).indeterminate&&selectedReview().length===3,'Individual selection lost partial-day state');
+  summary(latest).click();
+  assert(!latest.open&&master(latest).indeterminate&&selectedReview().length===3,'Collapsing changed partial-day selection');
+  master(latest).click();
+  assert(!latest.open&&selectedReview().length===4&&master(latest).checked&&!master(latest).indeterminate,'Collapsed day checkbox failed or opened the date');
+  ui('download-clear').click();assert(selectedReview().length===0&&groups().every(group=>!group.open),'Clear changed disclosure state');
+  ui('download-all').click();assert(selectedReview().length===4,'Select all ignored collapsed jobs');
+  summary(latest).click();
+  ui('language-select').value='en';ui('language-select').dispatchEvent(new Event('change'));
+  [latest,earliest]=groups();
+  assert(latest.open&&!earliest.open&&summary(latest).textContent.includes('2 jobs'),'Language redraw lost date expansion or labels');
+  assert(selectedReview().length===4,'Language redraw lost selected jobs');
+  summary(latest).click();
+  assert(state.confirms===0&&state.nativeCheckboxClicks===0&&state.nativeClears===0,'Folding or review selection changed the website');
+  await apply();assertNativeIds(rangeIds);
+  assert(groups().every(group=>!group.open),'Applying selected jobs changed expansion');
+  setFormat('individual');await apply();assertNativeIds([rangeIds[0]]);
+  const before=queueText(),confirms=state.confirms;
+  summary(latest).click();summary(earliest).click();summary(latest).click();
+  assert(queueText()===before&&!ui('download-next').disabled&&state.confirms===confirms,'Folding invalidated or advanced the individual queue');
+  await next();assertNativeIds([rangeIds[1]]);
+  await scan();
+  assert(groups().every(group=>!group.open)&&selectedReview().length===4,'A new scan did not reset date disclosures');
  }else if(id==='history-status-filters'){
   const filters=Array.from(document.querySelectorAll('#filters button'));
   const standby='😴 待机中: 请切换页面';
@@ -454,6 +505,34 @@ async function checkIndividual(){
   ui('download-apply').disabled=false;await apply();
   if(id==='download-account-queue')await assertInvalidNext();
   assert(state.nativeInputChanges===changes&&state.nativeClears===clears,'Account change applied previous account selection');
+ }else if(applyRange){
+  await scan();assert(reviewChecks().length===4,'Apply range fixture lost its date matches');
+  assert(state.nativeCheckboxClicks===0&&state.nativeClears===0,'Finding jobs changed pre-existing selection');
+  const targets=id==='download-menu-apply-subset'?['start-late']:rangeIds;
+  if(id==='download-menu-apply-subset'){
+   ui('download-clear').click();reviewChecks().find(input=>input.dataset.jobKey==='id:start-late').click();
+  }
+  if(id==='download-menu-apply-identity-change')jobs.find(job=>job.id==='end-late').publicId='changed-after-scan';
+  const menus=state.menus.length,pages=state.visited.length;
+  await apply();
+  if(id==='download-menu-apply-identity-change'){
+   assert(!state.selected.has('end-late')&&ui('download-apply').disabled,'A replacement identity was selected or the incomplete result stayed actionable');
+  }else if(id==='download-menu-apply-no-count'){
+   assert(state.nativeInputChanges===0&&state.nativeClears===0&&ui('download-apply').disabled,'An unreadable native selection count allowed unchecked application');
+   assertNativeIds(['older','hidden-old-selection']);
+  }else if(id==='download-menu-apply-extra-selection'){
+   assert(state.stopTriggered&&state.selected.has('old-tail-0'),'Unexpected outside selection was not injected');
+   assert(ui('download-apply').disabled&&ui('download-queue').hidden,'Outside native selection passed exact verification');
+  }else{
+   const individual=id==='download-individual-menu-apply-range';
+   assertNativeIds(individual?[targets[0]]:targets);
+   assert(!ui('download-apply').disabled&&state.nativeClears===1,'Range apply failed or left hidden old selections');
+   if(individual){assertQueueAt(1,4);await next();assertNativeIds([targets[1]]);assertQueueAt(2,4)}
+   const appliedMenus=state.menus.slice(menus),appliedPages=state.visited.slice(pages);
+   assert(appliedMenus.every(jobId=>rangeIds.includes(jobId)),'Apply read identities outside the reviewed range: '+appliedMenus);
+   if(id==='download-menu-apply-ascending')assert(appliedPages.includes(4),'Ascending history did not reach targets on the last page');
+   else assert(appliedPages.every(index=>index<=2),'Apply scanned old history after all targets were verified: '+appliedPages);
+  }
  }else if(id.startsWith('download-individual-')){
   await checkIndividual();
  }else if(dateScan){
@@ -514,6 +593,12 @@ async function checkIndividual(){
    ui('download-clear').click();assert(selectedReview().length===0&&ui('download-apply').disabled,'Clear selection stayed actionable');
    ui('download-all').click();assert(selectedReview().length===4,'Select all lost matches');
    reviewChecks()[0].click();await apply();assert(state.selected.size===3,'Individual deselection was ignored');
+  }else if(id==='download-apply-fallback-twin'){
+   ui('download-clear').click();reviewChecks().find(input=>input.dataset.jobKey==='row:'+JSON.stringify([jobs[1].name,jobs[1].modified])).click();
+   const twin={...jobs[1],id:'new-unreviewed-twin'};jobs.push(twin);state.pages.push([twin]);
+   await apply();
+   assert(ui('download-apply').disabled&&state.visited.includes(3),'A newly ambiguous fallback identity escaped full-history verification');
+   assertNativeIds(['end-late']);
   }else if(id==='download-day-selection'){
    ui('download-results').querySelector('input[data-day="2026-11-13"]').click();assert(selectedReview().length===2,'Day deselection failed');
    await apply();assertNativeIds(['start-late','start-early']);
@@ -602,11 +687,14 @@ async function checkIndividual(){
 
 
 SCENARIOS = [
-    'panel-sections',
+    'panel-sections', 'download-date-folding',
     'download-account-change', 'download-account-queue',
     'history-status-filters', 'history-status-click',
     'download-range', 'download-reset-first', 'download-single-day', 'download-select',
     'download-day-selection', 'download-zero', 'download-invalid-range',
+    'download-menu-apply-range', 'download-menu-apply-subset', 'download-menu-apply-no-count',
+    'download-menu-apply-identity-change', 'download-menu-apply-extra-selection', 'download-individual-menu-apply-range',
+    'download-menu-apply-ascending', 'download-apply-fallback-twin',
     'download-unknown-date', 'download-calendar-invalid', 'download-clock-invalid',
     'download-duplicate', 'download-stable-ids', 'download-stable-collision',
     'download-menu-ids', 'download-menu-cross-page', 'download-menu-delayed', 'download-menu-aria-delayed', 'download-menu-stop-before-binding', 'download-menu-preselection',

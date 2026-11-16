@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 开发版 3.0.0-dev.13：修复草稿批次被当前页 10 行截断的问题，按输入数量作为处理上限，并等待列表刷新后继续。保留单次提交与官网成功通知确认；Failed 重跑仍限当前页，下载仍由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
+            <p class="version-note">本 fork 开发版 3.0.0-dev.14：下载任务按日期折叠，应用勾选跳过无关任务菜单；唯一 ID 与官网跨页勾选总数核对完整后提前结束，不再扫完旧历史。当前账号移到顶部标题旁，下载仍由你手动点击官网原生 Download。功能仍在开发分支，尚未合并 main。</p>
             <p class="version-note">main 的 2.24.1 仍为旧行为基线，不包含这些 DEV 功能。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 3.0.0-dev.13</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 DEV 3.0.0-dev.14</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/dev/confirmed-submission" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看开发分支</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先禁用原版、旧 DEV 和其他 AlphaFold 提交脚本，只启用一份</p>
@@ -295,8 +295,11 @@
         </section>
 
         <section>
-            <h2>✨ DEV 3.0.0-dev.13 更新重点</h2>
+            <h2>✨ DEV 3.0.0-dev.14 更新重点</h2>
             <ul class="release-list">
+                <li>应用勾选只解析可能匹配目标的行及实际已勾选项，不再逐一读取无关旧任务的菜单。目标均有唯一 ID，且核验数与稳定的官网跨页勾选总数一致时提前结束；缺少唯一 ID 时仍遍历页面核对同名同时间歧义，不依赖日期排序，不跳过旧选择清理或勾选前后的身份核验。</li>
+                <li>当前账号移到顶部“AF3 自动助手”旁边，不再占正文一行；窄面板自动换行，最多显示两行，悬停查看完整内容，保留实时更新和固定标题导航。</li>
+                <li>下载匹配任务按日期默认折叠：日期标题保留任务数量和按天勾选，点击日期或使用键盘展开、收起当天明细。折叠不改变已选任务或逐个下载队列；全选、清空选择和应用仍包含收起的任务，切换语言保留展开日期。</li>
                 <li>草稿本次数量不再受每页行数限制：输入 30 即以 30 为处理上限，等待官网成功通知和列表刷新后继续处理自动补入的草稿；加载空表不算耗尽，草稿用完时提前结束。确认框区分当前页行数与本次上限；Failed 重跑仍限当前页，不增加提交重试。</li>
                 <li>修复油猴隔离环境的窗口对象无法传入 MouseEvent.view、导致草稿提交首次点击前中断的问题；共享点击函数同时覆盖失败任务重跑。保留鼠标事件链、单次提交和官网成功通知确认，不增加提交重试。</li>
                 <li>按日期查找只为范围内任务读取唯一 ID；未搜索的官网默认 Modified 倒序列表或明确的 Modified 降序，在越过开始日后停止翻页并返回首页。起止当天均包含，不跳过开始日的其他任务。</li>
@@ -312,8 +315,8 @@
                 <li>额度变更时自动记录，持续可读时每分钟更新记录时间，也可手动“记录当前额度”。其他账号显示上次记录及时间，未知额度不记为零，预览额度不写入账户记录。</li>
                 <li>通过官网的登录入口完成登录后，面板重新读取邮箱与额度。登录后请核对当前邮箱。</li>
                 <li>切换账号后清除旧下载结果和逐个选择队列；已识别账号在提交中变化时停止并锁定启动，避免继续处理。</li>
-                <li>两个功能区上方显示当前账号邮箱，页面中的账号信息变化后同步更新；未登录、缺失或存在歧义时显示“未识别”，长邮箱自动换行。</li>
-                <li>面板上方是提交任务，下方是下载任务，均不折叠；按天分组的匹配任务也直接列出，无需展开。</li>
+                <li>顶部“AF3 自动助手”旁显示当前账号邮箱，页面中的账号信息变化后同步更新；未登录、缺失或存在歧义时显示“未识别”。窄面板自动换行，最多显示两行，完整内容可悬停查看。</li>
+                <li>面板上方是提交任务，下方是下载任务，均不折叠；匹配任务按日期默认折叠，点击日期展开或收起；日期前的复选框仍可按天勾选，折叠不改变选择。</li>
                 <li>仅选中 Saved draft 才显示草稿提交就绪，仅选中 Failed 才显示失败重跑就绪；混选或未选标签时待机并禁用启动，点击启动和确认后均重新核对标签。</li>
                 <li>按日期查找任务：起止日期均包含当天，同一天可单独筛选；可按天或逐项核对，再应用到官网勾选。</li>
                 <li>保留合并 ZIP / 分开下载两种方式：合并时一次应用全部勾选；分开时每次只选一个任务，并提供“下一任务”。下载均由用户点击官网原生 Download。</li>
@@ -388,7 +391,7 @@
             <ol>
                 <li>在官网 History 中<strong>仅选中 Completed</strong>，按需填写 <code>Search History</code>。未搜索的官网默认 Modified 倒序列表或明确的 Modified 降序，在越过开始日后提前结束；排序不确定时遍历所有分页，保留官网已有的复选框选中状态。</li>
                 <li>在面板下方常驻的“下载任务”区域，选择开始、结束日期，再点<strong>查找任务</strong>。按官网 <code>Modified</code> 显示日期筛选，包含起止当天；填写同一天即可选择一天。</li>
-                <li>核对结果，按天或逐个任务勾选，也可点<strong>全选</strong>或<strong>清空选择</strong>。没有行内 ID 时会逐行打开原生三点菜单、读取 <code>Open results</code> 中的 ID，再关闭自己的菜单；不激活菜单项。同名同时间的不同 ID 任务分别保留。日期无法识别的任务不纳入结果，身份冲突或菜单无法安全读取时停止；查找失败或为空时保留原始提示。</li>
+                <li>结果按日期默认折叠，点击日期查看当天明细；日期前复选框按天勾选，展开后可逐项核对，也可点<strong>全选</strong>或<strong>清空选择</strong>。折叠不改变勾选或逐个下载队列。没有行内 ID 时会逐行打开原生三点菜单、读取 <code>Open results</code> 中的 ID，再关闭自己的菜单；不激活菜单项。同名同时间的不同 ID 任务分别保留。日期无法识别的任务不纳入结果，身份冲突或菜单无法安全读取时停止；查找失败或为空时保留原始提示。</li>
                 <li>选择<strong>合并一个 ZIP（官网最多 50 个）</strong>或<strong>分开下载（逐个勾选）</strong>，再点<strong>应用到官网勾选</strong>并确认替换提示。合并模式勾选全部已核对任务，分开模式每次只勾选一个任务，均<strong>只应用勾选，不发起下载</strong>。</li>
                 <li>合并模式：手动点击官网原生批量 <code>Download</code>。分开模式：核对面板显示的当前任务名称、Modified 时间与序号，手动点击官网原生 <code>Download</code>，完成后点<strong>下一任务</strong>切换勾选，再手动下载。到最后一个任务时“下一任务”禁用。也可直接使用官网任务行的 <code>Download</code>。</li>
                 <li>下方下载区域显示<strong>待机 / 就绪 / 运行中</strong>，仅选中 Completed 时显示下载就绪；上方提交区域独立显示状态。点<strong>停止</strong>会停止查找或应用选择；应用中停止或出错可能留下部分勾选，不会自动恢复旧选择，请先核对官网复选框。</li>
@@ -429,7 +432,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 3.0.0-dev.13 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 DEV 3.0.0-dev.14 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -439,7 +442,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter DEV 3.0.0-dev.13 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter DEV 3.0.0-dev.14 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 
