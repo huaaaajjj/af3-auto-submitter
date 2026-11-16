@@ -1,4 +1,4 @@
-"""Stdlib-only, account-free Edge/Chromium tests for the full DEV userscript.
+"""Stdlib-only, account-free Edge/Chromium tests for the full release userscript.
 
 All pages and script bytes come from a loopback server. No real AlphaFold site,
 existing profile, login, quota, or installed browser extension is used. Real
@@ -83,7 +83,11 @@ if(id==='account-storage'){
 if(id==='account-switch-submission'||id==='account-switch-confirm')window.WIZ_global_data={oPEP7c:'first@example.com'};
 if(id==='startup-trusted-types')window.WIZ_global_data={oPEP7c:'strict.page@example.com'};
 // Leave room to grow in the 700px fixture, and verify existing saved sizes still work.
-if(id==='panel-ui'&&!new URLSearchParams(location.search).has('restore'))localStorage.setItem('af3-dev-panel-size',JSON.stringify({width:300,height:380}));
+if(id==='panel-ui'&&!new URLSearchParams(location.search).has('restore')){
+  localStorage.setItem('af3-dev-panel-size',JSON.stringify({width:300,height:380}));
+  localStorage.removeItem('af3-dev-panel-language');localStorage.removeItem('af3-dev-panel-position');
+  localStorage.setItem('af3-v20-panel-language','en');localStorage.setItem('af3-v20-panel-position',JSON.stringify({left:12,top:12}));
+}
 const failed=id.startsWith('failed-');
 const draftBatch=id.startsWith('draft-batch-');
 const pagedBatch=draftBatch||id==='failed-batch-limit';
@@ -573,6 +577,14 @@ async function checkAccountManager(){
   if(id==='storage-writer')return;
   if(id==='panel-ui'){
     await until(()=>ui('v20-btn'),5000);
+    assert(!ui('header').textContent.includes('DEV'),'Stable release still displays DEV branding');
+    if(!new URLSearchParams(location.search).has('restore')){
+      assert(ui('language-select').value==='en','v2 language fallback was lost');
+      const migrated=document.getElementById('af3-dev-panel').getBoundingClientRect();
+      assert(migrated.left===12&&migrated.top===12,'v2 panel position fallback was lost');
+      ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));
+      assert(localStorage.getItem('af3-dev-panel-language')==='zh'&&localStorage.getItem('af3-v20-panel-language')==='en','Upgrade overwrote the legacy preference');
+    }
     const saved=JSON.parse(localStorage.getItem('af3-dev-panel-size')||'null');
     if(new URLSearchParams(location.search).get('restore')==='1'){
       assert(saved,'Saved panel size disappeared after reload');
@@ -669,9 +681,9 @@ SCENARIOS = [
 
 
 def main():
-    source = Path(__file__).with_name('af3-auto-submitter.dev.user.js')
+    source = Path(__file__).with_name('af3-auto-submitter.user.js')
     if os.environ.get('AF_TEST_UPSTREAM') == '1':
-        script = subprocess.check_output(['git', 'show', f'upstream/main:{source.name}'], cwd=source.parent)
+        script = subprocess.check_output(['git', 'show', 'upstream/main:af3-auto-submitter.js'], cwd=source.parent)
     else:
         script = source.read_bytes()
     scenarios = [name.strip() for name in os.environ.get('AF_TEST_CASES', ','.join(SCENARIOS)).split(',') if name.strip()]

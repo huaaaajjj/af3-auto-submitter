@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         AF3 Auto Submitter DEV (huaaaajjj)
-// @namespace    https://github.com/huaaaajjj/af3-auto-submitter/dev
-// @version      3.0.0-dev.14
-// @description  3.0 开发版：浅色科研工作台、固定导航与响应式分区；保留跨普通与 InPrivate 的账户记录、提交确认、按日期勾选和可调面板。
+// @name         AF3 Auto Submitter (huaaaajjj)
+// @namespace    https://github.com/huaaaajjj/af3-auto-submitter
+// @version      4.0.0
+// @description  正式版：FASTA 每 30 条分批保存、带 manifest 的草稿导入、提交确认、日期折叠勾选及本地账户记录。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -15,15 +15,16 @@
 // @sandbox      raw
 // @run-at       document-start
 // @noframes
-// @updateURL    https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js
-// @downloadURL  https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/dev/confirmed-submission/af3-auto-submitter.dev.user.js
+// @updateURL    https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.meta.js
+// @downloadURL  https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js
 // ==/UserScript==
 
 (function() {
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '3.0.0-dev.14';
+    const SCRIPT_VERSION = '4.0.0';
+    // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
     const PANEL_POSITION_KEY = `${CONTAINER_ID}-position`;
@@ -59,7 +60,7 @@
             submissionUncertain: "提交结果尚未确认，已停止且锁定启动。请先人工核对历史记录与额度，再刷新页面；不要直接重试。",
             submissionServerError: "官网报告提交错误：{message}。已停止且锁定启动，请核对历史记录与额度后刷新。",
             draftListUnchanged: "官网已报告成功，但草稿列表未更新。已停止且锁定启动，未再次提交；请核对历史记录后刷新。",
-            headerDev: 'AF3 自动助手',
+            headerTitle: 'AF3 自动助手',
             headerProd: '🤖 AF3 自动助手',
             languageTitle: '界面语言',
             batchCount: '本次数量',
@@ -72,7 +73,7 @@
             resumeButton: '继续',
             stopButton: '停止',
             logLabel: '日志',
-            devFooter: '⚠️ DEV测试版：请禁用正式版后测试',
+            releaseHint: '请仅启用一份脚本，提交前核对账号与额度',
             modeDraftFooter: '模式: 批量提交 Saved Drafts',
             modeFailedFooter: '模式: Clone & Resubmit',
             standbyFooter: '请在官网 History 中仅选 Saved draft 或 Failed。',
@@ -148,7 +149,7 @@
             submissionUncertain: "Submission is unconfirmed. The batch stopped and Start is locked. Check history and quota manually before reloading; do not retry blindly.",
             submissionServerError: "Server reported a submission error: {message}. The batch stopped and Start is locked. Check history and quota before reloading.",
             draftListUnchanged: "The server reported success, but the draft list did not update. The batch stopped and Start is locked. No repeat submission was sent; check history before reloading.",
-            headerDev: 'AF3 Auto Submitter',
+            headerTitle: 'AF3 Auto Submitter',
             headerProd: '🤖 AF3 Auto Submitter',
             languageTitle: 'Language',
             batchCount: 'Jobs this run',
@@ -161,7 +162,7 @@
             resumeButton: 'Resume',
             stopButton: 'Stop',
             logLabel: 'Log',
-            devFooter: '⚠️ DEV build: disable the stable script while testing',
+            releaseHint: 'Enable only one script; check the account and quota before submitting',
             modeDraftFooter: 'Mode: Submit Saved Drafts',
             modeFailedFooter: 'Mode: Clone & Resubmit',
             standbyFooter: 'Open a Saved draft or Failed list below',
@@ -237,7 +238,7 @@
             submissionUncertain: "送信結果を確認できません。処理を停止し、開始をロックしました。履歴と残り枠を手動で確認してから再読み込みしてください。確認せず再試行しないでください。",
             submissionServerError: "サーバーの送信エラー：{message}。処理を停止し、開始をロックしました。履歴と残り枠を確認してから再読み込みしてください。",
             draftListUnchanged: "サーバーは成功を報告しましたが、下書き一覧が更新されませんでした。開始をロックし、再送信せず停止しました。履歴を確認してから再読み込みしてください。",
-            headerDev: 'AF3 自動送信',
+            headerTitle: 'AF3 自動送信',
             headerProd: '🤖 AF3 自動送信',
             languageTitle: '言語',
             batchCount: '今回の件数',
@@ -250,7 +251,7 @@
             resumeButton: '再開',
             stopButton: '停止',
             logLabel: 'ログ',
-            devFooter: '⚠️ DEV版: テスト時は正式版を無効にしてください',
+            releaseHint: 'スクリプトは一つだけ有効にし、送信前にアカウントと上限を確認してください',
             modeDraftFooter: 'モード: Saved Drafts 一括送信',
             modeFailedFooter: 'モード: Clone & Resubmit',
             standbyFooter: '下のリストを Saved draft / Failed にしてください',
@@ -326,7 +327,7 @@
             submissionUncertain: "제출 결과를 확인하지 못했습니다. 중지하고 시작 버튼을 잠갔습니다. 기록과 잔여 할당량을 직접 확인한 뒤 새로고침하세요. 무작정 재시도하지 마세요.",
             submissionServerError: "서버 제출 오류: {message}. 중지하고 시작 버튼을 잠갔습니다. 기록과 할당량을 확인한 뒤 새로고침하세요.",
             draftListUnchanged: "서버는 성공을 보고했지만 초안 목록이 갱신되지 않았습니다. 재제출하지 않고 중지하고 시작 버튼을 잠갔습니다. 기록 확인 후 새로고침하세요.",
-            headerDev: 'AF3 자동 제출',
+            headerTitle: 'AF3 자동 제출',
             headerProd: '🤖 AF3 자동 제출',
             languageTitle: '언어',
             batchCount: '처리할 작업 수',
@@ -339,7 +340,7 @@
             resumeButton: '계속',
             stopButton: '중지',
             logLabel: '로그',
-            devFooter: '⚠️ DEV 버전: 테스트 중에는 정식 버전을 비활성화하세요',
+            releaseHint: '스크립트 하나만 사용하고 제출 전에 계정과 한도를 확인하세요',
             modeDraftFooter: '모드: Saved Drafts 일괄 제출',
             modeFailedFooter: '모드: Clone & Resubmit',
             standbyFooter: '아래 목록을 Saved draft 또는 Failed 로 유지하세요',
@@ -415,7 +416,7 @@
             submissionUncertain: "No se confirmó el envío. El lote se detuvo e Iniciar quedó bloqueado. Revisa el historial y la cuota antes de recargar; no reintentes sin comprobarlos.",
             submissionServerError: "Error de envío del servidor: {message}. El lote se detuvo e Iniciar quedó bloqueado. Revisa el historial y la cuota antes de recargar.",
             draftListUnchanged: "El servidor informó de éxito, pero la lista de borradores no se actualizó. Se detuvo el lote y se bloqueó Iniciar sin repetir el envío. Revisa el historial antes de recargar.",
-            headerDev: 'AF3 Auto Submitter',
+            headerTitle: 'AF3 Auto Submitter',
             headerProd: '🤖 AF3 Auto Submitter',
             languageTitle: 'Idioma',
             batchCount: 'Tareas por ejecutar',
@@ -428,7 +429,7 @@
             resumeButton: 'Continuar',
             stopButton: 'Detener',
             logLabel: 'Registro',
-            devFooter: '⚠️ Versión DEV: desactiva la versión estable al probar',
+            releaseHint: 'Activa un solo script y comprueba la cuenta y la cuota antes de enviar',
             modeDraftFooter: 'Modo: enviar Saved Drafts',
             modeFailedFooter: 'Modo: Clone & Resubmit',
             standbyFooter: 'Abre una lista Saved draft o Failed abajo',
@@ -504,7 +505,7 @@
             submissionUncertain: "L’envoi n’est pas confirmé. Le lot est arrêté et Démarrer est verrouillé. Vérifiez l’historique et le quota avant de recharger ; ne réessayez pas sans vérifier.",
             submissionServerError: "Erreur d’envoi du serveur : {message}. Le lot est arrêté et Démarrer est verrouillé. Vérifiez l’historique et le quota avant de recharger.",
             draftListUnchanged: "Le serveur a signalé un succès, mais la liste des brouillons n’a pas changé. Le lot est arrêté et Démarrer est verrouillé, sans nouvel envoi. Vérifiez l’historique avant de recharger.",
-            headerDev: 'AF3 Auto Submitter',
+            headerTitle: 'AF3 Auto Submitter',
             headerProd: '🤖 AF3 Auto Submitter',
             languageTitle: 'Langue',
             batchCount: 'Tâches à traiter',
@@ -517,7 +518,7 @@
             resumeButton: 'Reprendre',
             stopButton: 'Arrêter',
             logLabel: 'Journal',
-            devFooter: '⚠️ Version DEV : désactivez la version stable pendant les tests',
+            releaseHint: 'Activez un seul script et vérifiez le compte et le quota avant l’envoi',
             modeDraftFooter: 'Mode : envoyer les Saved Drafts',
             modeFailedFooter: 'Mode : Clone & Resubmit',
             standbyFooter: 'Ouvrez une liste Saved draft ou Failed ci-dessous',
@@ -720,8 +721,579 @@
         Object.assign(I18N[language], accountEnglish, accountTranslations[language] || {});
     }
 
-    if (window.__af3AutoSubmitterDevLoaded) return;
+    // Legacy flags prevent a second same-realm instance during an in-place upgrade.
+    if (window.__af3AutoSubmitterLoaded || window.__af3AutoSubmitterDevLoaded || window.__af3AutoSubmitterV24Loaded) return;
+    window.__af3AutoSubmitterLoaded = true;
     window.__af3AutoSubmitterDevLoaded = true;
+    window.__af3AutoSubmitterV24Loaded = true;
+
+    // FASTA data stays local until the explicit native-upload confirmation.
+    const fastaEnglish = {
+        fastaTitle: 'FASTA batches', fastaHelp: '30 records per batch. Save FASTA, Server JSON and manifest locally before uploading drafts. No prediction is launched.',
+        fastaFile: 'FASTA file', fastaMode: 'Protein layout', fastaMonomer: 'One chain per record', fastaComplex: 'Receptor + tail peptide (reference script)',
+        fastaTail: 'Tail peptide length', fastaGenerate: 'Generate and choose folder', fastaRestore: 'Open existing batch folder', fastaImport: 'Import next batch as drafts',
+        fastaSync: 'Check history / update records', fastaStop: 'Stop', fastaIdle: 'Choose a FASTA file. Each record is one job; tail mode splits its actual sequence, not its title.',
+        fastaLocal: 'Saved to {folder}. Generated {total}; imported {imported}; submitted {submitted}; completed {completed}; failed {failed}.',
+        fastaBatch: 'Batch {index}: {count} jobs · {status}', fastaBusy: 'Working…', fastaReady: 'Ready', fastaImported: 'Import confirmed', fastaUncertain: 'Needs history check',
+        fastaRunning: 'Reading / saving local files…', fastaChecking: 'Checking website history…', fastaUploading: 'Validating batch {index} on the website…',
+        fastaVerifying: 'Draft save sent once. Verifying batch {index} in history…', fastaFinished: 'All batches are confirmed imported. This does not mean predictions are complete.',
+        fastaUnsupported: 'This browser cannot choose writable folders. Use a supported Edge/Chrome window; no files were uploaded.',
+        fastaChooseFile: 'Choose a non-empty UTF-8 FASTA file (up to 50 MiB).', fastaInvalid: 'FASTA record / line {record}: {reason}',
+        fastaSequence: 'Use only the 20 standard amino acids. Gaps, *, ambiguous letters and chain separators are not silently removed.',
+        fastaLength: 'Reference limits: each chain ≤ 2700 residues, total ≤ 3000; a tail split requires length greater than the tail.',
+        fastaDirectory: 'Choose the batch folder containing manifest.json. Missing, changed or unsupported files cannot be resumed.',
+        fastaJournalChanged: 'Another page changed or is writing this manifest. Reopen the folder and check history; the newer journal was not overwritten.',
+        fastaManifestLimit: 'The tracking manifest exceeds 50 MiB or 10,000 batches. Use a smaller input; unsupported runs are not written.',
+        fastaSavedError: 'Local record write failed. Processing stopped; do not retry an uncertain import. Reopen the folder and check history. {detail}',
+        fastaContext: 'Use a known signed-in account, no Search History term, and do not change account, filters, sort or page size during import/checking.',
+        fastaNeedDraft: 'Select Saved draft only before importing. Existing dialogs/menus must be closed.',
+        fastaCloseDialog: 'Close website dialogs and menus before checking or importing records.',
+        fastaConfirm: 'Upload batch {index} ({count} jobs) to {account}? Selecting the JSON sends sequences for website validation. Only drafts will be saved; no prediction is launched.',
+        fastaExisting: 'A batch task name already exists in history. Nothing was uploaded. Check records instead of importing it again.',
+        fastaPreview: 'Native upload validation failed or did not show exactly the expected names, count and all-green job checks. No draft-save retry was sent.',
+        fastaTimeout: 'Import is unconfirmed or partial. Check history; do not automatically reimport. {detail}',
+        fastaStopped: 'Stopped. Saved records are retained; any draft-save request already sent still needs history verification.',
+        fastaChanged: 'A saved batch file or manifest is invalid/changed. Generate a new run instead of importing mismatched files.',
+        fastaInputChanged: 'Input/settings changed. Generate and save a new run or reopen its batch folder before importing.',
+        fastaSummary: 'Layout: {mode}; records {count}; batches {batches}; first job chain lengths {lengths}.',
+    };
+    Object.assign(I18N.en, fastaEnglish);
+    for (const lang of Object.keys(I18N)) if (lang !== 'en') Object.assign(I18N[lang], fastaEnglish);
+    Object.assign(I18N.zh, {
+        fastaTitle: 'FASTA 分批导入', fastaHelp: '每批 30 条，先保存 FASTA、官网 JSON 和 manifest，再明确确认上传草稿。不会启动预测。',
+        fastaFile: 'FASTA 文件', fastaMode: '蛋白链模式', fastaMonomer: '整条序列作为单链', fastaComplex: '受体 + 末端肽（参考脚本）',
+        fastaTail: '末端肽长度', fastaGenerate: '生成并选择保存目录', fastaRestore: '打开已有批次文件夹', fastaImport: '导入下一批为草稿',
+        fastaSync: '核对官网历史 / 更新记录', fastaStop: '停止', fastaIdle: '每条记录对应一个任务；复合物模式切分实际序列末端，不从标题猜测肽序列。',
+        fastaLocal: '已保存至 {folder}。生成 {total}，已导入 {imported}，已提交 {submitted}，已完成 {completed}，失败 {failed}。',
+        fastaBatch: '第 {index} 批：{count} 个 · {status}', fastaBusy: '处理中…', fastaReady: '待导入', fastaImported: '已确认导入', fastaUncertain: '需核对历史',
+        fastaRunning: '正在读取 / 保存本地文件…', fastaChecking: '正在核对官网历史…', fastaUploading: '正在官网校验第 {index} 批…',
+        fastaVerifying: '草稿保存已点击一次，正在历史中核对第 {index} 批…', fastaFinished: '全部批次已确认导入；这不代表预测已完成。',
+        fastaUnsupported: '当前浏览器无法选择可写文件夹，请使用支持此功能的 Edge/Chrome 窗口。未上传任何文件。',
+        fastaChooseFile: '请选择非空 UTF-8 FASTA 文件（最大 50 MiB）。', fastaInvalid: 'FASTA 记录 / 行 {record}：{reason}',
+        fastaSequence: '只接受 20 种标准氨基酸；不会静默删除缺口、*、不明确字母或链分隔符。',
+        fastaLength: '参考脚本限制：每链不超过 2700、合计不超过 3000 个残基；复合物序列必须长于末端肽。',
+        fastaDirectory: '请选择包含 manifest.json 的批次文件夹；文件缺失、内容改变或格式不支持时不能恢复。',
+        fastaJournalChanged: '清单已被其他页面修改或正在写入；未覆盖新记录。请重新打开目录并核对历史。',
+        fastaManifestLimit: '跟踪清单超过 50 MiB 或 10000 批，请缩小输入；不写入无法恢复的批次。',
+        fastaSavedError: '本地记录写入失败，已停止；不要重试结果不明确的导入。请重新打开目录并核对历史。{detail}',
+        fastaContext: '需识别到当前账号、清空 Search History；处理中不要改变账号、筛选、排序或每页数量。',
+        fastaNeedDraft: '导入前请仅选择 Saved draft，并关闭已有官网弹窗和菜单。',
+        fastaCloseDialog: '请先关闭官网已有弹窗和菜单，再核对或导入记录。',
+        fastaConfirm: '将第 {index} 批（{count} 个任务）上传至 {account}？选择 JSON 就会发送序列进行官网校验；仅保存草稿，不启动预测。',
+        fastaExisting: '官网已存在本批任务名称，未上传。请核对记录，不要重复导入。',
+        fastaPreview: '官网上传校验未通过，或名称、数量、全绿校验状态不符。未再次点击草稿保存。',
+        fastaTimeout: '导入结果不明确或仅部分保存。请核对历史，不自动重导。{detail}',
+        fastaStopped: '已停止并保留本地记录；已发送的草稿保存请求仍需核对历史。',
+        fastaChanged: '批次文件或 manifest 格式错误 / 内容已改变，请重新生成，不导入不匹配的文件。',
+        fastaInputChanged: '输入或模式已改变；请生成保存新批次，或重新打开原批次文件夹后再导入。',
+        fastaSummary: '模式：{mode}；记录 {count}，批次 {batches}；首条任务各链长度：{lengths}。',
+    });
+    const FASTA_IMPORT_TIMEOUT = 60000;
+    const FASTA_FILE_LIMIT = 50 * 1024 * 1024;
+    const FASTA_MANIFEST_LIMIT = 50 * 1024 * 1024;
+    const FASTA_MAX_BATCHES = 10000;
+    const fastaState = { busy: false, stop: false, dir: null, manifest: null, saved: false, inputChanged: false, context: null, message: '', dialog: null };
+
+    async function fastaHash(value) {
+        const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : value;
+        return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    function parseFasta(text, mode, tail) {
+        const records = [];
+        for (const [index, raw] of text.replace(/^﻿/, '').split(/\r?\n/).entries()) {
+            const line = raw.trim();
+            if (!line) continue;
+            if (line.startsWith('>')) {
+                if (!line.slice(1).trim()) throw new Error(t('fastaInvalid', { record: index + 1, reason: 'Empty header' }));
+                if (records.length >= 30 * FASTA_MAX_BATCHES) throw new Error(t('fastaManifestLimit'));
+                records.push({ header: line.slice(1).trim(), sequence: '', line: index + 1 });
+            } else {
+                if (!records.length) throw new Error(t('fastaInvalid', { record: index + 1, reason: 'Sequence before first > header' }));
+                records[records.length - 1].sequence += line.replace(/\s/g, '');
+            }
+        }
+        if (!records.length) throw new Error(t('fastaChooseFile'));
+        for (const record of records) {
+            // Validate ASCII before uppercasing: Unicode ß must not become two serines.
+            if (!/^[ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy]+$/.test(record.sequence)) throw new Error(t('fastaInvalid', { record: record.line, reason: t('fastaSequence') }));
+            record.sequence = record.sequence.toUpperCase();
+            const seq = record.sequence;
+            record.chains = mode === 'complex' ? [seq.slice(0, -tail), seq.slice(-tail)] : [seq];
+            if ((mode === 'complex' && (!Number.isInteger(tail) || tail < 1 || tail >= seq.length)) ||
+                record.chains.some(chain => !chain.length || chain.length > 2700) || seq.length > 3000) {
+                throw new Error(t('fastaInvalid', { record: record.line, reason: t('fastaLength') }));
+            }
+        }
+        return records;
+    }
+
+    async function writeFastaFile(name, content) {
+        const handle = await fastaState.dir.getFileHandle(name, { create: true });
+        const writer = await handle.createWritable({ mode: 'exclusive' });
+        try { await writer.write(content); await writer.close(); }
+        catch (error) { try { await writer.abort(); } catch (_) {} throw error; }
+    }
+
+    function updateFastaSummary(manifest = fastaState.manifest) {
+        const jobs = manifest.batches.flatMap(batch => batch.jobs);
+        manifest.summary = {
+            generated: jobs.length, imported: jobs.filter(job => job.importStatus === 'confirmed').length,
+            submitted: jobs.filter(job => job.submittedAt || ['in_progress', 'completed', 'failed'].includes(job.predictionStatus)).length,
+            completed: jobs.filter(job => job.predictionStatus === 'completed').length,
+            failed: jobs.filter(job => job.predictionStatus === 'failed').length,
+        };
+        manifest.importComplete = manifest.summary.imported === jobs.length;
+        manifest.predictionComplete = manifest.summary.completed === jobs.length;
+        manifest.predictionFinished = manifest.summary.completed + manifest.summary.failed === jobs.length;
+        manifest.updatedAt = new Date().toISOString();
+    }
+
+    async function persistFastaManifest() {
+        fastaState.saved = false;
+        const manifest = fastaState.manifest;
+        updateFastaSummary(manifest);
+        try {
+            if (!navigator.locks?.request || !Number.isSafeInteger(manifest.revision) || manifest.revision < 0 || manifest.revision >= Number.MAX_SAFE_INTEGER) throw new Error(t('fastaJournalChanged'));
+            await navigator.locks.request('af3-fasta-manifest:' + manifest.runId, { ifAvailable: true }, async lock => {
+                if (!lock) throw new Error(t('fastaJournalChanged'));
+                const revision = manifest.revision;
+                const handle = await fastaState.dir.getFileHandle('manifest.json', { create: revision === 0 });
+                const writer = await handle.createWritable({ mode: 'exclusive' });
+                try {
+                    // Read committed bytes while owning the writer, then compare-and-replace.
+                    const file = await handle.getFile();
+                    if (file.size > FASTA_MANIFEST_LIMIT) throw new Error(t('fastaManifestLimit'));
+                    const disk = file.size ? JSON.parse(await file.text()) : null;
+                    if ((revision === 0 && disk) || (revision > 0 && (!disk || disk.format !== manifest.format || disk.version !== manifest.version || disk.runId !== manifest.runId || disk.revision !== revision || disk.source?.sha256 !== manifest.source.sha256 || disk.source?.records !== manifest.source.records))) throw new Error(t('fastaJournalChanged'));
+                    const text = JSON.stringify({ ...manifest, revision: revision + 1 }, null, 2) + '\n';
+                    if (new Blob([text]).size > FASTA_MANIFEST_LIMIT) throw new Error(t('fastaManifestLimit'));
+                    await writer.write(text); await writer.close();
+                    manifest.revision = revision + 1;
+                } catch (error) { try { await writer.abort(); } catch (_) {} throw error; }
+            });
+            fastaState.saved = true;
+        } catch (error) { throw new Error(t('fastaSavedError', { detail: error.message })); }
+        renderFastaSection();
+    }
+
+    function fastaCheck() {
+        if (fastaState.stop) throw makeStoppedError();
+        if (fastaState.context && getFastaContext() !== fastaState.context) throw new Error(t('fastaContext'));
+    }
+
+    async function fastaWait(read, timeout = FASTA_IMPORT_TIMEOUT) {
+        const deadline = Date.now() + timeout;
+        while (Date.now() < deadline) {
+            fastaCheck();
+            const result = read();
+            if (result) return result;
+            await sleep(100);
+        }
+        throw new Error(t('fastaTimeout', { detail: 'Timeout' }));
+    }
+
+    function getFastaContext() {
+        const { root } = getDownloadHistory(true);
+        const loading = downloadHistoryLoading(root, true);
+        const previous = loading && fastaState.context ? JSON.parse(fastaState.context) : null;
+        const account = normalizeAccountEmail(readAccountEmail());
+        const search = root.querySelector('input[placeholder="Search History"], input[aria-label="Search History"]');
+        const selected = getSelectedHistoryStatuses(root);
+        if (!account || search?.value || !selected.length || selected.includes('examples')) throw new Error(t('fastaContext'));
+        const size = root.querySelector('mat-paginator .mat-mdc-select-value, mat-paginator select');
+        return JSON.stringify({ url: location.href, account, selected, size: size?.value || size?.textContent || previous?.size || '',
+            sort: loading ? previous?.sort || [] : Array.from(root.querySelectorAll('th[aria-sort]'), node => [downloadText(node), node.getAttribute('aria-sort')]) });
+    }
+
+    async function fastaHistoryPage(before = null) {
+        let signature = '', since = 0;
+        return fastaWait(() => {
+            const history = getDownloadHistory(true);
+            if (downloadHistoryLoading(history.root, true)) { signature = ''; return false; }
+            const page = readDownloadPage();
+            if (before !== null && before === page.signature) return false;
+            if (signature !== page.signature) { signature = page.signature; since = Date.now(); return false; }
+            return Date.now() - since >= 150 && page;
+        }, 8000);
+    }
+
+    async function readFastaHistory() {
+        let page = await fastaHistoryPage();
+        const move = async button => { fastaCheck(); if (!downloadButtonEnabled(button)) throw new Error(t('downloadPageError')); button.click(); return fastaHistoryPage(page.signature); };
+        if (downloadButtonEnabled(page.first)) page = await move(page.first);
+        const rewind = new Set();
+        while (downloadButtonEnabled(page.previous)) {
+            if (rewind.has(page.signature) || rewind.size >= 1000) throw new Error(t('downloadPageError'));
+            rewind.add(page.signature); page = await move(page.previous);
+        }
+        const found = new Map(), visited = new Set();
+        while (true) {
+            fastaCheck();
+            if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
+            visited.add(page.signature);
+            for (const job of page.jobs) {
+                const cell = job.row.querySelector('.mat-column-status, .cdk-column-status');
+                const statusText = ((cell?.textContent || '') + ' ' + Array.from(cell?.querySelectorAll('[aria-label], [mattooltip]') || [], n => n.getAttribute('aria-label') || n.getAttribute('mattooltip')).join(' ')).toLowerCase();
+                const selected = JSON.parse(fastaState.context).selected;
+                const status = /check_circle|completed|succeeded/.test(statusText) ? 'completed' : /\berror\b|failed/.test(statusText) ? 'failed' :
+                    (/progress_activity|in progress|pending/.test(statusText) || cell?.querySelector('mat-spinner, mat-progress-spinner')) ? 'in_progress' : /edit_document|saved draft/.test(statusText) ? 'draft' :
+                    selected.length === 1 ? ({ 'saved draft': 'draft', 'completed': 'completed', 'failed': 'failed', 'in progress': 'in_progress' })[selected[0]] : 'unknown';
+                const entry = { name: job.name, jobId: job.id ? job.key.slice(3) : null, modified: job.modified, status };
+                if (!found.has(job.name)) found.set(job.name, []);
+                found.get(job.name).push(entry);
+            }
+            if (!downloadButtonEnabled(page.next)) break;
+            page = await move(page.next);
+        }
+        if (downloadButtonEnabled(page.first)) page = await move(page.first);
+        const returning = new Set();
+        while (downloadButtonEnabled(page.previous)) {
+            if (returning.has(page.signature) || returning.size >= 1000) throw new Error(t('downloadPageError'));
+            returning.add(page.signature); page = await move(page.previous);
+        }
+        fastaCheck();
+        return found;
+    }
+
+    async function readSavedFastaBatch(batch) {
+        const file = await (await fastaState.dir.getFileHandle(batch.jsonFile)).getFile();
+        if (file.size > FASTA_FILE_LIMIT) throw new Error(t('fastaChanged'));
+        const text = await file.text();
+        if (await fastaHash(text) !== batch.jsonSha256) throw new Error(t('fastaChanged'));
+        const jobs = JSON.parse(text);
+        if (!Array.isArray(jobs) || jobs.length !== batch.jobs.length || jobs.some((job, i) =>
+            job.name !== batch.jobs[i].name || job.dialect !== 'alphafoldserver' || job.version !== 1 ||
+            !Array.isArray(job.modelSeeds) || job.modelSeeds.length || !Array.isArray(job.sequences) || ![1, 2].includes(job.sequences.length) ||
+            job.sequences.some(chain => chain.proteinChain?.count !== 1 || !/^[ACDEFGHIKLMNPQRSTVWY]+$/.test(chain.proteinChain.sequence) || chain.proteinChain.sequence.length > 2700))) {
+            throw new Error(t('fastaChanged'));
+        }
+        if (jobs.some(job => job.sequences.reduce((sum, chain) => sum + chain.proteinChain.sequence.length, 0) > 3000)) throw new Error(t('fastaChanged'));
+        return text;
+    }
+
+    async function generateFastaBatches() {
+        if (fastaState.busy || isRunning || downloadState.busy) return;
+        if (typeof window.showDirectoryPicker !== 'function') { fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
+        const file = getUiElement('af3-fasta-file')?.files[0];
+        if (!file?.size || file.size > FASTA_FILE_LIMIT) { fastaState.message = t('fastaChooseFile'); renderFastaSection(); return; }
+        const mode = getUiElement('af3-fasta-mode').value;
+        const tail = Number(getUiElement('af3-fasta-tail').value);
+        fastaState.busy = true; fastaState.stop = false; fastaState.context = null;
+        fastaState.message = t('fastaRunning'); renderFastaSection(); checkSystemStatus();
+        try {
+            // Request permission directly from the click, before asynchronous parsing consumes activation.
+            const parent = await window.showDirectoryPicker({ mode: 'readwrite' });
+            const sourceBytes = await file.arrayBuffer();
+            const text = new TextDecoder('utf-8', { fatal: true }).decode(sourceBytes);
+            const records = parseFasta(text, mode, tail);
+            fastaCheck();
+            const runId = new Date().toISOString().replace(/\D/g, '').slice(0, 14) + '_' + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+            const folder = 'af3_' + runId;
+            const stem = (file.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 60) || 'input');
+            const manifest = { format: 'af3-fasta-batches', version: 1, revision: 0, runId, createdAt: new Date().toISOString(), source: { name: file.name, sha256: await fastaHash(sourceBytes), records: records.length },
+                settings: { batchSize: 30, mode, peptideLength: mode === 'complex' ? tail : null, chainLimit: 2700, totalLimit: 3000 }, generationComplete: false, batches: [] };
+            const outputs = [];
+            for (let start = 0; start < records.length; start += 30) {
+                fastaCheck();
+                const batch = { index: manifest.batches.length + 1, status: 'ready', account: null, attempts: [], jobs: [] };
+                const base = stem + '_part' + String(batch.index).padStart(3, '0');
+                batch.fastaFile = base + '.fasta'; batch.jsonFile = base + '.json';
+                const part = records.slice(start, start + 30);
+                const jobs = part.map((record, i) => {
+                    const ordinal = start + i + 1;
+                    const suffix = record.header.replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'seq';
+                    const name = ('af3_' + runId + '_' + String(ordinal).padStart(5, '0') + '_' + suffix).slice(0, 100);
+                    batch.jobs.push({ record: ordinal, header: record.header, name, chainLengths: record.chains.map(chain => chain.length), importStatus: 'pending', predictionStatus: 'unknown', importedAt: null, submittedAt: null, completedAt: null, lastSeenAt: null, jobId: null });
+                    return { name, modelSeeds: [], sequences: record.chains.map(sequence => ({ proteinChain: { sequence, count: 1 } })), dialect: 'alphafoldserver', version: 1 };
+                });
+                const fasta = part.map(record => '>' + record.header + '\n' + record.sequence.match(/.{1,60}/g).join('\n')).join('\n') + '\n';
+                const json = JSON.stringify(jobs, null, 2) + '\n';
+                if (new Blob([fasta]).size > FASTA_FILE_LIMIT || new Blob([json]).size > FASTA_FILE_LIMIT) throw new Error(t('fastaChooseFile'));
+                batch.fastaSha256 = await fastaHash(fasta); batch.jsonSha256 = await fastaHash(json);
+                manifest.batches.push(batch); outputs.push({ batch, fasta, json });
+            }
+            updateFastaSummary(manifest);
+            if (new Blob([JSON.stringify({ ...manifest, revision: manifest.batches.length + 1 }, null, 2) + '\n']).size > FASTA_MANIFEST_LIMIT) throw new Error(t('fastaManifestLimit'));
+            fastaCheck();
+            try { await parent.getDirectoryHandle(folder); throw new Error('Output folder already exists'); }
+            catch (error) { if (error.name !== 'NotFoundError') throw error; }
+            fastaState.dir = await parent.getDirectoryHandle(folder, { create: true });
+            manifest.batches = [];
+            fastaState.manifest = manifest; fastaState.saved = false; fastaState.inputChanged = false;
+            for (const { batch, fasta, json } of outputs) {
+                fastaCheck();
+                await writeFastaFile(batch.fastaFile, fasta); await writeFastaFile(batch.jsonFile, json);
+                manifest.batches.push(batch); await persistFastaManifest();
+            }
+            manifest.generationComplete = true;
+            await persistFastaManifest();
+            fastaState.message = t('fastaSummary', { mode: t(mode === 'complex' ? 'fastaComplex' : 'fastaMonomer'), count: records.length, batches: manifest.batches.length, lengths: records[0].chains.map(chain => chain.length).join(' + ') });
+        } catch (error) { fastaState.message = error.name === 'AbortError' || isUserStopError(error) ? t('fastaStopped') : error.message; }
+        finally { fastaState.busy = false; renderFastaSection(); checkSystemStatus(); }
+    }
+
+    async function restoreFastaBatches() {
+        if (fastaState.busy || isRunning || downloadState.busy) return;
+        if (typeof window.showDirectoryPicker !== 'function') { fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
+        fastaState.busy = true; fastaState.stop = false; fastaState.context = null; renderFastaSection(); checkSystemStatus();
+        try {
+            const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+            const file = await (await dir.getFileHandle('manifest.json')).getFile();
+            if (file.size > FASTA_MANIFEST_LIMIT) throw new Error(t('fastaManifestLimit'));
+            const manifest = JSON.parse(await file.text());
+            if (manifest?.format !== 'af3-fasta-batches' || manifest.version !== 1 || !manifest.generationComplete ||
+                manifest.settings?.batchSize !== 30 || !['monomer', 'complex'].includes(manifest.settings.mode) ||
+                !Number.isSafeInteger(manifest.revision) || manifest.revision < 1 || manifest.revision >= Number.MAX_SAFE_INTEGER ||
+                !Number.isSafeInteger(manifest.source?.records) || manifest.source.records < 1 || manifest.source.records > 30 * FASTA_MAX_BATCHES ||
+                !/^[\d]{14}_[a-f\d]{8}$/.test(manifest.runId) || !Array.isArray(manifest.batches) ||
+                manifest.batches.length !== Math.ceil(manifest.source.records / 30)) throw new Error(t('fastaChanged'));
+            const names = new Set();
+            for (const [i, batch] of manifest.batches.entries()) {
+                if (batch.index !== i + 1 || !/^[A-Za-z0-9_-]+_part\d+\.json$/.test(batch.jsonFile) || batch.fastaFile !== batch.jsonFile.replace(/\.json$/, '.fasta') ||
+                    !Array.isArray(batch.jobs) || batch.jobs.length !== Math.min(30, manifest.source.records - i * 30) || !Array.isArray(batch.attempts) ||
+                    (batch.account !== null && !normalizeAccountEmail(batch.account))) throw new Error(t('fastaChanged'));
+                for (const [position, job] of batch.jobs.entries()) {
+                    if (job.record !== i * 30 + position + 1 || typeof job.name !== 'string' || !job.name.startsWith('af3_' + manifest.runId + '_') || !/^[A-Za-z0-9_-]{1,100}$/.test(job.name) || names.has(job.name) ||
+                        typeof job.header !== 'string' || !['pending', 'confirmed'].includes(job.importStatus) ||
+                        !['unknown', 'draft', 'submitted', 'in_progress', 'completed', 'failed'].includes(job.predictionStatus)) throw new Error(t('fastaChanged'));
+                    names.add(job.name);
+                }
+            }
+            const previous = { dir: fastaState.dir, manifest: fastaState.manifest, saved: fastaState.saved, inputChanged: fastaState.inputChanged };
+            fastaState.dir = dir; fastaState.manifest = manifest; fastaState.saved = false; fastaState.inputChanged = false;
+            try {
+                for (const batch of manifest.batches) {
+                    fastaCheck(); await readSavedFastaBatch(batch);
+                    const fasta = await (await dir.getFileHandle(batch.fastaFile)).getFile();
+                    if (fasta.size > FASTA_FILE_LIMIT || await fastaHash(await fasta.text()) !== batch.fastaSha256) throw new Error(t('fastaChanged'));
+                    if (batch.attempts.some(attempt => !attempt || typeof attempt !== 'object' || !normalizeAccountEmail(attempt.account))) throw new Error(t('fastaChanged'));
+                    const attempt = batch.attempts.at(-1);
+                    if (attempt && !attempt.endedAt) { attempt.endedAt = new Date().toISOString(); attempt.result = 'interrupted'; }
+                    // Never trust a manually reset ready flag after a draft-save request was journalled.
+                    const confirmed = batch.jobs.filter(job => job.importStatus === 'confirmed').length;
+                    batch.status = confirmed === batch.jobs.length ? 'imported' : confirmed ? 'partial' : batch.attempts.some(item => item.saveClickedAt && !(item.result === 'not_saved' && item.endedAt)) ? 'uncertain' : 'ready';
+                }
+                await persistFastaManifest();
+            } catch (error) { Object.assign(fastaState, previous); throw error; }
+            getUiElement('af3-fasta-file').value = '';
+            getUiElement('af3-fasta-mode').value = manifest.settings.mode;
+            getUiElement('af3-fasta-tail').value = manifest.settings.peptideLength || 10;
+            fastaState.message = t('fastaDirectory');
+        } catch (error) {
+            if (error.name !== 'AbortError') fastaState.saved = false;
+            fastaState.message = error.name === 'AbortError' || isUserStopError(error) ? t('fastaStopped') : error.message;
+        }
+        finally { fastaState.busy = false; renderFastaSection(); checkSystemStatus(); }
+    }
+
+    async function reconcileFastaHistory(found, account) {
+        const now = new Date().toISOString();
+        for (const batch of fastaState.manifest.batches) {
+            if (batch.account !== account) continue;
+            for (const job of batch.jobs) {
+                const matches = found.get(job.name) || [];
+                if (matches.length > 1) throw new Error(t('fastaExisting'));
+                const match = matches[0];
+                if (!match) continue; // Absence under a filter never proves deletion, failure or completion.
+                if (job.jobId && match.jobId && job.jobId !== match.jobId) throw new Error(t('fastaChanged'));
+                job.importStatus = 'confirmed'; job.importedAt ||= now; job.lastSeenAt = now; job.modified = match.modified;
+                job.jobId ||= match.jobId;
+                if (match.status !== 'unknown') job.predictionStatus = match.status;
+                if (match.status === 'completed') job.completedAt ||= now;
+                if (match.status === 'failed') job.failedAt ||= now;
+            }
+            const confirmed = batch.jobs.filter(job => job.importStatus === 'confirmed').length;
+            batch.status = confirmed === batch.jobs.length ? 'imported' : confirmed ? 'partial' : batch.status;
+            if (batch.status === 'imported') {
+                batch.importedAt ||= now;
+                const attempt = batch.attempts.at(-1);
+                if (attempt?.saveClickedAt) { attempt.result = 'confirmed'; attempt.verifiedAt = now; }
+            }
+        }
+        await persistFastaManifest();
+    }
+
+    async function importFastaBatch(checkOnly = false) {
+        if (fastaState.busy || isRunning || downloadState.busy || !fastaState.saved || !fastaState.manifest?.generationComplete) return;
+        const batch = fastaState.manifest.batches.find(item => item.status !== 'imported');
+        if (!checkOnly && (!batch || batch.status !== 'ready' || fastaState.inputChanged)) return;
+        fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.message = t('fastaChecking');
+        let attempt = null, observer = null, nativeError = '', saveSent = false;
+        renderFastaSection(); checkSystemStatus();
+        try {
+            fastaState.context = getFastaContext();
+            const { account, selected } = JSON.parse(fastaState.context);
+            if (Array.from(document.querySelectorAll('gdm-af-upload-dialog, [role="dialog"], mat-dialog-container, [role="menu"]')).some(downloadVisible)) throw new Error(t('fastaCloseDialog'));
+            if (!checkOnly && (selected.length !== 1 || selected[0] !== 'saved draft')) throw new Error(t('fastaNeedDraft'));
+            if (!checkOnly && !confirm(t('fastaConfirm', { index: batch.index, count: batch.jobs.length, account }))) return;
+            fastaCheck();
+            const before = await readFastaHistory();
+            if (checkOnly) {
+                await reconcileFastaHistory(before, account);
+                fastaState.manifest.lastHistoryCheck = { at: new Date().toISOString(), account, filters: selected };
+                await persistFastaManifest(); fastaState.message = ''; return;
+            }
+            if (batch.jobs.some(job => before.has(job.name))) throw new Error(t('fastaExisting'));
+            const json = await readSavedFastaBatch(batch);
+            fastaCheck();
+            const upload = findButtonByText('Upload JSON');
+            if (!upload) throw new Error(t('fastaPreview'));
+            upload.click();
+            const dialog = await fastaWait(() => {
+                const dialogs = Array.from(document.querySelectorAll('gdm-af-upload-dialog')).filter(downloadVisible);
+                return dialogs.length === 1 && dialogs[0];
+            }, 8000);
+            fastaState.dialog = dialog;
+            const input = dialog.querySelector('input[type="file"]');
+            if (!input || dialog.querySelectorAll('.job').length) throw new Error(t('fastaPreview'));
+            attempt = { startedAt: new Date().toISOString(), account, phase: 'validation', saveClickedAt: null, endedAt: null, result: 'pending' };
+            batch.account = account; batch.attempts.push(attempt); batch.status = 'validating';
+            await persistFastaManifest();
+            fastaState.message = t('fastaUploading', { index: batch.index }); renderFastaSection();
+            const seen = new Map(Array.from(document.querySelectorAll('mat-snack-bar-container, .mat-mdc-snack-bar-container'), node => [node, downloadText(node)]));
+            observer = new MutationObserver(() => {
+                for (const node of document.querySelectorAll('mat-snack-bar-container, .mat-mdc-snack-bar-container')) {
+                    const text = downloadText(node);
+                    if (seen.get(node) === text) continue;
+                    seen.set(node, text);
+                    if (/failed|\berror\b|too many|quota|unauthenticated/i.test(text)) nativeError = text;
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+            const transfer = new DataTransfer(); transfer.items.add(new File([json], batch.jsonFile, { type: 'application/JSON' }));
+            fastaCheck(); input.files = transfer.files; input.dispatchEvent(new Event('change', { bubbles: true }));
+            const validatedSave = () => {
+                if (nativeError || !dialog.isConnected || dialog.querySelector('.job.error, .job.warning')) throw new Error(t('fastaPreview') + (nativeError ? ' ' + nativeError : ''));
+                const jobs = Array.from(dialog.querySelectorAll('.job'));
+                if (!jobs.length || jobs.some(job => job.classList.contains('processing'))) return false;
+                const names = jobs.map(job => downloadText(job.querySelector('.name')));
+                if (jobs.length !== batch.jobs.length || jobs.some(job => !job.classList.contains('ok')) ||
+                    new Set(names).size !== names.length || batch.jobs.some(job => !names.includes(job.name))) throw new Error(t('fastaPreview'));
+                const text = batch.jobs.length === 1 ? 'Submit job as draft' : `Submit ${batch.jobs.length} jobs as drafts`;
+                return Array.from(dialog.querySelectorAll('button')).find(button => downloadText(button) === text && downloadButtonEnabled(button));
+            };
+            const save = await fastaWait(validatedSave);
+            attempt.phase = 'saving_drafts'; attempt.saveClickedAt = new Date().toISOString(); batch.status = 'uncertain';
+            await persistFastaManifest();
+            fastaCheck();
+            if (validatedSave() !== save || !save.isConnected) throw new Error(t('fastaPreview'));
+            saveSent = true; save.click(); // Exactly one native draft-save click; never a prediction button.
+            fastaState.message = t('fastaVerifying', { index: batch.index }); renderFastaSection();
+            // A successful history refresh cannot settle a still-open save dialog.
+            await fastaWait(() => { if (nativeError) throw new Error(nativeError); return !dialog.isConnected; });
+            attempt.dialogClosedAt = new Date().toISOString();
+            const deadline = Date.now() + FASTA_IMPORT_TIMEOUT;
+            do {
+                await sleep(300); fastaCheck();
+                const found = await readFastaHistory();
+                await reconcileFastaHistory(found, account);
+                if (batch.status === 'imported' && !nativeError) break;
+                if (nativeError) throw new Error(nativeError);
+            } while (Date.now() < deadline);
+            if (batch.status !== 'imported') throw new Error(t('fastaTimeout', { detail: '' }));
+            attempt.result = 'confirmed'; fastaState.message = '';
+        } catch (error) {
+            fastaState.message = isUserStopError(error) ? t('fastaStopped') : error.message;
+            if (attempt) {
+                attempt.result = saveSent ? 'unconfirmed' : 'not_saved'; attempt.error = fastaState.message;
+                if (!saveSent && attempt.saveClickedAt) { attempt.savePreparedAt = attempt.saveClickedAt; attempt.saveClickedAt = null; }
+                if (batch.status !== 'imported' && batch.status !== 'partial') batch.status = saveSent ? 'uncertain' : 'ready';
+            }
+        } finally {
+            observer?.disconnect();
+            // Close only the upload dialog this operation opened; never click arbitrary dialogs.
+            const dialog = fastaState.dialog;
+            if (dialog?.isConnected && !saveSent) {
+                const cancel = Array.from(dialog.querySelectorAll('button')).find(button => downloadText(button) === 'Cancel');
+                if (cancel) cancel.click();
+            }
+            fastaState.dialog = null;
+            if (attempt) {
+                attempt.endedAt = new Date().toISOString();
+                try { await persistFastaManifest(); } catch (error) { fastaState.message = error.message; }
+            }
+            fastaState.busy = false; fastaState.context = null; renderFastaSection(); checkSystemStatus();
+        }
+    }
+
+    function trackedFastaJob(name) {
+        const account = normalizeAccountEmail(readAccountEmail());
+        const batch = fastaState.manifest?.batches.find(item => item.account === account && item.jobs.some(job => job.name === name));
+        return batch?.jobs.find(item => item.name === name);
+    }
+
+    async function prepareFastaSubmission(name) {
+        if (!trackedFastaJob(name)) return;
+        try {
+            if (!fastaState.saved) throw new Error(t('fastaSavedError', { detail: '' }));
+            await persistFastaManifest();
+        } catch (error) { submissionBlockReason = error.message; throw error; }
+    }
+
+    async function recordFastaSubmission(name) {
+        const job = trackedFastaJob(name);
+        if (!job) return;
+        if (!fastaState.saved) { submissionBlockReason = t('fastaSavedError', { detail: '' }); throw new Error(submissionBlockReason); }
+        job.submittedAt = new Date().toISOString(); job.predictionStatus = 'submitted';
+        try { await persistFastaManifest(); }
+        catch (error) { submissionBlockReason = error.message; throw error; }
+    }
+
+    function renderFastaSection() {
+        const section = getUiElement('af3-fasta-section');
+        if (!section) return;
+        section.querySelectorAll('[data-fasta-i18n]').forEach(node => { node.textContent = t(node.dataset.fastaI18n); });
+        const busy = fastaState.busy || isRunning || downloadState.busy;
+        for (const id of ['file', 'mode', 'tail', 'generate', 'restore', 'import', 'sync']) {
+            const node = getUiElement('af3-fasta-' + id);
+            if (node) node.disabled = busy || (['import', 'sync'].includes(id) && (!fastaState.saved || !fastaState.manifest?.generationComplete));
+        }
+        const batch = fastaState.manifest?.batches.find(item => item.status !== 'imported');
+        getUiElement('af3-fasta-import').disabled ||= !batch || batch.status !== 'ready' || fastaState.inputChanged;
+        const stop = getUiElement('af3-fasta-stop'); stop.hidden = !fastaState.busy; stop.disabled = fastaState.stop;
+        const status = getUiElement('af3-fasta-status'); status.textContent = fastaState.message || (fastaState.inputChanged ? t('fastaInputChanged') : fastaState.manifest?.importComplete ? t('fastaFinished') : t('fastaIdle'));
+        const summary = getUiElement('af3-fasta-summary');
+        summary.textContent = fastaState.manifest ? t('fastaLocal', { folder: fastaState.dir?.name || '', total: fastaState.manifest.summary?.generated || 0,
+            imported: fastaState.manifest.summary?.imported || 0, submitted: fastaState.manifest.summary?.submitted || 0,
+            completed: fastaState.manifest.summary?.completed || 0, failed: fastaState.manifest.summary?.failed || 0 }) : '';
+        const list = getUiElement('af3-fasta-batches'); list.replaceChildren();
+        for (const item of fastaState.manifest?.batches || []) {
+            const row = document.createElement('p');
+            row.textContent = t('fastaBatch', { index: item.index, count: item.jobs.length, status: t(item.status === 'imported' ? 'fastaImported' : item.status === 'ready' ? 'fastaReady' : 'fastaUncertain') });
+            list.appendChild(row);
+        }
+    }
+
+    function createFastaSection() {
+        const section = document.createElement('section'); section.id = 'af3-fasta-section'; section.className = 'af3-card';
+        const text = (tag, key) => { const node = document.createElement(tag); node.dataset.fastaI18n = key; node.textContent = t(key); return node; };
+        const title = text('h2', 'fastaTitle'); title.id = 'af3-fasta-title'; section.setAttribute('aria-labelledby', title.id); section.appendChild(title);
+        const help = text('p', 'fastaHelp'); help.className = 'af3-help'; section.appendChild(help);
+        const field = (id, key, node) => { const label = document.createElement('label'); label.className = 'af3-field'; label.append(text('span', key), node); node.id = 'af3-fasta-' + id; section.appendChild(label); };
+        const file = document.createElement('input'); file.type = 'file'; file.accept = '.fasta,.fa,.faa,text/plain'; field('file', 'fastaFile', file);
+        const mode = document.createElement('select');
+        for (const [value, key] of [['monomer', 'fastaMonomer'], ['complex', 'fastaComplex']]) { const option = text('option', key); option.value = value; mode.appendChild(option); }
+        field('mode', 'fastaMode', mode);
+        const tail = document.createElement('input'); tail.type = 'number'; tail.min = '1'; tail.max = '2699'; tail.step = '1'; tail.value = '10'; field('tail', 'fastaTail', tail);
+        for (const control of [file, mode, tail]) control.onchange = () => {
+            if (!fastaState.manifest || fastaState.busy) return;
+            fastaState.inputChanged = true; fastaState.message = t('fastaInputChanged'); renderFastaSection();
+        };
+        const tools = document.createElement('div'); tools.className = 'af3-download-tools';
+        for (const [id, key, action] of [['generate', 'fastaGenerate', generateFastaBatches], ['restore', 'fastaRestore', restoreFastaBatches],
+            ['import', 'fastaImport', () => importFastaBatch()], ['sync', 'fastaSync', () => importFastaBatch(true)],
+            ['stop', 'fastaStop', () => { fastaState.stop = true; renderFastaSection(); }]]) {
+            const button = text('button', key); button.id = 'af3-fasta-' + id; button.type = 'button'; button.onclick = action;
+            if (id === 'import') button.className = 'af3-primary';
+            tools.appendChild(button);
+        }
+        const status = document.createElement('p'); status.id = 'af3-fasta-status'; status.className = 'af3-help'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+        const summary = document.createElement('p'); summary.id = 'af3-fasta-summary'; summary.className = 'af3-help';
+        const list = document.createElement('div'); list.id = 'af3-fasta-batches'; list.className = 'af3-help'; list.style.cssText = 'max-height:160px;overflow:auto';
+        section.append(tools, status, summary, list);
+        return section;
+    }
 
     let isRunning = false;
     let shouldStop = false;
@@ -772,7 +1344,7 @@
 
     function getSavedLanguage() {
         try {
-            const saved = localStorage.getItem(LANGUAGE_KEY);
+            const saved = localStorage.getItem(LANGUAGE_KEY) || localStorage.getItem('af3-v20-panel-language');
             return I18N[saved] ? saved : 'zh';
         } catch (e) {
             return 'zh';
@@ -810,7 +1382,7 @@
         const footer = getUiElement('af3-footer-msg');
         const statusText = getUiElement('af3-status-text');
 
-        if (header) header.textContent = t('headerDev');
+        if (header) header.textContent = t('headerTitle');
         const countLabel = getUiElement('af3-count-label');
         if (countLabel) countLabel.textContent = t('batchCount');
         const panel = getUiElement(PANEL_ROOT_ID);
@@ -833,6 +1405,7 @@
         renderAccountManager(true);
         renderPanelPages();
         renderDownloadSection();
+        renderFastaSection();
         renderLogPanel();
         updateRunControls();
 
@@ -856,7 +1429,7 @@
 
     function getSavedPanelPosition() {
         try {
-            const raw = localStorage.getItem(PANEL_POSITION_KEY);
+            const raw = localStorage.getItem(PANEL_POSITION_KEY) || localStorage.getItem('af3-v20-panel-position');
             if (!raw) return null;
             const pos = JSON.parse(raw);
             if (!Number.isFinite(pos.left) || !Number.isFinite(pos.top)) return null;
@@ -1156,7 +1729,7 @@
     }
 
     function openAccountSwitch() {
-        if (isRunning || downloadState.busy) {
+        if (isRunning || downloadState.busy || fastaState.busy) {
             updateAccountSwitchControl();
             return;
         }
@@ -1174,7 +1747,7 @@
     function updateAccountSwitchControl() {
         const login = getUiElement('af3-account-login');
         if (!login) return;
-        const busy = isRunning || downloadState.busy;
+        const busy = isRunning || downloadState.busy || fastaState.busy;
         login.disabled = busy;
         login.setAttribute('aria-disabled', String(busy));
         login.tabIndex = busy ? -1 : 0;
@@ -1509,8 +2082,9 @@
 
     // Watch only official snackbar containers, never our own status or logs.
     // A closed dialog or a refreshed row cannot confirm a server-side launch.
-    async function submitAndConfirm(confirmButton) {
+    async function submitAndConfirm(confirmButton, trackedName = null) {
         await waitIfPaused();
+        if (trackedName) await prepareFastaSubmission(trackedName);
         if (!confirmButton?.isConnected || confirmButton.disabled ||
             confirmButton.getAttribute('aria-disabled') === 'true' || confirmButton.offsetParent === null) {
             throw new Error(t('submissionNotReady'));
@@ -1729,8 +2303,9 @@
         return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
     }
 
-    function downloadHistoryLoading(root = document) {
-        return Array.from(root.querySelectorAll('mat-spinner, mat-progress-bar, mat-progress-spinner, [aria-busy="true"]')).some(downloadVisible);
+    function downloadHistoryLoading(root = document, ignoreJobStatus = false) {
+        return Array.from(root.querySelectorAll('mat-spinner, mat-progress-bar, mat-progress-spinner, [aria-busy="true"]')).some(node =>
+            downloadVisible(node) && (!ignoreJobStatus || !node.closest('.mat-column-status, .cdk-column-status')));
     }
 
     function getDownloadHistory(allowLoading = false) {
@@ -2118,6 +2693,7 @@
     }
 
     function downloadReadiness() {
+        if (fastaState.busy) return { key: 'fastaBusy', color: 'var(--af3-warning)' };
         if (downloadState.busy) return { key: downloadState.phase === 'scan' ? 'downloadRunningScan' : 'downloadRunningApply', color: 'var(--af3-warning)' };
         if (isRunning) return { key: 'downloadSubmissionBusy', color: 'var(--af3-warning)' };
         let context;
@@ -2149,7 +2725,7 @@
     }
 
     function updateDownloadControls() {
-        const busy = downloadState.busy || isRunning;
+        const busy = downloadState.busy || isRunning || fastaState.busy;
         updateAccountSwitchControl();
         if (!busy && downloadState.queue) {
             try {
@@ -2218,7 +2794,7 @@
                 master.setAttribute('aria-label', t('downloadDay', { day, count: jobs.length }));
                 master.onclick = event => event.stopPropagation();
                 master.onchange = () => {
-                    if (downloadState.busy || isRunning) return;
+                    if (downloadState.busy || isRunning || fastaState.busy) return;
                     resetDownloadQueue('downloadQueueInvalid');
                     for (const job of jobs) master.checked ? downloadState.selected.add(job.key) : downloadState.selected.delete(job.key);
                     renderDownloadSection();
@@ -2231,7 +2807,7 @@
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox'; checkbox.dataset.jobKey = job.key;
                     checkbox.onchange = () => {
-                        if (downloadState.busy || isRunning) return;
+                        if (downloadState.busy || isRunning || fastaState.busy) return;
                         resetDownloadQueue('downloadQueueInvalid');
                         checkbox.checked ? downloadState.selected.add(job.key) : downloadState.selected.delete(job.key);
                         renderDownloadSection();
@@ -2259,7 +2835,7 @@
     }
 
     async function scanDownloadJobs() {
-        if (isRunning || downloadState.busy) return;
+        if (isRunning || downloadState.busy || fastaState.busy) return;
         const start = getUiElement('af3-download-start')?.value;
         const end = getUiElement('af3-download-end')?.value;
         resetDownloadQueue();
@@ -2327,7 +2903,7 @@
     }
 
     async function applySelectionToWebsite(advance = false) {
-        if (isRunning || downloadState.busy) return;
+        if (isRunning || downloadState.busy || fastaState.busy) return;
         if (!downloadState.complete || !downloadState.selected.size) { setDownloadMessage('downloadNoSelection'); return; }
         const individual = downloadState.format === 'individual';
         const previousQueue = downloadState.queue;
@@ -2420,8 +2996,8 @@
         const applyActions = document.createElement('div'); applyActions.className = 'af3-download-actions';
         for (const [id, key, action] of [
             ['scan', 'downloadScan', scanDownloadJobs],
-            ['all', 'downloadAll', () => { if (downloadState.busy || isRunning || !downloadState.complete || !downloadState.jobs.length) return; resetDownloadQueue(); downloadState.selected = new Set(downloadState.jobs.map(job => job.key)); setDownloadMessage('downloadFound'); }],
-            ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning || !downloadState.complete || !downloadState.jobs.length) return; resetDownloadQueue(); downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
+            ['all', 'downloadAll', () => { if (downloadState.busy || isRunning || fastaState.busy || !downloadState.complete || !downloadState.jobs.length) return; resetDownloadQueue(); downloadState.selected = new Set(downloadState.jobs.map(job => job.key)); setDownloadMessage('downloadFound'); }],
+            ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning || fastaState.busy || !downloadState.complete || !downloadState.jobs.length) return; resetDownloadQueue(); downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
             ['apply', 'downloadApply', () => applySelectionToWebsite()],
             ['next', 'downloadNext', () => applySelectionToWebsite(true)],
             ['stop', 'stopButton', () => { downloadState.stop = true; updateDownloadControls(); }],
@@ -2698,8 +3274,8 @@
         const wordmark = document.createElement('span'); wordmark.className = 'af3-wordmark'; wordmark.textContent = 'AF₃'; wordmark.setAttribute('aria-hidden', 'true');
         const headerCopy = document.createElement('div'); headerCopy.className = 'af3-header-copy';
         const headerLine = document.createElement('div'); headerLine.className = 'af3-header-line';
-        const headerTitle = document.createElement('div'); headerTitle.id = 'af3-header-title'; headerTitle.textContent = t('headerDev');
-        const version = document.createElement('span'); version.className = 'af3-version'; version.textContent = `DEV / ${SCRIPT_VERSION}`;
+        const headerTitle = document.createElement('div'); headerTitle.id = 'af3-header-title'; headerTitle.textContent = t('headerTitle');
+        const version = document.createElement('span'); version.className = 'af3-version'; version.textContent = `v${SCRIPT_VERSION}`;
         headerCopy.append(headerLine, version); header.append(wordmark, headerCopy);
 
         const languageRow = document.createElement('div');
@@ -2801,7 +3377,7 @@
 
         const footer = document.createElement('div');
         footer.id = 'af3-footer-msg';
-        footer.textContent = t('devFooter');
+        footer.textContent = t('releaseHint');
         const logPanel = document.createElement('div');
 
         const logToggle = document.createElement('button');
@@ -2821,7 +3397,7 @@
         const tasksPage = document.createElement('div'); tasksPage.id = 'af3-tasks-page'; tasksPage.className = 'af3-page';
         tasksPage.setAttribute('role', 'tabpanel'); tasksPage.setAttribute('aria-labelledby', 'af3-tasks-tab');
         submission.append(submissionTitle, statusRow, quota, controls, runControls, footer);
-        tasksPage.append(submission, createDownloadSection(), logPanel);
+        tasksPage.append(submission, createFastaSection(), createDownloadSection(), logPanel);
         const workspace = document.createElement('div'); workspace.className = 'af3-workspace';
         workspace.append(tasksPage, createAccountPage()); container.appendChild(workspace);
         shadow.appendChild(container);
@@ -2848,6 +3424,7 @@
         updateAccountEmail();
         updateQuota();
         updateDownloadControls();
+        renderFastaSection();
         const btn = getUiElement('af3-v20-btn');
         const light = getUiElement('af3-status-light');
         const text = getUiElement('af3-status-text');
@@ -2866,7 +3443,7 @@
         }
 
         const selected = getSelectedHistoryStatuses();
-        const status = !downloadState.busy && selected.length === 1 ? selected[0] : '';
+        const status = !downloadState.busy && !fastaState.busy && selected.length === 1 ? selected[0] : '';
 
         if (status === 'saved draft') {
             currentMode = 'DRAFT';
@@ -2891,7 +3468,7 @@
 
     // --- 主入口 ---
     async function mainProcess() {
-        if (isRunning || downloadState.busy || submissionBlockReason) return;
+        if (isRunning || downloadState.busy || fastaState.busy || submissionBlockReason) return;
         checkSystemStatus();
         const mode = currentMode;
         const account = normalizeAccountEmail(readAccountEmail());
@@ -2956,9 +3533,10 @@
                      continue;
                 }
                 addLog(t('foundConfirm'));
-                await submitAndConfirm(confirmBtn);
+                await submitAndConfirm(confirmBtn, draftIdentity);
                 addLog(t('draftDone', { index: i }));
                 recordProgressResult('success');
+                await recordFastaSubmission(draftIdentity);
                 await waitForDraftRemoval(draftIdentity);
             }
         } catch (e) {
@@ -3080,6 +3658,7 @@
     // --- 辅助状态管理 ---
     function setRunningState(state) {
         isRunning = state;
+        renderFastaSection();
         updateAccountSwitchControl();
         batchAccountEmail = state ? normalizeAccountEmail(readAccountEmail()) : null;
         shouldStop = false;
