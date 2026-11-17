@@ -89,8 +89,10 @@ const picker=window.showDirectoryPicker;
 function filters(names){for(const button of document.querySelectorAll('#filters button'))button.setAttribute('aria-selected',String(names.includes(button.textContent)));state.page=0;renderHistory()}
 for(const button of document.querySelectorAll('#filters button'))button.onclick=()=>filters([button.textContent]);
 function visibleHistory(){const names=Array.from(document.querySelectorAll('#filters button[aria-selected="true"]'),n=>n.textContent);return state.history.filter(job=>job.account===window.WIZ_global_data.oPEP7c&&names.includes(job.status))}
+const historyTable=document.querySelector('gdm-af-history table'),emptyHistory=document.createElement('div');
+emptyHistory.className='loading';emptyHistory.textContent='No jobs found with filters specified';
 function renderHistory(){
- const jobs=visibleHistory();state.page=Math.min(state.page,Math.max(0,Math.ceil(jobs.length/10)-1));const body=document.getElementById('rows');body.replaceChildren();
+ const jobs=visibleHistory();state.page=Math.min(state.page,Math.max(0,Math.ceil(jobs.length/10)-1));const body=historyTable.querySelector('tbody');body.replaceChildren();
  for(const job of jobs.slice(state.page*10,state.page*10+10)){
   const row=document.createElement('tr');if(!state.omitIds)row.dataset.jobId=job.id;row.className='mat-mdc-row';
   const status=document.createElement('td');status.className='mat-column-status';status.textContent=job.status;const checkbox=document.createElement('input');checkbox.type='checkbox';status.append(checkbox);
@@ -102,6 +104,10 @@ function renderHistory(){
  paginator.querySelector('[aria-label="Previous page"]').disabled=state.page===0;
  paginator.querySelector('[aria-label="Next page"]').disabled=(state.page+1)*10>=jobs.length;
  paginator.querySelector('span').textContent=state.rangeOverride??(jobs.length?`${state.page*10+1} – ${Math.min((state.page+1)*10,jobs.length)} of ${jobs.length}`:'0 of 0');
+ if(id==='fasta-empty-history'){
+  if(jobs.length){emptyHistory.remove();paginator.before(historyTable)}
+  else{historyTable.remove();paginator.before(emptyHistory)}
+ }
 }
 for(const [label,change] of [['First page',()=>0],['Previous page',()=>state.page-1],['Next page',()=>state.page+1]])document.querySelector(`[aria-label="${label}"]`).onclick=()=>{
  const target=change();state.pageMoves.push(target);
@@ -301,6 +307,15 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   window.WIZ_global_data.oPEP7c=owner;renderHistory();ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));await clickFasta('sync');
   assert(/核对完成/.test(ui('fasta-status').textContent)&&/1\/1/.test(ui('fasta-status').textContent),'Chinese history result is missing');
   assert(state.uploads.length===1&&state.saves.length===1,'History check triggered another upload');
+ }else if(id==='fasta-empty-history'){
+  const dir=await generate(fasta(31));state.history=[];renderHistory();
+  assert(!document.querySelector('gdm-af-history table')&&emptyHistory.isConnected,'Empty history retained a table');
+  const original=dir.files.get('manifest.json');emptyHistory.textContent='History failed to load';await clickFasta('sync');
+  assert(/Cannot identify one history table/.test(ui('fasta-status').textContent)&&dir.files.get('manifest.json')===original,'An unknown loading/error message was treated as an empty list');
+  emptyHistory.textContent='No jobs found with filters specified';await clickFasta('sync');
+  assert(/No script import records/.test(ui('fasta-status').textContent)&&!state.uploads.length&&!state.saves.length,'Empty history check failed or uploaded jobs');
+  await clickFasta('import');assert(manifest(dir).batches[0].status==='imported'&&state.uploads.length===1&&state.saves.length===1,'First batch could not be imported from the empty draft list');
+  await clickFasta('import');assert(manifest(dir).importComplete&&manifest(dir).summary.imported===31&&state.uploads.length===2&&state.saves.length===2,'Next batch failed after empty history became populated');
  }else if(id==='fasta-history-placeholders-stop'){
   const dir=await generate(fasta(1)),original=dir.files.get('manifest.json');state.pageDelay=600;
   ui('fasta-sync').click();await until(()=>state.pageMoves.length>0,'Blank loading rows');
@@ -521,7 +536,7 @@ SCENARIOS = [
     'fasta-account-save', 'fasta-account-confirm', 'fasta-mutual-exclusion',
     'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-not-saved-restore',
     'fasta-manifest-limit', 'fasta-batch-limit', 'fasta-presubmit-record', 'fasta-sync-feedback',
-    'fasta-sync-progress', 'fasta-context-errors', 'fasta-history-placeholders', 'fasta-history-placeholders-stop', 'fasta-history-ambiguous',
+    'fasta-sync-progress', 'fasta-context-errors', 'fasta-empty-history', 'fasta-history-placeholders', 'fasta-history-placeholders-stop', 'fasta-history-ambiguous',
 ]
 SHORT_CASES = {'fasta-partial', 'fasta-unclosed', 'fasta-validation-timeout'}
 

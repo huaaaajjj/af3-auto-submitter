@@ -278,9 +278,11 @@ if(id==='download-menu-busy'||id==='download-menu-preopened'){
  const user=document.createElement('div');user.id='user-owned-menu';user.setAttribute('role','menu');user.textContent='User menu';document.getElementById('overlay').append(user);
  if(id==='download-menu-preopened'){const trigger=document.querySelector('button.fold-actions');trigger.setAttribute('aria-expanded','true');trigger.setAttribute('aria-controls',user.id)}
 }
-if(id==='download-empty-history'){
- document.querySelector('table').remove();document.querySelector('mat-paginator').remove();
- const empty=document.createElement('div');empty.className='no-results';empty.textContent='No jobs found with filters specified';document.querySelector('gdm-af-history').append(empty);
+if(id==='download-empty-history'||id==='download-empty-loading-history'){
+ document.querySelector('table').remove();
+ if(id==='download-empty-history')document.querySelector('mat-paginator').remove();
+ else{document.getElementById('page-range').textContent='0 of 0';document.querySelectorAll('mat-paginator button').forEach(button=>button.disabled=true)}
+ const empty=document.createElement('div');empty.className=id==='download-empty-history'?'no-results':'loading';empty.textContent='No jobs found with filters specified';document.querySelector('gdm-af-history').append(empty);
 }
 const reviewChecks=()=>Array.from(ui('download-results').querySelectorAll('input[type="checkbox"][data-job-key]'));
 const selectedReview=()=>reviewChecks().filter(element=>element.checked);
@@ -566,8 +568,9 @@ async function checkIndividual(){
  }else if(id==='download-invalid-range'){
   await scan('2026-11-14','2026-11-12');assert(state.changes===0&&ui('download-apply').disabled,'Reversed range was actionable');assertReviewUnavailable();
   await scan('','2026-11-13');assert(state.changes===0&&ui('download-apply').disabled,'Empty range was actionable');assertReviewUnavailable();
- }else if(id==='download-zero'||id==='download-empty-history'){
+ }else if(id==='download-zero'||id==='download-empty-history'||id==='download-empty-loading-history'){
   await scan('2020-01-01','2020-01-01');assert(reviewChecks().length===0&&ui('download-apply').disabled,'Zero matches allowed application');assertReviewUnavailable();
+  assert(/匹配 0 个/.test(ui('download-status').textContent),'Empty history did not finish a zero-match scan: '+ui('download-status').textContent);
  }else if([...invalidLinkCases,...failedMenuCases,'download-duplicate','download-stable-collision','download-stale-page','download-repeating-page','download-stop-scan','download-context-change','download-noncompleted','download-examples-filter'].includes(id)){
   const selected=[...state.selected];
   await scan();assert(ui('download-apply').disabled,'Incomplete/ambiguous/unsupported scan allowed application');assertReviewUnavailable();
@@ -717,7 +720,7 @@ SCENARIOS = [
     'download-noncompleted', 'download-examples-filter', 'download-stop-scan',
     'download-context-change', 'download-busy', 'download-stale-page',
     'download-repeating-page', 'download-loading-page', 'download-loading-paginator',
-    'download-empty-history', 'download-changed-range', 'download-changed-filter',
+    'download-empty-history', 'download-empty-loading-history', 'download-changed-range', 'download-changed-filter',
     'download-changed-search', 'download-changed-metadata', 'download-changed-fallback',
     'download-cancel-apply', 'download-confirm-context-change', 'download-clear-failure', 'download-partial-error',
     'download-stop-apply', 'download-stop-restart', 'download-apply-native-change',

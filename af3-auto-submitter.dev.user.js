@@ -2399,7 +2399,7 @@
         }).filter(history => history.nameIndex >= 0 && history.dateIndex >= 0);
         if (!histories.length) {
             const empty = Array.from(document.querySelectorAll('gdm-af-history')).filter(downloadVisible).filter(root =>
-                Array.from(root.querySelectorAll('.no-results')).some(node => downloadVisible(node) &&
+                Array.from(root.querySelectorAll('.no-results, .loading')).some(node => downloadVisible(node) &&
                     /^No jobs found with (?:this search term|filters specified)$/.test(downloadText(node))));
             if (empty.length === 1) return { table: null, root: empty[0], nameIndex: -1, dateIndex: -1 };
             if (allowLoading) {
