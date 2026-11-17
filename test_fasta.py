@@ -94,7 +94,7 @@ function renderHistory(){
  for(const job of jobs.slice(state.page*10,state.page*10+10)){
   const row=document.createElement('tr');if(!state.omitIds)row.dataset.jobId=job.id;row.className='mat-mdc-row';
   const status=document.createElement('td');status.className='mat-column-status';status.textContent=job.status;const checkbox=document.createElement('input');checkbox.type='checkbox';status.append(checkbox);
-  const name=document.createElement('td');name.className='mat-column-name';name.textContent=job.name;const date=document.createElement('td');date.textContent='2026-11-16 12:00';
+  const name=document.createElement('td');name.className='mat-column-name';name.textContent=job.name;const date=document.createElement('td');date.className='mat-column-date';date.textContent='2026-11-16 12:00';
   row.append(status,name,date);row.onclick=()=>{state.rowOpens++;if(id==='fasta-presubmit-record')showPrediction(job)};body.append(row);
  }
  const paginator=document.querySelector('mat-paginator');
@@ -104,7 +104,13 @@ function renderHistory(){
  paginator.querySelector('span').textContent=state.rangeOverride??(jobs.length?`${state.page*10+1} – ${Math.min((state.page+1)*10,jobs.length)} of ${jobs.length}`:'0 of 0');
 }
 for(const [label,change] of [['First page',()=>0],['Previous page',()=>state.page-1],['Next page',()=>state.page+1]])document.querySelector(`[aria-label="${label}"]`).onclick=()=>{
- const target=change();state.pageMoves.push(target);const spinner=document.createElement('mat-spinner');spinner.textContent='Loading';document.querySelector('gdm-af-history').append(spinner);
+ const target=change();state.pageMoves.push(target);
+ if(id.startsWith('fasta-history-placeholders')){
+  state.page=target;renderHistory();
+  document.querySelectorAll('#rows .mat-column-name,#rows .mat-column-date').forEach(cell=>cell.replaceChildren());
+  setTimeout(renderHistory,state.pageDelay);return;
+ }
+ const spinner=document.createElement('mat-spinner');spinner.textContent='Loading';document.querySelector('gdm-af-history').append(spinner);
  setTimeout(()=>{state.page=target;renderHistory();spinner.remove()},state.pageDelay);
 };
 function showPrediction(job){
@@ -277,7 +283,7 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   record.batches[0].account=owner;record.batches[0].status='validating';record.batches[0].attempts=[{account:owner,startedAt:new Date().toISOString(),saveClickedAt:new Date().toISOString(),endedAt:null,result:'pending'}];interrupted.files.set('manifest.json',JSON.stringify(record));
   await restore(interrupted);assert(manifest(interrupted).batches[0].status==='uncertain'&&manifest(interrupted).batches[0].attempts[0].result==='interrupted'&&ui('fasta-import').disabled,'Interrupted draft save became automatically retryable');noCompletion(interrupted);
   assert(!state.uploads.length,'Restore uploaded data');
- }else if(id==='fasta-sync-feedback'){
+ }else if(id==='fasta-sync-feedback'||id==='fasta-history-placeholders'){
   const dir=await generate(fasta(1));addHistory(manifest(dir).batches[0].jobs);await clickFasta('sync');
   assert(/No script import records/.test(ui('fasta-status').textContent),'Generated-only history check silently returned to the idle text');
   assert(!manifest(dir).importComplete&&!state.uploads.length&&!state.saves.length,'Checking an unimported run uploaded or claimed jobs');
@@ -295,6 +301,21 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   window.WIZ_global_data.oPEP7c=owner;renderHistory();ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));await clickFasta('sync');
   assert(/核对完成/.test(ui('fasta-status').textContent)&&/1\/1/.test(ui('fasta-status').textContent),'Chinese history result is missing');
   assert(state.uploads.length===1&&state.saves.length===1,'History check triggered another upload');
+ }else if(id==='fasta-history-placeholders-stop'){
+  const dir=await generate(fasta(1)),original=dir.files.get('manifest.json');state.pageDelay=600;
+  ui('fasta-sync').click();await until(()=>state.pageMoves.length>0,'Blank loading rows');
+  assert(!document.querySelector('#rows .mat-column-name').textContent&&!document.querySelector('mat-spinner'),'Fixture did not expose spinner-free placeholder rows');
+  ui('fasta-stop').click();await settled();
+  assert(/Stopped/.test(ui('fasta-status').textContent)&&dir.files.get('manifest.json')===original,'Stopping during placeholders changed the manifest or reported success');
+  await until(()=>document.querySelector('#rows .mat-column-name').textContent,'Loading rows restored');
+  await clickFasta('sync');assert(/No script import records/.test(ui('fasta-status').textContent),'Retry after stopping on placeholders failed');
+  assert(!state.uploads.length&&!state.saves.length,'Placeholder retry imported jobs');
+ }else if(id==='fasta-history-ambiguous'){
+  const dir=await generate(fasta(1)),original=dir.files.get('manifest.json');
+  const other=document.createElement('table');other.append(document.querySelector('thead').cloneNode(true));document.body.append(other);
+  await clickFasta('sync');
+  assert(/Cannot identify one history table/.test(ui('fasta-status').textContent),'Ambiguous tables were silently accepted');
+  assert(dir.files.get('manifest.json')===original&&!state.uploads.length&&!state.saves.length,'Ambiguous history changed records or uploaded jobs');
  }else if(id==='fasta-sync-progress'){
   const dir=await generate(fasta(1)),progress=ui('fasta-progress');
   assert(progress?.tagName==='PROGRESS'&&progress.hidden,'Native progress bar is missing or visible while idle');
@@ -500,7 +521,7 @@ SCENARIOS = [
     'fasta-account-save', 'fasta-account-confirm', 'fasta-mutual-exclusion',
     'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-not-saved-restore',
     'fasta-manifest-limit', 'fasta-batch-limit', 'fasta-presubmit-record', 'fasta-sync-feedback',
-    'fasta-sync-progress', 'fasta-context-errors',
+    'fasta-sync-progress', 'fasta-context-errors', 'fasta-history-placeholders', 'fasta-history-placeholders-stop', 'fasta-history-ambiguous',
 ]
 SHORT_CASES = {'fasta-partial', 'fasta-unclosed', 'fasta-validation-timeout'}
 

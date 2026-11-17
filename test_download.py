@@ -253,6 +253,11 @@ function changePage(target){
   if(id!=='download-loading-paginator'){table.before(spinner);table.remove();paginator.remove()}else paginator.replaceWith(spinner);
   setTimeout(()=>{id!=='download-loading-paginator'?spinner.replaceWith(table,paginator):spinner.replaceWith(paginator);state.page=target;renderRows()},350);return;
  }
+ if(id==='download-loading-rows'){
+  state.page=target;renderRows();
+  document.querySelectorAll('#rows .mat-column-name,#rows .mat-column-date').forEach(cell=>cell.replaceChildren());
+  setTimeout(renderRows,350);return;
+ }
  if(id==='download-repeating-page'&&state.page===1&&target===2)target=0;
  const wait=['download-stop-scan','download-context-change','download-busy'].includes(id)?500:75;
  if(id==='download-stop-scan')setTimeout(()=>ui('download-stop').click(),80);
@@ -690,7 +695,7 @@ SCENARIOS = [
     'panel-sections', 'download-date-folding',
     'download-account-change', 'download-account-queue',
     'history-status-filters', 'history-status-click',
-    'download-range', 'download-reset-first', 'download-single-day', 'download-select',
+    'download-range', 'download-reset-first', 'download-single-day', 'download-select', 'download-loading-rows',
     'download-day-selection', 'download-zero', 'download-invalid-range',
     'download-menu-apply-range', 'download-menu-apply-subset', 'download-menu-apply-no-count',
     'download-menu-apply-identity-change', 'download-menu-apply-extra-selection', 'download-individual-menu-apply-range',

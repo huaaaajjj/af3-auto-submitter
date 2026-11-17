@@ -2383,7 +2383,12 @@
 
     function downloadHistoryLoading(root = document, ignoreJobStatus = false) {
         return Array.from(root.querySelectorAll('mat-spinner, mat-progress-bar, mat-progress-spinner, [aria-busy="true"]')).some(node =>
-            downloadVisible(node) && (!ignoreJobStatus || !node.closest('.mat-column-status, .cdk-column-status')));
+            downloadVisible(node) && (!ignoreJobStatus || !node.closest('.mat-column-status, .cdk-column-status'))) ||
+            // Material renders blank name/date cells during pagination without a spinner.
+            Array.from(root.querySelectorAll('tr.mat-mdc-row, tr[mat-row]')).some(row => {
+                const name = row.querySelector('.mat-column-name, .cdk-column-name'), date = row.querySelector('.mat-column-date, .cdk-column-date');
+                return downloadVisible(row) && name && date && !downloadText(name) && !downloadText(date);
+            });
     }
 
     function getDownloadHistory(allowLoading = false) {
