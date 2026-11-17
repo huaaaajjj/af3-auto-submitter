@@ -101,7 +101,7 @@ function renderHistory(){
  paginator.querySelector('[aria-label="First page"]').disabled=state.page===0;
  paginator.querySelector('[aria-label="Previous page"]').disabled=state.page===0;
  paginator.querySelector('[aria-label="Next page"]').disabled=(state.page+1)*10>=jobs.length;
- paginator.querySelector('span').textContent=jobs.length?`${state.page*10+1} – ${Math.min((state.page+1)*10,jobs.length)} of ${jobs.length}`:'0 of 0';
+ paginator.querySelector('span').textContent=state.rangeOverride??(jobs.length?`${state.page*10+1} – ${Math.min((state.page+1)*10,jobs.length)} of ${jobs.length}`:'0 of 0');
 }
 for(const [label,change] of [['First page',()=>0],['Previous page',()=>state.page-1],['Next page',()=>state.page+1]])document.querySelector(`[aria-label="${label}"]`).onclick=()=>{
  const target=change();state.pageMoves.push(target);const spinner=document.createElement('mat-spinner');spinner.textContent='Loading';document.querySelector('gdm-af-history').append(spinner);
@@ -295,6 +295,57 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   window.WIZ_global_data.oPEP7c=owner;renderHistory();ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));await clickFasta('sync');
   assert(/核对完成/.test(ui('fasta-status').textContent)&&/1\/1/.test(ui('fasta-status').textContent),'Chinese history result is missing');
   assert(state.uploads.length===1&&state.saves.length===1,'History check triggered another upload');
+ }else if(id==='fasta-sync-progress'){
+  const dir=await generate(fasta(1)),progress=ui('fasta-progress');
+  assert(progress?.tagName==='PROGRESS'&&progress.hidden,'Native progress bar is missing or visible while idle');
+  assert(progress.getAttribute('aria-label')&&progress.getAttribute('aria-describedby')==='af3-fasta-status','Progress bar lacks an accessible label/status');
+  state.pageDelay=500;ui('fasta-sync').click();
+  assert(!progress.hidden&&!progress.hasAttribute('value'),'A new check reused stale progress instead of waiting for a total');
+  await until(()=>progress.hasAttribute('value')&&progress.value===10,'First scanned page');
+  assert(progress.max===12&&/10\/12/.test(ui('fasta-status').textContent),'Scan progress does not reflect the website total');
+  ui('fasta-stop').click();await settled();
+  assert(progress.hidden&&/Stopped/.test(ui('fasta-status').textContent)&&!manifest(dir).lastHistoryCheck,'Stopped scan showed completion or saved a check');
+  state.rangeOverride='Unknown total';renderHistory();ui('fasta-sync').click();
+  await until(()=>/Checking website history.*page/.test(ui('fasta-status').textContent),'Unknown-total scan');
+  assert(!progress.hidden&&!progress.hasAttribute('value'),'Unknown total displayed a fake percentage');await settled();
+  assert(progress.hidden&&!state.uploads.length&&!state.saves.length,'Completed scan left progress running or uploaded data');
+  state.rangeOverride=null;renderHistory();ui('fasta-sync').click();
+  await until(()=>progress.hasAttribute('value')&&progress.value===10,'Retry scan progress');await settled();
+  assert(progress.hidden&&/No script import records/.test(ui('fasta-status').textContent),'Retry progress did not finish normally');
+  addHistory(Array.from({length:12},(_,i)=>({name:'extra_'+i})));ui('fasta-sync').click();
+  await until(()=>progress.hasAttribute('value')&&progress.value===10,'Stable total before a change');assert(progress.max===24,'Wrong initial total');
+  state.rangeOverride='11 – 20 of 25';
+  await until(()=>/page 2/.test(ui('fasta-status').textContent),'Changed-total page');
+  assert(!progress.hasAttribute('value')&&!ui('fasta-status').textContent.includes('%'),'Changing totals retained a misleading percentage');await settled();
+  state.rangeOverride='1 – 10 of 1,234';renderHistory();ui('fasta-sync').click();
+  await until(()=>progress.hasAttribute('value'),'Thousands-separated total');assert(progress.max===1234,'Grouped native total was not parsed');ui('fasta-stop').click();await settled();
+  state.rangeOverride='1 – 10 of 9007199254740992';renderHistory();ui('fasta-sync').click();
+  await until(()=>/Checking website history.*page/.test(ui('fasta-status').textContent),'Unsafe total');
+  assert(!progress.hasAttribute('value'),'Unsafe integer total displayed a percentage');ui('fasta-stop').click();await settled();
+  state.rangeOverride=null;state.writeError='manifest.json';ui('fasta-sync').click();await settled();
+  assert(progress.hidden&&/write failed/.test(ui('fasta-status').textContent),'Failed save left an animated or successful progress state');
+ }else if(id==='fasta-context-errors'){
+  const dir=await generate(fasta(1)),original=dir.files.get('manifest.json'),search=document.querySelector('[placeholder="Search History"]');
+  const blocked=async expected=>{await clickFasta('sync');assert(expected.test(ui('fasta-status').textContent),'Wrong preflight reason: '+ui('fasta-status').textContent);assert(ui('fasta-progress').hidden,'A blocked check left a progress bar running')};
+  search.value='test';await blocked(/Search History.*not empty/);search.value='';
+  window.WIZ_global_data.oPEP7c='';await blocked(/identify.*account/);window.WIZ_global_data.oPEP7c=owner;renderHistory();
+  filters([]);await blocked(/Select.*History/);filters(['Saved draft']);
+  const example=document.createElement('mat-chip-option'),exampleButton=document.createElement('button');exampleButton.textContent='Examples';exampleButton.setAttribute('aria-selected','true');example.append(exampleButton);document.getElementById('filters').append(example);
+  await blocked(/Examples/);example.remove();filters(['Saved draft']);
+  const size=document.querySelector('mat-paginator select'),option=new Option('20','20');size.add(option);
+  const heading=document.querySelector('th'),url=location.href;state.pageDelay=500;
+  for(const [change,restore,reason] of [
+   [()=>{window.WIZ_global_data.oPEP7c='other@example.com'},()=>{window.WIZ_global_data.oPEP7c=owner},/account changed/],
+   [()=>filters(['Completed']),()=>filters(['Saved draft']),/filters changed/],
+   [()=>{size.value='20'},()=>{size.value='10'},/page size changed/],
+   [()=>heading.setAttribute('aria-sort','ascending'),()=>heading.removeAttribute('aria-sort'),/sort changed/],
+   [()=>history.replaceState(null,'',url+'&changed=1'),()=>history.replaceState(null,'',url),/page address changed/],
+  ]){
+   ui('fasta-sync').click();await until(()=>ui('fasta-progress').hasAttribute('value'),'Started scan before context change');change();await settled();
+   assert(reason.test(ui('fasta-status').textContent),'Context-change reason is unclear: '+ui('fasta-status').textContent);
+   assert(ui('fasta-progress').hidden,'Context error left progress running');restore();renderHistory();
+  }
+  assert(dir.files.get('manifest.json')===original&&!state.uploads.length&&!state.saves.length,'Rejected context changed records or uploaded jobs');
  }else if(id==='fasta-stale-journal'){
   const dir=await generate(fasta(1));const initial=dir.files.get('manifest.json'),initialRevision=manifest(dir).revision;
   assert(Number.isSafeInteger(initialRevision)&&initialRevision>0,'Manifest has no durable revision');
@@ -449,6 +500,7 @@ SCENARIOS = [
     'fasta-account-save', 'fasta-account-confirm', 'fasta-mutual-exclusion',
     'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-not-saved-restore',
     'fasta-manifest-limit', 'fasta-batch-limit', 'fasta-presubmit-record', 'fasta-sync-feedback',
+    'fasta-sync-progress', 'fasta-context-errors',
 ]
 SHORT_CASES = {'fasta-partial', 'fasta-unclosed', 'fasta-validation-timeout'}
 

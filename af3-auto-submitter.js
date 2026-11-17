@@ -737,6 +737,10 @@
         fastaBatch: 'Batch {index}: {count} jobs · {status}', fastaBusy: 'Working…', fastaReady: 'Ready', fastaImported: 'Import confirmed', fastaUncertain: 'Needs history check',
         fastaRunning: 'Reading / saving local files…', fastaChecking: 'Checking website history…', fastaUploading: 'Validating batch {index} on the website…',
         fastaCheckingPage: 'Checking website history… page {page}; {count} rows read.',
+        fastaCheckingTotal: 'Checking website history… page {page}; {count}/{total} rows read ({percent}%).',
+        fastaProgress: 'FASTA operation progress; history scanning, not prediction completion',
+        fastaHistoryReturning: 'History read. Returning to the first page…',
+        fastaUpdating: 'History read. Checking and saving local records…',
         fastaChecked: 'History check complete: verified {matched}/{total} tracked jobs in the current filters. Records saved.',
         fastaCheckUnverified: '{unverified} same-name records lack evidence of this run saving a draft; import was not confirmed.',
         fastaNoImports: 'No script import records for this run; matching titles alone cannot link history. If not uploaded, use “Import next batch as drafts”. Do not reimport jobs already uploaded manually.',
@@ -750,7 +754,15 @@
         fastaJournalChanged: 'Another page changed or is writing this manifest. Reopen the folder and check history; the newer journal was not overwritten.',
         fastaManifestLimit: 'The tracking manifest exceeds 50 MiB or 10,000 batches. Use a smaller input; unsupported runs are not written.',
         fastaSavedError: 'Local record write failed. Processing stopped; do not retry an uncertain import. Reopen the folder and check history. {detail}',
-        fastaContext: 'Use a known signed-in account, no Search History term, and do not change account, filters, sort or page size during import/checking.',
+        fastaContextAccountMissing: 'Stopped: cannot identify the signed-in account. Sign in and wait for the panel to show your email, then retry.',
+        fastaContextSearch: 'Stopped: Search History is not empty. Clear the website search box and retry.',
+        fastaContextFilters: 'Stopped: Select Saved draft, Completed, In progress or Failed in website History, then retry.',
+        fastaContextExamples: 'Stopped: Examples cannot be checked. Deselect Examples in website History, then retry.',
+        fastaAccountChanged: 'Stopped: the account changed during the operation. Return to the original account and check history again.',
+        fastaFiltersChanged: 'Stopped: History filters changed during the operation. Keep the filters unchanged and check history again.',
+        fastaPageSizeChanged: 'Stopped: the page size changed during the operation. Keep it unchanged and check history again.',
+        fastaSortChanged: 'Stopped: History sort changed during the operation. Keep the sort unchanged and check history again.',
+        fastaPageChanged: 'Stopped: the page address changed during the operation. Return to History and check again.',
         fastaNeedDraft: 'Select Saved draft only before importing. Existing dialogs/menus must be closed.',
         fastaCloseDialog: 'Close website dialogs and menus before checking or importing records.',
         fastaConfirm: 'Upload batch {index} ({count} jobs) to {account}? Selecting the JSON sends sequences for website validation. Only drafts will be saved; no prediction is launched.',
@@ -774,6 +786,10 @@
         fastaBatch: '第 {index} 批：{count} 个 · {status}', fastaBusy: '处理中…', fastaReady: '待导入', fastaImported: '已确认导入', fastaUncertain: '需核对历史',
         fastaRunning: '正在读取 / 保存本地文件…', fastaChecking: '正在核对官网历史…', fastaUploading: '正在官网校验第 {index} 批…',
         fastaCheckingPage: '正在核对官网历史：第 {page} 页，已读取 {count} 条记录…',
+        fastaCheckingTotal: '正在核对官网历史：第 {page} 页，已读取 {count}/{total} 条（{percent}%）…',
+        fastaProgress: 'FASTA 操作进度；历史扫描进度，不是预测完成进度',
+        fastaHistoryReturning: '历史读取完成，正在回到首页…',
+        fastaUpdating: '历史读取完成，正在核对并保存本地记录…',
         fastaChecked: '核对完成：当前筛选下确认 {matched}/{total} 个跟踪任务，记录已保存。',
         fastaCheckUnverified: '{unverified} 条同名记录缺少本次草稿保存证据，未确认导入。',
         fastaNoImports: '本清单尚无脚本导入记录，无法仅凭同名历史自动关联。未上传时请用“导入下一批为草稿”；若已手动上传，请勿重复导入。',
@@ -787,7 +803,15 @@
         fastaJournalChanged: '清单已被其他页面修改或正在写入；未覆盖新记录。请重新打开目录并核对历史。',
         fastaManifestLimit: '跟踪清单超过 50 MiB 或 10000 批，请缩小输入；不写入无法恢复的批次。',
         fastaSavedError: '本地记录写入失败，已停止；不要重试结果不明确的导入。请重新打开目录并核对历史。{detail}',
-        fastaContext: '需识别到当前账号、清空 Search History；处理中不要改变账号、筛选、排序或每页数量。',
+        fastaContextAccountMissing: '已停止：无法识别当前登录账号。请先登录，等面板顶部显示邮箱后重试。',
+        fastaContextSearch: '已停止：官网 Search History 搜索框不是空的。请清空搜索后重试。',
+        fastaContextFilters: '已停止：官网 History 未选中任务状态。请至少选择 Saved draft、Completed、In progress 或 Failed 后重试。',
+        fastaContextExamples: '已停止：不能核对官网示例任务。请在 History 中取消 Examples 后重试。',
+        fastaAccountChanged: '已停止：处理中登录账号发生变化。请切回原账号后重新核对历史。',
+        fastaFiltersChanged: '已停止：处理中 History 筛选发生变化。请保持筛选不变后重新核对。',
+        fastaPageSizeChanged: '已停止：处理中每页数量发生变化。请保持每页数量不变后重新核对。',
+        fastaSortChanged: '已停止：处理中 History 排序发生变化。请保持排序不变后重新核对。',
+        fastaPageChanged: '已停止：处理中页面地址发生变化。请返回 History 后重新核对。',
         fastaNeedDraft: '导入前请仅选择 Saved draft，并关闭已有官网弹窗和菜单。',
         fastaCloseDialog: '请先关闭官网已有弹窗和菜单，再核对或导入记录。',
         fastaConfirm: '将第 {index} 批（{count} 个任务）上传至 {account}？选择 JSON 就会发送序列进行官网校验；仅保存草稿，不启动预测。',
@@ -804,7 +828,7 @@
     const FASTA_FILE_LIMIT = 50 * 1024 * 1024;
     const FASTA_MANIFEST_LIMIT = 50 * 1024 * 1024;
     const FASTA_MAX_BATCHES = 10000;
-    const fastaState = { busy: false, stop: false, dir: null, manifest: null, saved: false, inputChanged: false, context: null, message: '', dialog: null };
+    const fastaState = { busy: false, stop: false, dir: null, manifest: null, saved: false, inputChanged: false, context: null, message: '', dialog: null, progress: null };
 
     async function fastaHash(value) {
         const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : value;
@@ -889,7 +913,12 @@
 
     function fastaCheck() {
         if (fastaState.stop) throw makeStoppedError();
-        if (fastaState.context && getFastaContext() !== fastaState.context) throw new Error(t('fastaContext'));
+        if (!fastaState.context) return;
+        const before = JSON.parse(fastaState.context), current = JSON.parse(getFastaContext());
+        for (const [key, message] of [['account', 'fastaAccountChanged'], ['selected', 'fastaFiltersChanged'],
+            ['size', 'fastaPageSizeChanged'], ['sort', 'fastaSortChanged'], ['url', 'fastaPageChanged']]) {
+            if (JSON.stringify(before[key]) !== JSON.stringify(current[key])) throw new Error(t(message));
+        }
     }
 
     async function fastaWait(read, timeout = FASTA_IMPORT_TIMEOUT) {
@@ -910,7 +939,10 @@
         const account = normalizeAccountEmail(readAccountEmail());
         const search = root.querySelector('input[placeholder="Search History"], input[aria-label="Search History"]');
         const selected = getSelectedHistoryStatuses(root);
-        if (!account || search?.value || !selected.length || selected.includes('examples')) throw new Error(t('fastaContext'));
+        if (!account) throw new Error(t('fastaContextAccountMissing'));
+        if (search?.value) throw new Error(t('fastaContextSearch'));
+        if (!selected.length) throw new Error(t('fastaContextFilters'));
+        if (selected.includes('examples')) throw new Error(t('fastaContextExamples'));
         const size = root.querySelector('mat-paginator .mat-mdc-select-value, mat-paginator select');
         return JSON.stringify({ url: location.href, account, selected, size: size?.value || size?.textContent || previous?.size || '',
             sort: loading ? previous?.sort || [] : Array.from(root.querySelectorAll('th[aria-sort]'), node => [downloadText(node), node.getAttribute('aria-sort')]) });
@@ -938,13 +970,21 @@
             rewind.add(page.signature); page = await move(page.previous);
         }
         const found = new Map(), visited = new Set();
-        let scanned = 0;
+        let scanned = 0, total = null;
         while (true) {
             fastaCheck();
             if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
             visited.add(page.signature);
             scanned += page.jobs.length;
-            fastaState.message = t('fastaCheckingPage', { page: visited.size, count: scanned });
+            const match = /\bof\s+(\d{1,3}(?:,\d{3})+|\d+)\s*$/i.exec(page.range);
+            const reported = match ? Number(match[1].replace(/,/g, '')) : NaN;
+            if (visited.size === 1) total = reported;
+            // ponytail: percentages require a stable native total; otherwise use indeterminate progress.
+            if (!Number.isSafeInteger(reported) || reported <= 0 || reported < scanned || total !== reported ||
+                (!downloadButtonEnabled(page.next) && reported !== scanned)) total = null;
+            fastaState.progress = total === null ? null : { value: scanned, max: total };
+            fastaState.message = total === null ? t('fastaCheckingPage', { page: visited.size, count: scanned }) :
+                t('fastaCheckingTotal', { page: visited.size, count: scanned, total, percent: Math.floor(scanned / total * 100) });
             renderFastaSection();
             for (const job of page.jobs) {
                 const cell = job.row.querySelector('.mat-column-status, .cdk-column-status');
@@ -960,6 +1000,7 @@
             if (!downloadButtonEnabled(page.next)) break;
             page = await move(page.next);
         }
+        fastaState.progress = null; fastaState.message = t('fastaHistoryReturning'); renderFastaSection();
         if (downloadButtonEnabled(page.first)) page = await move(page.first);
         const returning = new Set();
         while (downloadButtonEnabled(page.previous)) {
@@ -994,7 +1035,7 @@
         if (typeof window.showDirectoryPicker !== 'function') { fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
         const file = getUiElement('af3-fasta-file')?.files[0];
         if (!file?.size || file.size > FASTA_FILE_LIMIT) { fastaState.message = t('fastaChooseFile'); renderFastaSection(); return; }
-        fastaState.busy = true; fastaState.stop = false; fastaState.context = null;
+        fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.progress = null;
         fastaState.message = t('fastaRunning'); renderFastaSection(); checkSystemStatus();
         try {
             // Request permission directly from the click, before asynchronous parsing consumes activation.
@@ -1056,7 +1097,7 @@
     async function restoreFastaBatches() {
         if (fastaState.busy || isRunning || downloadState.busy) return;
         if (typeof window.showDirectoryPicker !== 'function') { fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
-        fastaState.busy = true; fastaState.stop = false; fastaState.context = null; renderFastaSection(); checkSystemStatus();
+        fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.progress = null; renderFastaSection(); checkSystemStatus();
         try {
             const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
             const file = await (await dir.getFileHandle('manifest.json')).getFile();
@@ -1150,7 +1191,7 @@
         if (fastaState.busy || isRunning || downloadState.busy || !fastaState.saved || !fastaState.manifest?.generationComplete) return;
         const batch = fastaState.manifest.batches.find(item => item.status !== 'imported');
         if (!checkOnly && (!batch || batch.status !== 'ready' || fastaState.inputChanged)) return;
-        fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.message = t('fastaChecking');
+        fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.progress = null; fastaState.message = t('fastaChecking');
         let attempt = null, observer = null, nativeError = '', saveSent = false;
         renderFastaSection(); checkSystemStatus();
         try {
@@ -1162,6 +1203,7 @@
             fastaCheck();
             const before = await readFastaHistory();
             if (checkOnly) {
+                fastaState.message = t('fastaUpdating'); renderFastaSection();
                 const result = await reconcileFastaHistory(before, account);
                 fastaState.manifest.lastHistoryCheck = { at: new Date().toISOString(), account, filters: selected, ...result };
                 await persistFastaManifest();
@@ -1288,6 +1330,10 @@
         getUiElement('af3-fasta-import').disabled ||= !batch || batch.status !== 'ready' || fastaState.inputChanged;
         const stop = getUiElement('af3-fasta-stop'); stop.hidden = !fastaState.busy; stop.disabled = fastaState.stop;
         const status = getUiElement('af3-fasta-status'); status.textContent = fastaState.message || (fastaState.inputChanged ? t('fastaInputChanged') : fastaState.manifest?.importComplete ? t('fastaFinished') : t('fastaIdle'));
+        const progress = getUiElement('af3-fasta-progress');
+        progress.hidden = !fastaState.busy; progress.setAttribute('aria-label', t('fastaProgress'));
+        if (fastaState.progress) { progress.max = fastaState.progress.max; progress.value = fastaState.progress.value; }
+        else progress.removeAttribute('value');
         const summary = getUiElement('af3-fasta-summary');
         summary.textContent = fastaState.manifest ? t('fastaLocal', { folder: fastaState.dir?.name || '', total: fastaState.manifest.summary?.generated || 0,
             imported: fastaState.manifest.summary?.imported || 0, submitted: fastaState.manifest.summary?.submitted || 0,
@@ -1320,9 +1366,10 @@
             tools.appendChild(button);
         }
         const status = document.createElement('p'); status.id = 'af3-fasta-status'; status.className = 'af3-help'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+        const progress = document.createElement('progress'); progress.id = 'af3-fasta-progress'; progress.hidden = true; progress.setAttribute('aria-describedby', status.id);
         const summary = document.createElement('p'); summary.id = 'af3-fasta-summary'; summary.className = 'af3-help';
         const list = document.createElement('div'); list.id = 'af3-fasta-batches'; list.className = 'af3-help'; list.style.cssText = 'max-height:160px;overflow:auto';
-        section.append(tools, status, summary, list);
+        section.append(tools, status, progress, summary, list);
         return section;
     }
 
@@ -2443,7 +2490,7 @@
         const next = control('mat-mdc-paginator-navigation-next', 'Next page');
         if (paginator && (!previous || !next)) throw new Error(t('downloadPageError'));
         const range = paginator?.querySelector('.mat-mdc-paginator-range-label')?.textContent?.trim() || '';
-        return { jobs, first, previous, next, signature: JSON.stringify([range, jobs.map(job => [job.key, job.modified])]) };
+        return { jobs, first, previous, next, range, signature: JSON.stringify([range, jobs.map(job => [job.key, job.modified])]) };
     }
 
     async function readDownloadMenuIdentity(row) {
@@ -3253,6 +3300,7 @@
             #af3-footer-msg { color: var(--af3-muted); font-size: 12px; }
             #af3-submission-section[data-state="blocked"] #af3-footer-msg { padding: 9px; border-radius: 8px; background: var(--af3-danger-soft); color: var(--af3-danger); }
             .af3-help, .af3-account-help, .af3-account-card time { font-size: 12px; color: var(--af3-muted); line-height: 1.6; overflow-wrap: anywhere; }
+            #af3-fasta-progress { display: block; width: 100%; height: 10px; accent-color: var(--af3-primary); }
             .af3-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(135px, 100%), 1fr)); gap: 8px; }
             .af3-download-tools, .af3-download-actions, .af3-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
             #af3-download-scan { margin-right: auto; }
