@@ -277,6 +277,24 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   record.batches[0].account=owner;record.batches[0].status='validating';record.batches[0].attempts=[{account:owner,startedAt:new Date().toISOString(),saveClickedAt:new Date().toISOString(),endedAt:null,result:'pending'}];interrupted.files.set('manifest.json',JSON.stringify(record));
   await restore(interrupted);assert(manifest(interrupted).batches[0].status==='uncertain'&&manifest(interrupted).batches[0].attempts[0].result==='interrupted'&&ui('fasta-import').disabled,'Interrupted draft save became automatically retryable');noCompletion(interrupted);
   assert(!state.uploads.length,'Restore uploaded data');
+ }else if(id==='fasta-sync-feedback'){
+  const dir=await generate(fasta(1));addHistory(manifest(dir).batches[0].jobs);await clickFasta('sync');
+  assert(/No script import records/.test(ui('fasta-status').textContent),'Generated-only history check silently returned to the idle text');
+  assert(!manifest(dir).importComplete&&!state.uploads.length&&!state.saves.length,'Checking an unimported run uploaded or claimed jobs');
+  state.history=state.history.filter(row=>row.name!==manifest(dir).batches[0].jobs[0].name);renderHistory();
+  await clickFasta('import');filters(['Completed']);await clickFasta('sync');
+  assert(/History check complete/.test(ui('fasta-status').textContent)&&/0\/1/.test(ui('fasta-status').textContent),'An empty-filter check did not show a zero-match result');
+  assert(manifest(dir).lastHistoryCheck.matched===0&&manifest(dir).lastHistoryCheck.total===1,'Check result counts were not saved');
+  filters(['Saved draft']);ui('fasta-sync').click();
+  await until(()=>/Checking website history.*page/.test(ui('fasta-status').textContent),'History page progress');await settled();
+  assert(/History check complete/.test(ui('fasta-status').textContent)&&/1\/1/.test(ui('fasta-status').textContent),'Successful history check has no persistent result');
+  await pause(700);assert(/History check complete/.test(ui('fasta-status').textContent),'Status polling erased the check result');
+  window.WIZ_global_data.oPEP7c='other@example.com';renderHistory();await clickFasta('sync');
+  assert(/original import account/.test(ui('fasta-status').textContent),'Wrong-account history check gave no explanation');
+  assert(manifest(dir).summary.imported===1&&!manifest(dir).predictionComplete,'Wrong-account check changed recorded results');
+  window.WIZ_global_data.oPEP7c=owner;renderHistory();ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));await clickFasta('sync');
+  assert(/核对完成/.test(ui('fasta-status').textContent)&&/1\/1/.test(ui('fasta-status').textContent),'Chinese history result is missing');
+  assert(state.uploads.length===1&&state.saves.length===1,'History check triggered another upload');
  }else if(id==='fasta-stale-journal'){
   const dir=await generate(fasta(1));const initial=dir.files.get('manifest.json'),initialRevision=manifest(dir).revision;
   assert(Number.isSafeInteger(initialRevision)&&initialRevision>0,'Manifest has no durable revision');
@@ -319,6 +337,7 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   assert(state.saves.length===0&&state.predictions===0,'Reused-title recovery uploaded or launched prediction');
   state.history.find(row=>row.name===job.name).status='Saved draft';filters(['Saved draft']);await clickFasta('sync');
   assert(!manifest(dir).importComplete&&manifest(dir).summary.imported===0,'Same-name draft without this run sending a save falsely confirmed import');
+  assert(/lack evidence/.test(ui('fasta-status').textContent)&&manifest(dir).lastHistoryCheck.unverified===1,'Unverified same-name record was silently ignored');
   await restore(dir);state.history=state.history.filter(row=>row.name!==job.name);state.omitIds=true;filters(['Saved draft']);state.behavior='success';
   await clickFasta('import');assert(manifest(dir).importComplete&&!manifest(dir).batches[0].jobs[0].jobId,'No-ID draft fixture did not import');
   state.history.find(row=>row.name===job.name).status='Completed';filters(['Completed']);state.omitIds=false;renderHistory();
@@ -429,7 +448,7 @@ SCENARIOS = [
     'fasta-stop-validation', 'fasta-stop-save', 'fasta-account-validation',
     'fasta-account-save', 'fasta-account-confirm', 'fasta-mutual-exclusion',
     'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-not-saved-restore',
-    'fasta-manifest-limit', 'fasta-batch-limit', 'fasta-presubmit-record',
+    'fasta-manifest-limit', 'fasta-batch-limit', 'fasta-presubmit-record', 'fasta-sync-feedback',
 ]
 SHORT_CASES = {'fasta-partial', 'fasta-unclosed', 'fasta-validation-timeout'}
 

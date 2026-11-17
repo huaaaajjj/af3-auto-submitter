@@ -736,6 +736,11 @@
         fastaLocal: 'Saved to {folder}. Generated {total}; imported {imported}; submitted {submitted}; completed {completed}; failed {failed}.',
         fastaBatch: 'Batch {index}: {count} jobs · {status}', fastaBusy: 'Working…', fastaReady: 'Ready', fastaImported: 'Import confirmed', fastaUncertain: 'Needs history check',
         fastaRunning: 'Reading / saving local files…', fastaChecking: 'Checking website history…', fastaUploading: 'Validating batch {index} on the website…',
+        fastaCheckingPage: 'Checking website history… page {page}; {count} rows read.',
+        fastaChecked: 'History check complete: verified {matched}/{total} tracked jobs in the current filters. Records saved.',
+        fastaCheckUnverified: '{unverified} same-name records lack evidence of this run saving a draft; import was not confirmed.',
+        fastaNoImports: 'No script import records for this run; matching titles alone cannot link history. If not uploaded, use “Import next batch as drafts”. Do not reimport jobs already uploaded manually.',
+        fastaOtherAccount: 'No tracked batches belong to this account. Switch to the original import account; other accounts’ job records were not changed.',
         fastaVerifying: 'Draft save sent once. Verifying batch {index} in history…', fastaFinished: 'All batches are confirmed imported. This does not mean predictions are complete.',
         fastaUnsupported: 'This browser cannot choose writable folders. Use a supported Edge/Chrome window; no files were uploaded.',
         fastaChooseFile: 'Choose a non-empty UTF-8 FASTA file (up to 50 MiB).', fastaInvalid: 'FASTA record / line {record}: {reason}',
@@ -768,6 +773,11 @@
         fastaLocal: '已保存至 {folder}。生成 {total}，已导入 {imported}，已提交 {submitted}，已完成 {completed}，失败 {failed}。',
         fastaBatch: '第 {index} 批：{count} 个 · {status}', fastaBusy: '处理中…', fastaReady: '待导入', fastaImported: '已确认导入', fastaUncertain: '需核对历史',
         fastaRunning: '正在读取 / 保存本地文件…', fastaChecking: '正在核对官网历史…', fastaUploading: '正在官网校验第 {index} 批…',
+        fastaCheckingPage: '正在核对官网历史：第 {page} 页，已读取 {count} 条记录…',
+        fastaChecked: '核对完成：当前筛选下确认 {matched}/{total} 个跟踪任务，记录已保存。',
+        fastaCheckUnverified: '{unverified} 条同名记录缺少本次草稿保存证据，未确认导入。',
+        fastaNoImports: '本清单尚无脚本导入记录，无法仅凭同名历史自动关联。未上传时请用“导入下一批为草稿”；若已手动上传，请勿重复导入。',
+        fastaOtherAccount: '当前账号没有对应的跟踪批次，请切换到原导入账号核对；未更改其他账号的任务记录。',
         fastaVerifying: '草稿保存已点击一次，正在历史中核对第 {index} 批…', fastaFinished: '全部批次已确认导入；这不代表预测已完成。',
         fastaUnsupported: '当前浏览器无法选择可写文件夹，请使用支持此功能的 Edge/Chrome 窗口。未上传任何文件。',
         fastaChooseFile: '请选择非空 UTF-8 FASTA 文件（最大 50 MiB）。', fastaInvalid: 'FASTA 记录 / 行 {record}：{reason}',
@@ -928,10 +938,14 @@
             rewind.add(page.signature); page = await move(page.previous);
         }
         const found = new Map(), visited = new Set();
+        let scanned = 0;
         while (true) {
             fastaCheck();
             if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
             visited.add(page.signature);
+            scanned += page.jobs.length;
+            fastaState.message = t('fastaCheckingPage', { page: visited.size, count: scanned });
+            renderFastaSection();
             for (const job of page.jobs) {
                 const cell = job.row.querySelector('.mat-column-status, .cdk-column-status');
                 const statusText = ((cell?.textContent || '') + ' ' + Array.from(cell?.querySelectorAll('[aria-label], [mattooltip]') || [], n => n.getAttribute('aria-label') || n.getAttribute('mattooltip')).join(' ')).toLowerCase();
@@ -1094,8 +1108,10 @@
 
     async function reconcileFastaHistory(found, account) {
         const now = new Date().toISOString();
+        const result = { matched: 0, total: 0, unverified: 0 };
         for (const batch of fastaState.manifest.batches) {
             if (batch.account !== account) continue;
+            result.total += batch.jobs.length;
             for (const job of batch.jobs) {
                 const matches = found.get(job.name) || [];
                 if (matches.length > 1) throw new Error(t('fastaExisting'));
@@ -1105,10 +1121,13 @@
                 // A pending job is confirmed only by a draft seen after this run durably sent its save.
                 // Completed/Failed history with a reused title cannot prove this import happened.
                 if (job.importStatus !== 'confirmed' &&
-                    (match.status !== 'draft' || !attempt?.saveClickedAt || attempt.account !== account || attempt.result === 'not_saved')) continue;
+                    (match.status !== 'draft' || !attempt?.saveClickedAt || attempt.account !== account || attempt.result === 'not_saved')) {
+                    result.unverified++; continue;
+                }
                 if (fastaState.manifest.settings.sequenceFormat === 'protein-lines' && match.status !== 'draft' &&
                     (!job.jobId || !match.jobId)) throw new Error(t('fastaIdentity'));
                 if (job.jobId && match.jobId && job.jobId !== match.jobId) throw new Error(t('fastaChanged'));
+                result.matched++;
                 job.importStatus = 'confirmed'; job.importedAt ||= now; job.lastSeenAt = now; job.modified = match.modified;
                 job.jobId ||= match.jobId;
                 if (match.status !== 'unknown') job.predictionStatus = match.status;
@@ -1124,6 +1143,7 @@
             }
         }
         await persistFastaManifest();
+        return result;
     }
 
     async function importFastaBatch(checkOnly = false) {
@@ -1142,9 +1162,12 @@
             fastaCheck();
             const before = await readFastaHistory();
             if (checkOnly) {
-                await reconcileFastaHistory(before, account);
-                fastaState.manifest.lastHistoryCheck = { at: new Date().toISOString(), account, filters: selected };
-                await persistFastaManifest(); fastaState.message = ''; return;
+                const result = await reconcileFastaHistory(before, account);
+                fastaState.manifest.lastHistoryCheck = { at: new Date().toISOString(), account, filters: selected, ...result };
+                await persistFastaManifest();
+                fastaState.message = result.total ? t('fastaChecked', result) + (result.unverified ? ' ' + t('fastaCheckUnverified', result) : '') :
+                    t(fastaState.manifest.batches.some(item => item.account) ? 'fastaOtherAccount' : 'fastaNoImports');
+                return;
             }
             if (batch.jobs.some(job => before.has(job.name))) throw new Error(t('fastaExisting'));
             const json = await readSavedFastaBatch(batch);
