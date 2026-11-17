@@ -4,14 +4,14 @@
 
 ## 安装 4.0 正式版
 
-[安装或更新 4.0.0](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 4.0.1](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 **从 4.0 起只发布正式版，不再维护独立开发版渠道。** 安装文件为 `af3-auto-submitter.user.js`，正常开发、安装、测试和更新均以 `main` 的正式文件为准。
 
 1. 安装 Tampermonkey，点击上方正式安装链接并确认。若仅显示源码，在油猴原脚本编辑器中完整替换并保存。
 2. 允许脚本在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。使用 Edge InPrivate 时，需要开启扩展的“允许在 InPrivate 中使用”。
 3. 普通窗口与 InPrivate 要共用账号目录，需在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 刷新官网，确认标题显示 **v4.0.0**，并核对当前账号和官网额度。网站控件与通知需使用英文。
+4. 刷新官网，确认标题显示 **v4.0.1**，并核对当前账号和官网额度。网站控件与通知需使用英文。
 5. 首次仅试 1 个任务；生成 JSON、导入草稿、预测提交、预测完成是四个不同阶段。结果不确定时不要重复点击 Confirm 或刷新后直接重试。
 
 正式更新检查地址是 `main/af3-auto-submitter.meta.js`，完整下载地址是 `main/af3-auto-submitter.user.js`。启用油猴“检查更新”即可接收后续正式版本。
@@ -26,18 +26,30 @@
 
 ## FASTA 分批保存与草稿导入
 
-新增“FASTA 分批导入”：每 30 条记录生成一份 FASTA 和 AlphaFold Server JSON，先写入用户选定目录的新子文件夹，再由用户明确确认后导入官网草稿。`manifest.json` 保留来源 SHA-256、模式与链长、原始完整标题、唯一任务名、批次文件校验值、每次导入账号/阶段/时间/错误及逐任务确认和预测状态。生成文件、上传校验、草稿导入和预测完成是不同状态。
+“FASTA 分批导入”每 30 个任务生成一份 FASTA 和 AlphaFold Server JSON，先写入用户选定目录的新子文件夹，再由用户明确确认后导入官网草稿。`manifest.json` 保留来源 SHA-256、逐行链格式与链长、原始完整标题、唯一任务名、批次文件校验值、每次导入账号/阶段/时间/错误及逐任务确认和预测状态。生成文件、上传校验、草稿导入和预测完成是不同状态。
 
-支持整条单链，或参考脚本的“受体 + 实际序列末端肽”两链模式（长度默认 10，可调整；不根据标题推断）。沿用参考的每链 2700、总长 3000 限制；不自动推断分组，不静默去掉 `*`、缺口或跳过非法记录。原始文件不修改，无效记录会阻止生成并指出位置。 先按 ASCII 氨基酸字母校验，再转大写，不把 Unicode 字符改造成有效残基。生成与恢复使用一致的上限：输入及单个分批文件最大 50 MiB、清单最大 50 MiB、最多 10000 批；生成前核对完整清单大小，超限不写入输出文件。
+从 4.0.1 起只按行读取纯蛋白：每个 `>名称` 开始一个任务，后面的每个非空序列行各是一条蛋白链，遇到下一个 `>` 开始新任务。无需选择链模式或末端肽长度，不拼接序列行、不自动拆肽，只生成 `proteinChain`（每链 `count: 1`）。保留每链 2700、每个任务所有链合计 3000 个残基的限制，不静默去掉 `*`、缺口或跳过非法记录。**单条长链必须写在同一行，传统 FASTA 的折行在这里会被当作不同链。** 原始文件不修改，无效记录会阻止生成并指出位置。先按 ASCII 氨基酸字母校验，再转大写，不把 Unicode 字符改造成有效残基。生成与恢复使用一致的上限：输入及单个分批文件最大 50 MiB、清单最大 50 MiB、最多 10000 批；生成前核对完整清单大小，超限不写入输出文件。
+
+例如下面是两个任务：`complex_one` 含两条链，`protein_two` 含一条链；分批按任务数而不是链数计算。
+
+```fasta
+>complex_one
+ACDEFGHIKL
+MNPQRSTVWY
+>protein_two
+ACDEFGHIKLMNPQRSTVWY
+```
+
+4.0.0 已保存的单链/末端肽批次仍可打开、核对和导入，直接使用原 JSON 中已保存的链，不把旧 FASTA 的 60 字符折行重新解释为链。新清单使用 `settings.sequenceFormat: protein-lines`，仍保留原格式版本 1 和全部导入/完成记录。
 
 ### FASTA 使用流程和 manifest 状态
 
-1. 选择 `.fasta` / `.fa` / `.faa`（UTF-8，可含 BOM、多行和 CRLF，最大 50 MiB）。默认“整条序列作为单链”；需要参考脚本所用的受体-肽任务时，明确选择“受体 + 末端肽”并核对长度。
-2. 点“生成并选择保存目录”，通过浏览器弹框授权专用文件夹。新建 `af3_时间_随机标识/`，写入 `输入名_part001.fasta`、`输入名_part001.json` 等，每批最多 30 条；尾批保留余数，FASTA 每行 60 字符。使用带运行标识和源序号的唯一任务名（最长 100），完整原标题保存在 manifest 中。同名记录不会合并或丢失。官网 JSON 顶层是任务数组，使用 `proteinChain`、`count: 1`、空 `modelSeeds`、`dialect: alphafoldserver` 和 `version: 1`。
+1. 选择 `.fasta` / `.fa` / `.faa`（UTF-8，可含 BOM 和 CRLF，最大 50 MiB）。用 `>名称` 作为任务标题，每条蛋白链占一个完整序列行；空行会跳过，不产生空链。
+2. 点“生成并选择保存目录”，通过浏览器弹框授权专用文件夹。新建 `af3_时间_随机标识/`，写入 `输入名_part001.fasta`、`输入名_part001.json` 等，每批最多 30 个任务；尾批保留余数，每条链在输出 FASTA 中也保持完整一行，不按 60 字符折行。任务名使用原标题，统一空白并替换官网不支持的字符，超过 100 字符截断；同名时加序号，完整原标题和链长保存在 manifest 中。同名记录不会合并或丢失。官网 JSON 顶层是任务数组，使用 `proteinChain`、`count: 1`、空 `modelSeeds`、`dialect: alphafoldserver` 和 `version: 1`。
 3. 文件全部落盘后才启用导入。官网 History 清空搜索、仅选择 `Saved draft`，确认当前登录账号，再点“导入下一批为草稿”。**原生文件输入收到 JSON 就会上传序列做校验**，所以生成和导入严格分开；未确认上传不会触碰文件输入。
 4. 脚本核对原生 Upload JSON 的任务数、全部名称和无警告的全绿校验，只点击一次 `Submit ... as drafts`。关闭弹窗不算成功；随后跨页核对该批名称，逐任务写入已确认结果，全部出现才算该批导入完成。继续下一批需再次点击并确认。不会自动点击预测的 `Confirm and submit`。
 5. 部分保存、超时、停止、账号变化或本地写入失败会停止并保留记录，不自动重导；已发出保存的批次不因刷新而恢复为“待导入”。 明确记录为“尚未发送保存”的已结束尝试可恢复为待导入；中断或结果不明的保存仍保持锁定。“打开已有批次文件夹”读取 manifest 并校验 FASTA/JSON 文件；内容变化或文件不全时拒绝恢复。恢复后在原导入账号下点“核对官网历史 / 更新记录”，而不是再次上传。
-6. 核对功能只读取当前筛选里的任务，不把“没看到”推断成失败或完成。在官网选择 `Completed`、`In progress` 或 `Failed` 后手动核对，会更新相应任务状态；脚本自己的草稿提交成功也会记录已提交。导入账号逐批记录，不混用其他账号的历史。
+6. 核对功能只读取当前筛选里的任务，不把“没看到”推断成失败或完成。新批次只有在本次保存请求有持久记录、且实际看到草稿后才确认导入；仅有同名旧 Completed / Failed 记录不能证明本次已导入。确认导入后，在官网选择 `Completed`、`In progress` 或 `Failed` 手动核对时，还需匹配已保存任务 ID；缺少身份或不匹配时保留原状态并提示，不按复用标题猜测完成。4.0.0 的旧批次仍沿用原运行标识规则。脚本自己的草稿提交成功也会记录已提交；导入账号逐批记录，不混用其他账号的历史。
 
 清单关键字段：
 
@@ -131,7 +143,7 @@ python -I -X utf8 test_fasta.py
 git diff --check
 ```
 
-浏览器回归共 183 个场景（提交与账户 32、下载 127、FASTA 24）。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
+浏览器回归共 186 个场景（提交与账户 32、下载 127、FASTA 27）。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
 
 面板不显示时先核对版本、站点权限并确认只启用一份脚本。额度显示“无法识别”不等于额度为零。提交结果不确定、部分导入或锁定时，先人工核对官网记录，再决定后续操作；不要用反复启动代替确认。
 

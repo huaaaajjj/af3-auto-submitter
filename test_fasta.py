@@ -92,7 +92,7 @@ function visibleHistory(){const names=Array.from(document.querySelectorAll('#fil
 function renderHistory(){
  const jobs=visibleHistory();state.page=Math.min(state.page,Math.max(0,Math.ceil(jobs.length/10)-1));const body=document.getElementById('rows');body.replaceChildren();
  for(const job of jobs.slice(state.page*10,state.page*10+10)){
-  const row=document.createElement('tr');row.dataset.jobId=job.id;row.className='mat-mdc-row';
+  const row=document.createElement('tr');if(!state.omitIds)row.dataset.jobId=job.id;row.className='mat-mdc-row';
   const status=document.createElement('td');status.className='mat-column-status';status.textContent=job.status;const checkbox=document.createElement('input');checkbox.type='checkbox';status.append(checkbox);
   const name=document.createElement('td');name.className='mat-column-name';name.textContent=job.name;const date=document.createElement('td');date.textContent='2026-11-16 12:00';
   row.append(status,name,date);row.onclick=()=>{state.rowOpens++;if(id==='fasta-presubmit-record')showPrediction(job)};body.append(row);
@@ -196,27 +196,60 @@ async function assertNoRetry(uploadCount,saveCount){await pause(1500);assert(sta
 function assertSafe(){assert(state.predictions===0,'Prediction launched');assert(state.transports.length===0,'Unexpected transport '+state.transports);assert(!state.errors.length,state.errors.join('; '));assert(state.uploads.every(upload=>upload.saveClicks<=1),'Multiple draft-save clicks')}
 (async()=>{
  const script=document.createElement('script');script.src='/script.js';await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Userscript load failed'));document.head.append(script)});
- await until(()=>ui('fasta-section'),'FASTA panel');assert(ui('fasta-mode').value==='monomer','Default layout must be monomer');
+ await until(()=>ui('fasta-section'),'FASTA panel');assert(!ui('fasta-mode')&&!ui('fasta-tail'),'Protein layout and tail controls must be removed');
  if(id==='fasta-boundaries'){
   for(const count of [1,30,31,60,61]){const text=fasta(count);const dir=await generate(text);const m=await checkFiles(dir,text,count);assert(m.batches.map(batch=>batch.jobs.length).join(',')===Array.from({length:Math.ceil(count/30)},(_,i)=>Math.min(30,count-i*30)).join(','),'Boundary batch sizes wrong')}
   assert(state.uploads.length===0&&state.saves.length===0&&state.confirms.length===0,'Local generation uploaded data');
- }else if(id==='fasta-headers-tail'){
-  const headers=['duplicate header','duplicate header','long '+('Q'.repeat(180)),'long '+('Q'.repeat(180))];
-  const text=headers.map(header=>'>'+header+'\nacdefghiklmnpqrstvwy\n').join('');let dir=await generate(text,'odd file name.fa');let m=await checkFiles(dir,text,4);
-  assert(m.batches[0].jobs.every((job,i)=>job.header===headers[i]),'Headers not preserved in manifest');
-  assert(JSON.parse(dir.files.get(m.batches[0].jsonFile)).every(job=>job.sequences.length===1&&job.sequences[0].proteinChain.sequence===sequence),'Default monomer changed the sequence');
-  const receptor='A'.repeat(75),tail='WQWQWQWQWQ';const complex='>title_claims_ACDEFGHIKL\n'+receptor+tail+'\n';
-  ui('fasta-mode').value='complex';assert(ui('fasta-tail').value==='10','Reference tail default changed');dir=await generate(complex);m=await checkFiles(dir,complex,1);
-  const job=JSON.parse(dir.files.get(m.batches[0].jsonFile))[0];assert(job.sequences.length===2&&job.sequences[0].proteinChain.sequence===receptor&&job.sequences[1].proteinChain.sequence===tail,'Tail must come from actual sequence, not header');
-  assert(m.batches[0].jobs[0].chainLengths.join(',')==='75,10'&&m.settings.peptideLength===10,'Tail split not recorded');
-  ui('fasta-tail').value='3';dir=await generate('>tunable\n'+sequence+'\n');m=manifest(dir);assert(JSON.parse(dir.files.get(m.batches[0].jsonFile))[0].sequences[1].proteinChain.sequence==='VWY','Configured tail length ignored');
+ }else if(id==='fasta-lines-names'){
+  const headers=['duplicate header','duplicate header','long '+('Q'.repeat(180)),'long '+('Q'.repeat(180)),' spaced   title ','A'.repeat(99)+' description','job','job_2','job'];
+  const text=headers.map(header=>'>'+header+'\nacdefghiklmnpqrstvwy\n').join('');let dir=await generate(text,'odd file name.fa');let m=await checkFiles(dir,text,headers.length);
+  assert(m.batches[0].jobs.every((job,i)=>job.header===headers[i].trim()),'Headers not preserved in manifest');
+  const jobs=JSON.parse(dir.files.get(m.batches[0].jsonFile));
+  assert(jobs[0].name==='duplicate header'&&jobs[1].name==='duplicate header_2','Header is not used as the website job name');
+  assert(jobs.slice(-3).map(job=>job.name).join(',')==='job,job_2,job_3','Naturally suffixed headers collide with duplicate names');
+  assert(jobs[4].name==='spaced title'&&jobs[5].name==='A'.repeat(99),'Job names retain ambiguous whitespace after normalization/truncation');
+  assert(jobs.every(job=>job.sequences.length===1&&job.sequences[0].proteinChain.sequence===sequence),'Single-line protein changed');
+  const chains=['A'.repeat(75),'WQWQWQWQWQ','CDEF'];
+  const multi='\uFEFF>title_claims_ACDEFGHIKL\r\n'+chains[0]+'\r\n\r\nwqwqwqwqwq\r\nC D E F\r\n';
+  dir=await generate(multi);m=await checkFiles(dir,multi,1);
+  const job=JSON.parse(dir.files.get(m.batches[0].jsonFile))[0];
+  assert(job.name==='title_claims_ACDEFGHIKL'&&job.sequences.length===3,'Header or one-chain-per-line mapping failed');
+  assert(JSON.stringify(job.sequences.map(entity=>entity.proteinChain.sequence))===JSON.stringify(chains),'Chains were concatenated or split by a peptide heuristic');
+  assert(m.batches[0].jobs[0].chainLengths.join(',')==='75,10,4'&&m.settings.sequenceFormat==='protein-lines'&&!('mode' in m.settings)&&!('peptideLength' in m.settings),'Line format/chain lengths not recorded');
+  assert(dir.files.get(m.batches[0].fastaFile)==='>title_claims_ACDEFGHIKL\n'+chains.join('\n')+'\n','FASTA output rewrapped a chain and changed its boundaries');
+  const saved=dir.files.get(m.batches[0].fastaFile),roundtrip=await generate(saved);const roundM=manifest(roundtrip);
+  assert(JSON.stringify(JSON.parse(roundtrip.files.get(roundM.batches[0].jsonFile))[0].sequences)===JSON.stringify(job.sequences),'Reimporting saved FASTA changed chain boundaries');
+  await restore(dir);assert(!ui('fasta-import').disabled,'A saved three-chain job cannot be reopened');
+  const edges=await generate('>limit\n'+'A'.repeat(2700)+'\n'+'G'.repeat(300)+'\n>repeated\nACDE\nACDE\n');
+  const edgeJobs=JSON.parse(edges.files.get(manifest(edges).batches[0].jsonFile));
+  assert(edgeJobs[0].sequences.map(entity=>entity.proteinChain.sequence.length).join(',')==='2700,300','Valid per-chain/total boundaries were concatenated');
+  assert(edgeJobs[1].sequences.length===2&&edgeJobs[1].sequences.every(entity=>entity.proteinChain.count===1),'Identical lines were merged into one chain');
+ }else if(id==='fasta-legacy-restore'){
+  const generated=await generate(fasta(1)),original=new Map(generated.files);
+  for(const mode of ['monomer','complex']){
+   const dir=new MemoryDirectory('legacy-'+mode);dir.files=new Map(original);const m=manifest(dir),batch=m.batches[0],job=batch.jobs[0];
+   delete m.settings.sequenceFormat;m.settings.mode=mode;m.settings.peptideLength=mode==='complex'?10:null;
+   const chains=mode==='complex'?['A'.repeat(75),'W'.repeat(10)]:['A'.repeat(85)];
+   job.name='af3_'+m.runId+'_00001_legacy';job.header='legacy';job.chainLengths=chains.map(chain=>chain.length);
+   const json=JSON.stringify([{name:job.name,modelSeeds:[],sequences:chains.map(sequence=>({proteinChain:{sequence,count:1}})),dialect:'alphafoldserver',version:1}],null,2)+'\n';
+   const fastaText='>legacy\n'+chains.join('').match(/.{1,60}/g).join('\n')+'\n';
+   batch.jsonSha256=await hash(json);batch.fastaSha256=await hash(fastaText);dir.files.set(batch.jsonFile,json);dir.files.set(batch.fastaFile,fastaText);dir.files.set('manifest.json',JSON.stringify(m));
+   await restore(dir);
+   assert(!ui('fasta-import').disabled&&dir.files.get(batch.jsonFile)===json,'Restore reinterpreted a 4.0.0 '+mode+' job using new line boundaries');
+  }
+ }else if(id==='fasta-multichain-import'){
+  const text=Array.from({length:31},(_,i)=>'>complex_'+i+'\nACDEFG\nHIKL\nMNPQRSTVWY\n').join('');
+  const dir=await generate(text),m=await checkFiles(dir,text,31);
+  assert(m.batches.map(batch=>batch.jobs.length).join(',')==='30,1','Chains were counted as separate jobs for batching');
+  await restore(dir);await clickFasta('import');await clickFasta('import');
+  assert(manifest(dir).importComplete&&manifest(dir).summary.imported===31,'Multichain batch import did not reconcile all jobs');
+  assert(state.saves.length===2&&state.uploads.every(upload=>upload.jobs.every(job=>job.sequences.length===3&&job.sequences.every(chain=>Object.keys(chain).join(',')==='proteinChain'))),'Upload changed chain counts or included a non-protein entity');
  }else if(id==='fasta-invalid'){
   const invalid=['ACDE\n','>\nACDE\n','>   \nACDE\n','>empty\n>valid\nACDE\n','>valid\nACDE\n>empty\n',
    ...['B','Z','J','O','U','X','*','-',':','1','α','ß','ſ','ı','Ａ'].map(letter=>'>good\nACDE\n>bad\nACD'+letter+'E\n'),'>too-long\n'+'A'.repeat(2701)];
   for(const text of invalid){const before=parentDir.directories.size;choose(text);await clickFasta('generate');assert(parentDir.directories.size===before,'Invalid FASTA silently skipped/accepted a record');assert(/FASTA|amino|residue|header|chain/i.test(ui('fasta-status').textContent),'No invalid-FASTA diagnostic')}
   choose(new Uint8Array([62,97,10,255]));await clickFasta('generate');assert(parentDir.directories.size===0,'Invalid UTF-8 accepted');
-  ui('fasta-mode').value='complex';for(const tail of ['0','1.5','20','21']){ui('fasta-tail').value=tail;choose(fasta(1));await clickFasta('generate');assert(parentDir.directories.size===0,'Invalid tail split accepted: '+tail)}
-  ui('fasta-tail').value='400';choose('>total\n'+'A'.repeat(3001));await clickFasta('generate');assert(parentDir.directories.size===0,'Total residue limit bypassed');
+  choose('>total\n'+'A'.repeat(2700)+'\n'+'G'.repeat(301)+'\n');await clickFasta('generate');assert(parentDir.directories.size===0,'Total residue limit bypassed across chains');
   assert(state.uploads.length===0,'Invalid input uploaded');
  }else if(id==='fasta-local-errors'){
   await clickFasta('generate');assert(state.pickers===0&&/Choose a non-empty/.test(ui('fasta-status').textContent),'Missing input did not fail locally');
@@ -277,6 +310,21 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
    assert(state.commits.length===commits&&bad.files.get('manifest.json')===text&&ui('fasta-import').disabled,'Incomplete or reordered source records were accepted');
   }
   assert(!state.uploads.length&&!state.saves.length,'A truncated manifest uploaded data');
+ }else if(id==='fasta-old-completed-name'){
+  const dir=await generate(fasta(1)),job=manifest(dir).batches[0].jobs[0];
+  addHistory([{name:job.name}], 'Completed', owner);state.behavior='validation-timeout';ui('fasta-import').click();
+  await until(()=>state.uploads[0]?.changes===1,'Native validation started');ui('fasta-stop').click();await settled();
+  filters(['Completed']);await clickFasta('sync');const m=manifest(dir);
+  assert(!m.importComplete&&!m.predictionComplete&&m.summary.imported===0,'Older Completed job with reused title falsely completed import');
+  assert(state.saves.length===0&&state.predictions===0,'Reused-title recovery uploaded or launched prediction');
+  state.history.find(row=>row.name===job.name).status='Saved draft';filters(['Saved draft']);await clickFasta('sync');
+  assert(!manifest(dir).importComplete&&manifest(dir).summary.imported===0,'Same-name draft without this run sending a save falsely confirmed import');
+  await restore(dir);state.history=state.history.filter(row=>row.name!==job.name);state.omitIds=true;filters(['Saved draft']);state.behavior='success';
+  await clickFasta('import');assert(manifest(dir).importComplete&&!manifest(dir).batches[0].jobs[0].jobId,'No-ID draft fixture did not import');
+  state.history.find(row=>row.name===job.name).status='Completed';filters(['Completed']);state.omitIds=false;renderHistory();
+  await clickFasta('sync');
+  assert(!manifest(dir).predictionComplete&&manifest(dir).summary.completed===0,'Prediction without a bound draft ID was guessed from a reused title');
+  assert(/job IDs/.test(ui('fasta-status').textContent),'Missing task-identity diagnostic for reused title');
  }else if(id==='fasta-not-saved-restore'){
   const dir=await generate(fasta(1));state.stopAtSaveJournal=true;
   await clickFasta('import');
@@ -375,12 +423,12 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
 
 
 SCENARIOS = [
-    'fasta-boundaries', 'fasta-headers-tail', 'fasta-invalid', 'fasta-local-errors',
+    'fasta-boundaries', 'fasta-lines-names', 'fasta-legacy-restore', 'fasta-multichain-import', 'fasta-invalid', 'fasta-local-errors',
     'fasta-restore', 'fasta-import-happy', 'fasta-import-tampered', 'fasta-journal-error',
     'fasta-partial', 'fasta-unclosed', 'fasta-warning', 'fasta-validation-timeout',
     'fasta-stop-validation', 'fasta-stop-save', 'fasta-account-validation',
     'fasta-account-save', 'fasta-account-confirm', 'fasta-mutual-exclusion',
-    'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-not-saved-restore',
+    'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-not-saved-restore',
     'fasta-manifest-limit', 'fasta-batch-limit', 'fasta-presubmit-record',
 ]
 SHORT_CASES = {'fasta-partial', 'fasta-unclosed', 'fasta-validation-timeout'}

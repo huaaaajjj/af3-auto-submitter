@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      4.0.0
+// @version      4.0.1
 // @description  正式版：FASTA 每 30 条分批保存、带 manifest 的草稿导入、提交确认、日期折叠勾选及本地账户记录。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '4.0.0';
+    const SCRIPT_VERSION = '4.0.1';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -729,10 +729,10 @@
 
     // FASTA data stays local until the explicit native-upload confirmation.
     const fastaEnglish = {
-        fastaTitle: 'FASTA batches', fastaHelp: '30 records per batch. Save FASTA, Server JSON and manifest locally before uploading drafts. No prediction is launched.',
-        fastaFile: 'FASTA file', fastaMode: 'Protein layout', fastaMonomer: 'One chain per record', fastaComplex: 'Receptor + tail peptide (reference script)',
-        fastaTail: 'Tail peptide length', fastaGenerate: 'Generate and choose folder', fastaRestore: 'Open existing batch folder', fastaImport: 'Import next batch as drafts',
-        fastaSync: 'Check history / update records', fastaStop: 'Stop', fastaIdle: 'Choose a FASTA file. Each record is one job; tail mode splits its actual sequence, not its title.',
+        fastaTitle: 'FASTA batches', fastaHelp: 'Each >name is a job title; each following sequence line is a protein chain. 30 jobs per batch. Save locally before uploading drafts; no prediction is launched.',
+        fastaFile: 'FASTA file',
+        fastaGenerate: 'Generate and choose folder', fastaRestore: 'Open existing batch folder', fastaImport: 'Import next batch as drafts',
+        fastaSync: 'Check history / update records', fastaStop: 'Stop', fastaIdle: 'Each >name starts a job. Each non-empty sequence line is one protein chain; a wrapped line is a new chain. Only proteins are generated.',
         fastaLocal: 'Saved to {folder}. Generated {total}; imported {imported}; submitted {submitted}; completed {completed}; failed {failed}.',
         fastaBatch: 'Batch {index}: {count} jobs · {status}', fastaBusy: 'Working…', fastaReady: 'Ready', fastaImported: 'Import confirmed', fastaUncertain: 'Needs history check',
         fastaRunning: 'Reading / saving local files…', fastaChecking: 'Checking website history…', fastaUploading: 'Validating batch {index} on the website…',
@@ -740,7 +740,7 @@
         fastaUnsupported: 'This browser cannot choose writable folders. Use a supported Edge/Chrome window; no files were uploaded.',
         fastaChooseFile: 'Choose a non-empty UTF-8 FASTA file (up to 50 MiB).', fastaInvalid: 'FASTA record / line {record}: {reason}',
         fastaSequence: 'Use only the 20 standard amino acids. Gaps, *, ambiguous letters and chain separators are not silently removed.',
-        fastaLength: 'Reference limits: each chain ≤ 2700 residues, total ≤ 3000; a tail split requires length greater than the tail.',
+        fastaLength: 'Each job needs at least one protein chain; each chain ≤ 2700 residues and all chains together ≤ 3000.',
         fastaDirectory: 'Choose the batch folder containing manifest.json. Missing, changed or unsupported files cannot be resumed.',
         fastaJournalChanged: 'Another page changed or is writing this manifest. Reopen the folder and check history; the newer journal was not overwritten.',
         fastaManifestLimit: 'The tracking manifest exceeds 50 MiB or 10,000 batches. Use a smaller input; unsupported runs are not written.',
@@ -750,20 +750,21 @@
         fastaCloseDialog: 'Close website dialogs and menus before checking or importing records.',
         fastaConfirm: 'Upload batch {index} ({count} jobs) to {account}? Selecting the JSON sends sequences for website validation. Only drafts will be saved; no prediction is launched.',
         fastaExisting: 'A batch task name already exists in history. Nothing was uploaded. Check records instead of importing it again.',
+        fastaIdentity: 'A reused task title cannot identify a prediction without matching saved job IDs. Completion was not recorded; verify the website history.',
         fastaPreview: 'Native upload validation failed or did not show exactly the expected names, count and all-green job checks. No draft-save retry was sent.',
         fastaTimeout: 'Import is unconfirmed or partial. Check history; do not automatically reimport. {detail}',
         fastaStopped: 'Stopped. Saved records are retained; any draft-save request already sent still needs history verification.',
         fastaChanged: 'A saved batch file or manifest is invalid/changed. Generate a new run instead of importing mismatched files.',
-        fastaInputChanged: 'Input/settings changed. Generate and save a new run or reopen its batch folder before importing.',
-        fastaSummary: 'Layout: {mode}; records {count}; batches {batches}; first job chain lengths {lengths}.',
+        fastaInputChanged: 'Input changed. Generate and save a new run or reopen its batch folder before importing.',
+        fastaSummary: 'Protein jobs {count}; batches {batches}; first job chain lengths {lengths}.',
     };
     Object.assign(I18N.en, fastaEnglish);
     for (const lang of Object.keys(I18N)) if (lang !== 'en') Object.assign(I18N[lang], fastaEnglish);
     Object.assign(I18N.zh, {
-        fastaTitle: 'FASTA 分批导入', fastaHelp: '每批 30 条，先保存 FASTA、官网 JSON 和 manifest，再明确确认上传草稿。不会启动预测。',
-        fastaFile: 'FASTA 文件', fastaMode: '蛋白链模式', fastaMonomer: '整条序列作为单链', fastaComplex: '受体 + 末端肽（参考脚本）',
-        fastaTail: '末端肽长度', fastaGenerate: '生成并选择保存目录', fastaRestore: '打开已有批次文件夹', fastaImport: '导入下一批为草稿',
-        fastaSync: '核对官网历史 / 更新记录', fastaStop: '停止', fastaIdle: '每条记录对应一个任务；复合物模式切分实际序列末端，不从标题猜测肽序列。',
+        fastaTitle: 'FASTA 分批导入', fastaHelp: '>名称作为任务名，后续每行序列是一条蛋白链；每批 30 个任务。先保存 FASTA、官网 JSON 和 manifest，再确认上传草稿，不启动预测。',
+        fastaFile: 'FASTA 文件',
+        fastaGenerate: '生成并选择保存目录', fastaRestore: '打开已有批次文件夹', fastaImport: '导入下一批为草稿',
+        fastaSync: '核对官网历史 / 更新记录', fastaStop: '停止', fastaIdle: '每个 >名称开始新任务；每个非空序列行是一条链，不拼接、不自动拆肽。只支持纯蛋白，长链请勿手动折行。',
         fastaLocal: '已保存至 {folder}。生成 {total}，已导入 {imported}，已提交 {submitted}，已完成 {completed}，失败 {failed}。',
         fastaBatch: '第 {index} 批：{count} 个 · {status}', fastaBusy: '处理中…', fastaReady: '待导入', fastaImported: '已确认导入', fastaUncertain: '需核对历史',
         fastaRunning: '正在读取 / 保存本地文件…', fastaChecking: '正在核对官网历史…', fastaUploading: '正在官网校验第 {index} 批…',
@@ -771,7 +772,7 @@
         fastaUnsupported: '当前浏览器无法选择可写文件夹，请使用支持此功能的 Edge/Chrome 窗口。未上传任何文件。',
         fastaChooseFile: '请选择非空 UTF-8 FASTA 文件（最大 50 MiB）。', fastaInvalid: 'FASTA 记录 / 行 {record}：{reason}',
         fastaSequence: '只接受 20 种标准氨基酸；不会静默删除缺口、*、不明确字母或链分隔符。',
-        fastaLength: '参考脚本限制：每链不超过 2700、合计不超过 3000 个残基；复合物序列必须长于末端肽。',
+        fastaLength: '每个任务至少一条蛋白链，每链不超过 2700 个残基，所有链合计不超过 3000 个。',
         fastaDirectory: '请选择包含 manifest.json 的批次文件夹；文件缺失、内容改变或格式不支持时不能恢复。',
         fastaJournalChanged: '清单已被其他页面修改或正在写入；未覆盖新记录。请重新打开目录并核对历史。',
         fastaManifestLimit: '跟踪清单超过 50 MiB 或 10000 批，请缩小输入；不写入无法恢复的批次。',
@@ -781,12 +782,13 @@
         fastaCloseDialog: '请先关闭官网已有弹窗和菜单，再核对或导入记录。',
         fastaConfirm: '将第 {index} 批（{count} 个任务）上传至 {account}？选择 JSON 就会发送序列进行官网校验；仅保存草稿，不启动预测。',
         fastaExisting: '官网已存在本批任务名称，未上传。请核对记录，不要重复导入。',
+        fastaIdentity: '任务标题可能被复用，缺少可匹配的已保存任务 ID，未记录预测完成。请核对官网历史，不按名称猜认。',
         fastaPreview: '官网上传校验未通过，或名称、数量、全绿校验状态不符。未再次点击草稿保存。',
         fastaTimeout: '导入结果不明确或仅部分保存。请核对历史，不自动重导。{detail}',
         fastaStopped: '已停止并保留本地记录；已发送的草稿保存请求仍需核对历史。',
         fastaChanged: '批次文件或 manifest 格式错误 / 内容已改变，请重新生成，不导入不匹配的文件。',
-        fastaInputChanged: '输入或模式已改变；请生成保存新批次，或重新打开原批次文件夹后再导入。',
-        fastaSummary: '模式：{mode}；记录 {count}，批次 {batches}；首条任务各链长度：{lengths}。',
+        fastaInputChanged: '输入已改变；请生成保存新批次，或重新打开原批次文件夹后再导入。',
+        fastaSummary: '蛋白任务 {count} 个，批次 {batches}；首条任务各链长度：{lengths}。',
     });
     const FASTA_IMPORT_TIMEOUT = 60000;
     const FASTA_FILE_LIMIT = 50 * 1024 * 1024;
@@ -799,29 +801,27 @@
         return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
     }
 
-    function parseFasta(text, mode, tail) {
+    function parseFasta(text) {
         const records = [];
-        for (const [index, raw] of text.replace(/^﻿/, '').split(/\r?\n/).entries()) {
+        for (const [index, raw] of text.replace(/^\uFEFF/, '').split(/\r\n|\r|\n/).entries()) {
             const line = raw.trim();
             if (!line) continue;
             if (line.startsWith('>')) {
                 if (!line.slice(1).trim()) throw new Error(t('fastaInvalid', { record: index + 1, reason: 'Empty header' }));
                 if (records.length >= 30 * FASTA_MAX_BATCHES) throw new Error(t('fastaManifestLimit'));
-                records.push({ header: line.slice(1).trim(), sequence: '', line: index + 1 });
+                records.push({ header: line.slice(1).trim(), chains: [], line: index + 1 });
             } else {
                 if (!records.length) throw new Error(t('fastaInvalid', { record: index + 1, reason: 'Sequence before first > header' }));
-                records[records.length - 1].sequence += line.replace(/\s/g, '');
+                const chain = line.replace(/\s/g, '');
+                // Validate ASCII before uppercasing: Unicode ß must not become two serines.
+                if (!/^[ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy]+$/.test(chain)) throw new Error(t('fastaInvalid', { record: index + 1, reason: t('fastaSequence') }));
+                records[records.length - 1].chains.push(chain.toUpperCase());
             }
         }
         if (!records.length) throw new Error(t('fastaChooseFile'));
         for (const record of records) {
-            // Validate ASCII before uppercasing: Unicode ß must not become two serines.
-            if (!/^[ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy]+$/.test(record.sequence)) throw new Error(t('fastaInvalid', { record: record.line, reason: t('fastaSequence') }));
-            record.sequence = record.sequence.toUpperCase();
-            const seq = record.sequence;
-            record.chains = mode === 'complex' ? [seq.slice(0, -tail), seq.slice(-tail)] : [seq];
-            if ((mode === 'complex' && (!Number.isInteger(tail) || tail < 1 || tail >= seq.length)) ||
-                record.chains.some(chain => !chain.length || chain.length > 2700) || seq.length > 3000) {
+            if (!record.chains.length || record.chains.some(chain => chain.length > 2700) ||
+                record.chains.reduce((sum, chain) => sum + chain.length, 0) > 3000) {
                 throw new Error(t('fastaInvalid', { record: record.line, reason: t('fastaLength') }));
             }
         }
@@ -964,8 +964,11 @@
         const jobs = JSON.parse(text);
         if (!Array.isArray(jobs) || jobs.length !== batch.jobs.length || jobs.some((job, i) =>
             job.name !== batch.jobs[i].name || job.dialect !== 'alphafoldserver' || job.version !== 1 ||
-            !Array.isArray(job.modelSeeds) || job.modelSeeds.length || !Array.isArray(job.sequences) || ![1, 2].includes(job.sequences.length) ||
-            job.sequences.some(chain => chain.proteinChain?.count !== 1 || !/^[ACDEFGHIKLMNPQRSTVWY]+$/.test(chain.proteinChain.sequence) || chain.proteinChain.sequence.length > 2700))) {
+            !Array.isArray(job.modelSeeds) || job.modelSeeds.length || !Array.isArray(job.sequences) || !job.sequences.length ||
+            !Array.isArray(batch.jobs[i].chainLengths) || job.sequences.length !== batch.jobs[i].chainLengths.length ||
+            job.sequences.some((chain, position) => !chain || Object.keys(chain).length !== 1 || chain.proteinChain?.count !== 1 ||
+                typeof chain.proteinChain.sequence !== 'string' || !/^[ACDEFGHIKLMNPQRSTVWY]+$/.test(chain.proteinChain.sequence) ||
+                chain.proteinChain.sequence.length > 2700 || chain.proteinChain.sequence.length !== batch.jobs[i].chainLengths[position]))) {
             throw new Error(t('fastaChanged'));
         }
         if (jobs.some(job => job.sequences.reduce((sum, chain) => sum + chain.proteinChain.sequence.length, 0) > 3000)) throw new Error(t('fastaChanged'));
@@ -977,8 +980,6 @@
         if (typeof window.showDirectoryPicker !== 'function') { fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
         const file = getUiElement('af3-fasta-file')?.files[0];
         if (!file?.size || file.size > FASTA_FILE_LIMIT) { fastaState.message = t('fastaChooseFile'); renderFastaSection(); return; }
-        const mode = getUiElement('af3-fasta-mode').value;
-        const tail = Number(getUiElement('af3-fasta-tail').value);
         fastaState.busy = true; fastaState.stop = false; fastaState.context = null;
         fastaState.message = t('fastaRunning'); renderFastaSection(); checkSystemStatus();
         try {
@@ -986,14 +987,14 @@
             const parent = await window.showDirectoryPicker({ mode: 'readwrite' });
             const sourceBytes = await file.arrayBuffer();
             const text = new TextDecoder('utf-8', { fatal: true }).decode(sourceBytes);
-            const records = parseFasta(text, mode, tail);
+            const records = parseFasta(text);
             fastaCheck();
             const runId = new Date().toISOString().replace(/\D/g, '').slice(0, 14) + '_' + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
             const folder = 'af3_' + runId;
             const stem = (file.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 60) || 'input');
             const manifest = { format: 'af3-fasta-batches', version: 1, revision: 0, runId, createdAt: new Date().toISOString(), source: { name: file.name, sha256: await fastaHash(sourceBytes), records: records.length },
-                settings: { batchSize: 30, mode, peptideLength: mode === 'complex' ? tail : null, chainLimit: 2700, totalLimit: 3000 }, generationComplete: false, batches: [] };
-            const outputs = [];
+                settings: { batchSize: 30, sequenceFormat: 'protein-lines', chainLimit: 2700, totalLimit: 3000 }, generationComplete: false, batches: [] };
+            const outputs = [], names = new Set(), suffixes = new Map();
             for (let start = 0; start < records.length; start += 30) {
                 fastaCheck();
                 const batch = { index: manifest.batches.length + 1, status: 'ready', account: null, attempts: [], jobs: [] };
@@ -1002,12 +1003,17 @@
                 const part = records.slice(start, start + 30);
                 const jobs = part.map((record, i) => {
                     const ordinal = start + i + 1;
-                    const suffix = record.header.replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'seq';
-                    const name = ('af3_' + runId + '_' + String(ordinal).padStart(5, '0') + '_' + suffix).slice(0, 100);
+                    const baseName = (record.header.replace(/\s+/g, ' ').replace(/[^A-Za-z0-9 _:-]+/g, '_').replace(/^_+|_+$/g, '').trim() || 'seq' + ordinal).slice(0, 100).trim();
+                    let name = baseName, serial = suffixes.get(baseName) || 1;
+                    while (names.has(name)) {
+                        const suffix = '_' + (++serial);
+                        name = baseName.slice(0, 100 - suffix.length) + suffix;
+                    }
+                    names.add(name); suffixes.set(baseName, serial);
                     batch.jobs.push({ record: ordinal, header: record.header, name, chainLengths: record.chains.map(chain => chain.length), importStatus: 'pending', predictionStatus: 'unknown', importedAt: null, submittedAt: null, completedAt: null, lastSeenAt: null, jobId: null });
                     return { name, modelSeeds: [], sequences: record.chains.map(sequence => ({ proteinChain: { sequence, count: 1 } })), dialect: 'alphafoldserver', version: 1 };
                 });
-                const fasta = part.map(record => '>' + record.header + '\n' + record.sequence.match(/.{1,60}/g).join('\n')).join('\n') + '\n';
+                const fasta = part.map(record => '>' + record.header + '\n' + record.chains.join('\n')).join('\n') + '\n';
                 const json = JSON.stringify(jobs, null, 2) + '\n';
                 if (new Blob([fasta]).size > FASTA_FILE_LIMIT || new Blob([json]).size > FASTA_FILE_LIMIT) throw new Error(t('fastaChooseFile'));
                 batch.fastaSha256 = await fastaHash(fasta); batch.jsonSha256 = await fastaHash(json);
@@ -1028,7 +1034,7 @@
             }
             manifest.generationComplete = true;
             await persistFastaManifest();
-            fastaState.message = t('fastaSummary', { mode: t(mode === 'complex' ? 'fastaComplex' : 'fastaMonomer'), count: records.length, batches: manifest.batches.length, lengths: records[0].chains.map(chain => chain.length).join(' + ') });
+            fastaState.message = t('fastaSummary', { count: records.length, batches: manifest.batches.length, lengths: records[0].chains.map(chain => chain.length).join(' + ') });
         } catch (error) { fastaState.message = error.name === 'AbortError' || isUserStopError(error) ? t('fastaStopped') : error.message; }
         finally { fastaState.busy = false; renderFastaSection(); checkSystemStatus(); }
     }
@@ -1043,7 +1049,8 @@
             if (file.size > FASTA_MANIFEST_LIMIT) throw new Error(t('fastaManifestLimit'));
             const manifest = JSON.parse(await file.text());
             if (manifest?.format !== 'af3-fasta-batches' || manifest.version !== 1 || !manifest.generationComplete ||
-                manifest.settings?.batchSize !== 30 || !['monomer', 'complex'].includes(manifest.settings.mode) ||
+                manifest.settings?.batchSize !== 30 || (manifest.settings.sequenceFormat !== 'protein-lines' &&
+                    (manifest.settings.sequenceFormat !== undefined || !['monomer', 'complex'].includes(manifest.settings.mode))) ||
                 !Number.isSafeInteger(manifest.revision) || manifest.revision < 1 || manifest.revision >= Number.MAX_SAFE_INTEGER ||
                 !Number.isSafeInteger(manifest.source?.records) || manifest.source.records < 1 || manifest.source.records > 30 * FASTA_MAX_BATCHES ||
                 !/^[\d]{14}_[a-f\d]{8}$/.test(manifest.runId) || !Array.isArray(manifest.batches) ||
@@ -1054,7 +1061,7 @@
                     !Array.isArray(batch.jobs) || batch.jobs.length !== Math.min(30, manifest.source.records - i * 30) || !Array.isArray(batch.attempts) ||
                     (batch.account !== null && !normalizeAccountEmail(batch.account))) throw new Error(t('fastaChanged'));
                 for (const [position, job] of batch.jobs.entries()) {
-                    if (job.record !== i * 30 + position + 1 || typeof job.name !== 'string' || !job.name.startsWith('af3_' + manifest.runId + '_') || !/^[A-Za-z0-9_-]{1,100}$/.test(job.name) || names.has(job.name) ||
+                    if (job.record !== i * 30 + position + 1 || typeof job.name !== 'string' || (manifest.settings.sequenceFormat !== 'protein-lines' && !job.name.startsWith('af3_' + manifest.runId + '_')) || !/^[A-Za-z0-9 _:-]{1,100}$/.test(job.name) || names.has(job.name) ||
                         typeof job.header !== 'string' || !['pending', 'confirmed'].includes(job.importStatus) ||
                         !['unknown', 'draft', 'submitted', 'in_progress', 'completed', 'failed'].includes(job.predictionStatus)) throw new Error(t('fastaChanged'));
                     names.add(job.name);
@@ -1077,8 +1084,6 @@
                 await persistFastaManifest();
             } catch (error) { Object.assign(fastaState, previous); throw error; }
             getUiElement('af3-fasta-file').value = '';
-            getUiElement('af3-fasta-mode').value = manifest.settings.mode;
-            getUiElement('af3-fasta-tail').value = manifest.settings.peptideLength || 10;
             fastaState.message = t('fastaDirectory');
         } catch (error) {
             if (error.name !== 'AbortError') fastaState.saved = false;
@@ -1096,6 +1101,13 @@
                 if (matches.length > 1) throw new Error(t('fastaExisting'));
                 const match = matches[0];
                 if (!match) continue; // Absence under a filter never proves deletion, failure or completion.
+                const attempt = batch.attempts.at(-1);
+                // A pending job is confirmed only by a draft seen after this run durably sent its save.
+                // Completed/Failed history with a reused title cannot prove this import happened.
+                if (job.importStatus !== 'confirmed' &&
+                    (match.status !== 'draft' || !attempt?.saveClickedAt || attempt.account !== account || attempt.result === 'not_saved')) continue;
+                if (fastaState.manifest.settings.sequenceFormat === 'protein-lines' && match.status !== 'draft' &&
+                    (!job.jobId || !match.jobId)) throw new Error(t('fastaIdentity'));
                 if (job.jobId && match.jobId && job.jobId !== match.jobId) throw new Error(t('fastaChanged'));
                 job.importStatus = 'confirmed'; job.importedAt ||= now; job.lastSeenAt = now; job.modified = match.modified;
                 job.jobId ||= match.jobId;
@@ -1245,7 +1257,7 @@
         if (!section) return;
         section.querySelectorAll('[data-fasta-i18n]').forEach(node => { node.textContent = t(node.dataset.fastaI18n); });
         const busy = fastaState.busy || isRunning || downloadState.busy;
-        for (const id of ['file', 'mode', 'tail', 'generate', 'restore', 'import', 'sync']) {
+        for (const id of ['file', 'generate', 'restore', 'import', 'sync']) {
             const node = getUiElement('af3-fasta-' + id);
             if (node) node.disabled = busy || (['import', 'sync'].includes(id) && (!fastaState.saved || !fastaState.manifest?.generationComplete));
         }
@@ -1272,11 +1284,7 @@
         const help = text('p', 'fastaHelp'); help.className = 'af3-help'; section.appendChild(help);
         const field = (id, key, node) => { const label = document.createElement('label'); label.className = 'af3-field'; label.append(text('span', key), node); node.id = 'af3-fasta-' + id; section.appendChild(label); };
         const file = document.createElement('input'); file.type = 'file'; file.accept = '.fasta,.fa,.faa,text/plain'; field('file', 'fastaFile', file);
-        const mode = document.createElement('select');
-        for (const [value, key] of [['monomer', 'fastaMonomer'], ['complex', 'fastaComplex']]) { const option = text('option', key); option.value = value; mode.appendChild(option); }
-        field('mode', 'fastaMode', mode);
-        const tail = document.createElement('input'); tail.type = 'number'; tail.min = '1'; tail.max = '2699'; tail.step = '1'; tail.value = '10'; field('tail', 'fastaTail', tail);
-        for (const control of [file, mode, tail]) control.onchange = () => {
+        file.onchange = () => {
             if (!fastaState.manifest || fastaState.busy) return;
             fastaState.inputChanged = true; fastaState.message = t('fastaInputChanged'); renderFastaSection();
         };
