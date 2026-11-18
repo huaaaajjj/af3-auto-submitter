@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      4.0.3
+// @version      4.0.4
 // @description  正式版：FASTA 每 30 条分批保存、带 manifest 的草稿导入、提交确认、日期折叠勾选及本地账户记录。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '4.0.3';
+    const SCRIPT_VERSION = '4.0.4';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -618,6 +618,7 @@
         downloadNeedCompleted: 'In the website history, select only Completed before finding jobs.',
         downloadNoHistory: 'Cannot identify one history table with Name and Modified columns.',
         downloadPageError: 'Pagination did not finish or repeated a page. Find jobs again after checking the website.',
+        historyScanSizeError: 'Could not safely set 100 items per page. Check the history paginator before scanning again.',
         downloadContextChanged: 'The history filters, search, order, or page size changed. Find jobs again.',
         downloadMenuBusy: 'A website menu or dialog is open. Close it before finding or selecting jobs.',
         downloadMenuIdentity: 'Could not safely read or close this job’s result menu. Check the website and find jobs again.',
@@ -664,6 +665,7 @@
             downloadNeedCompleted: '请先在官网历史列表中仅选中 Completed，再查找任务。',
             downloadNoHistory: '未能识别唯一的 Name / Modified 历史列表。',
             downloadPageError: '分页未完成或重复，请核对官网后重新查找任务。',
+            historyScanSizeError: '未能安全切换为每页 100 个，请检查官网分页控件后重新扫描。',
             downloadContextChanged: '官网的筛选、搜索、排序或每页数量已变化，请重新查找任务。',
             downloadMenuBusy: '官网菜单或对话框已打开，请先关闭，再查找或应用勾选。',
             downloadMenuIdentity: '未能安全读取或关闭该任务的结果菜单，已停止；请检查官网后重新查找。',
@@ -944,7 +946,7 @@
         if (!selected.length) throw new Error(t('fastaContextFilters'));
         if (selected.includes('examples')) throw new Error(t('fastaContextExamples'));
         const size = root.querySelector('mat-paginator .mat-mdc-select-value, mat-paginator select');
-        return JSON.stringify({ url: location.href, account, selected, size: size?.value || size?.textContent || previous?.size || '',
+        return JSON.stringify({ url: location.href, account, selected, size: size?.tagName === 'SELECT' ? (/^\d+$/.test(size.value) ? size.value : downloadText(size.selectedOptions[0])) : downloadText(size) || previous?.size || '',
             sort: loading ? previous?.sort || [] : Array.from(root.querySelectorAll('th[aria-sort]'), node => [downloadText(node), node.getAttribute('aria-sort')]) });
     }
 
@@ -1201,6 +1203,7 @@
             if (!checkOnly && (selected.length !== 1 || selected[0] !== 'saved draft')) throw new Error(t('fastaNeedDraft'));
             if (!checkOnly && !confirm(t('fastaConfirm', { index: batch.index, count: batch.jobs.length, account }))) return;
             fastaCheck();
+            await selectHistoryScanPageSize(fastaState, getFastaContext, 'size', fastaCheck);
             const before = await readFastaHistory();
             if (checkOnly) {
                 fastaState.message = t('fastaUpdating'); renderFastaSection();
@@ -2381,6 +2384,95 @@
         return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
     }
 
+    async function selectHistoryScanPageSize(state, getContext, sizeKey, checkActive) {
+        checkActive();
+        const { root } = getDownloadHistory(true);
+        const paginators = Array.from(root.querySelectorAll('mat-paginator')).filter(downloadVisible);
+        if (!paginators.length) return; // Unpaginated lists need no page-size change.
+        if (paginators.length !== 1) throw new Error(t('historyScanSizeError'));
+        const paginator = paginators[0];
+        const controls = Array.from(paginator.querySelectorAll('select, mat-select')).filter(downloadVisible);
+        if (controls.length !== 1) throw new Error(t('historyScanSizeError'));
+        const control = controls[0], before = state.context, context = JSON.parse(before);
+        if (context[sizeKey] === '100') return;
+        if (control.disabled || control.getAttribute('aria-disabled') === 'true') throw new Error(t('historyScanSizeError'));
+        let selected = false, seenSize = false, opened = false, panel = null, panelId = '';
+        const verify = () => {
+            // Only our pending size change may differ; never recapture account/filter/sort snapshots.
+            if (selected && !seenSize && JSON.parse(getContext())[sizeKey] === context[sizeKey]) {
+                state.context = before;
+                try { checkActive(); } finally { state.context = JSON.stringify({ ...context, [sizeKey]: '100' }); }
+            } else checkActive();
+            if (!downloadVisible(control) || !paginator.contains(control)) throw new Error(t('historyScanSizeError'));
+        };
+        const expectSize = () => {
+            checkActive();
+            selected = true;
+            state.context = JSON.stringify({ ...context, [sizeKey]: '100' });
+        };
+        try {
+            if (control.tagName === 'SELECT') {
+                const options = Array.from(control.options).filter(option =>
+                    !option.disabled && !option.parentElement?.disabled && (option.value === '100' || downloadText(option) === '100'));
+                if (options.length !== 1) throw new Error(t('historyScanSizeError'));
+                expectSize();
+                control.value = options[0].value;
+                control.dispatchEvent(new Event('change', { bubbles: true }));
+            } else {
+                if (control.getAttribute('aria-expanded') === 'true') throw new Error(t('downloadMenuBusy'));
+                opened = true; control.click();
+                const deadline = Date.now() + 8000;
+                while (Date.now() < deadline) {
+                    const ids = [...new Set([control.getAttribute('aria-controls'), control.getAttribute('aria-owns')].filter(Boolean).flatMap(id => id.split(/\s+/)))];
+                    if (ids.length > 1 || (panelId && ids[0] !== panelId)) throw new Error(t('historyScanSizeError'));
+                    if (ids.length === 1) {
+                        panelId = ids[0];
+                        const current = document.getElementById(panelId);
+                        if (panel && current !== panel) throw new Error(t('historyScanSizeError'));
+                        panel = current;
+                    }
+                    verify();
+                    if (panel && downloadVisible(panel)) {
+                        if (panel.getAttribute('role') !== 'listbox') throw new Error(t('historyScanSizeError'));
+                        const options = Array.from(panel.querySelectorAll('mat-option, [role="option"]')).filter(node =>
+                            downloadVisible(node) && !node.disabled && node.getAttribute('aria-disabled') !== 'true' && downloadText(node) === '100');
+                        if (options.length !== 1) throw new Error(t('historyScanSizeError'));
+                        expectSize(); options[0].click(); break;
+                    }
+                    await sleep(50);
+                }
+                if (!selected) throw new Error(t('historyScanSizeError'));
+            }
+            const deadline = Date.now() + 8000;
+            let stable = '', since = 0;
+            while (Date.now() < deadline) {
+                verify();
+                seenSize ||= JSON.parse(getContext())[sizeKey] === '100';
+                const history = getDownloadHistory(true);
+                if (seenSize && !downloadHistoryLoading(history.root, true) && (!panel || !downloadVisible(panel))) {
+                    const page = readDownloadPage();
+                    const range = /^(\d[\d,]*)\s*[–-]\s*(\d[\d,]*)\s+of\s+(\d[\d,]*)$/i.exec(page.range);
+                    const [first, last, total] = range ? range.slice(1).map(value => Number(value.replace(/,/g, ''))) : [];
+                    const ready = range ? (first - 1) % 100 === 0 && last === Math.min(first + 99, total) && page.jobs.length === last - first + 1 : /^0\s+of\s+0$/i.test(page.range) && !page.jobs.length;
+                    if (ready) {
+                        if (stable === page.signature && Date.now() - since >= 200) return;
+                        if (stable !== page.signature) { stable = page.signature; since = Date.now(); }
+                    } else stable = '';
+                } else stable = '';
+                await sleep(50);
+            }
+            throw new Error(t('historyScanSizeError'));
+        } finally {
+            if (opened && control.isConnected && control.getAttribute('aria-expanded') === 'true') {
+                const ids = [control.getAttribute('aria-controls'), control.getAttribute('aria-owns')].filter(Boolean);
+                if ((!panelId && !ids.length) || (ids.includes(panelId) && document.getElementById(panelId) === panel)) {
+                    // Escape closes only our select, including an opening panel after Stop.
+                    (panel || control).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+                }
+            }
+        }
+    }
+
     function downloadHistoryLoading(root = document, ignoreJobStatus = false) {
         return Array.from(root.querySelectorAll('mat-spinner, mat-progress-bar, mat-progress-spinner, [aria-busy="true"]')).some(node =>
             downloadVisible(node) && (!ignoreJobStatus || !node.closest('.mat-column-status, .cdk-column-status'))) ||
@@ -2436,7 +2528,7 @@
         const search = root.querySelector('input[placeholder="Search History"], input[aria-label="Search History"]');
         const sort = loading ? previous?.sort || [] : Array.from(table?.querySelectorAll('th[aria-sort]') || []).map(node => [downloadText(node), node.getAttribute('aria-sort')]);
         const pageSize = root.querySelector('mat-paginator .mat-mdc-select-value, mat-paginator select');
-        return JSON.stringify({ url: location.href, account: normalizeAccountEmail(readAccountEmail()), selected, search: search?.value || '', sort, pageSize: pageSize?.value || pageSize?.textContent || (loading ? previous?.pageSize || '' : '') });
+        return JSON.stringify({ url: location.href, account: normalizeAccountEmail(readAccountEmail()), selected, search: search?.value || '', sort, pageSize: pageSize?.tagName === 'SELECT' ? (/^\d+$/.test(pageSize.value) ? pageSize.value : downloadText(pageSize.selectedOptions[0])) : downloadText(pageSize) || (loading ? previous?.pageSize || '' : '') });
     }
 
     function checkDownloadActive() {
@@ -2935,9 +3027,10 @@
         downloadState.selectionChanged = false;
         checkSystemStatus();
         try {
-            const history = getDownloadHistory();
             downloadState.context = getDownloadContext();
+            await selectHistoryScanPageSize(downloadState, getDownloadContext, 'pageSize', checkDownloadActive);
             downloadState.scanContext = downloadState.context;
+            const history = getDownloadHistory();
             const { sort, search } = JSON.parse(downloadState.context);
             // Native unsearched MatTable data is sorted by Modified before pagination; search results need not be.
             let newestFirst = history.root.matches?.('gdm-af-history') && (

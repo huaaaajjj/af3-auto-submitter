@@ -15,7 +15,7 @@ import runpy
 
 CASE = r'''<!doctype html><meta charset="utf-8"><title>Synthetic AF3 selection fixture</title>
 <style>
-body{font:14px sans-serif}gdm-af-history,gdm-af-request,mat-paginator,mat-chip-option{display:block}
+body{font:14px sans-serif}gdm-af-history,gdm-af-request,mat-paginator,mat-chip-option,mat-option{display:block}mat-select{display:inline-block}
 button,input{margin:4px}td,th{padding:8px}mat-icon{display:inline-block}
 </style>
 <gdm-af-request><div class="points">Remaining jobs: 30</div></gdm-af-request>
@@ -33,7 +33,7 @@ button,input{margin:4px}td,th{padding:8px}mat-icon{display:inline-block}
 <thead><tr><th class="mat-column-selected"><input type="checkbox" aria-label="Select all"></th>
 <th class="mat-column-status"></th><th class="mat-column-name">Name</th><th class="mat-column-date">Modified</th><th class="mat-column-options"></th></tr></thead>
 <tbody id="rows"></tbody></table>
-<mat-paginator><select aria-label="Items per page"><option value="2" selected>2</option></select>
+<mat-paginator><select aria-label="Items per page"><option value="2" selected>2</option><option value="20">20</option><option value="25">25</option><option value="100">100</option></select>
 <button class="mat-mdc-paginator-navigation-first" aria-label="First page">First</button>
 <button class="mat-mdc-paginator-navigation-previous" aria-label="Previous page">Previous</button>
 <span class="mat-mdc-paginator-range-label" id="page-range"></span>
@@ -49,6 +49,7 @@ localStorage.setItem('af3-dev-panel-language','zh');
 const officialLinks=id.startsWith('download-official-links')||id==='download-individual-official-links';
 const menuIdentity=id.startsWith('download-menu-')||id.startsWith('download-individual-menu');
 const dateScan=id.startsWith('download-menu-date-');
+const sizeScan=id.startsWith('download-page-size-');
 const applyRange=id.startsWith('download-menu-apply-')||id==='download-individual-menu-apply-range';
 const failedMenuCases=['download-menu-stop-before-binding','download-menu-missing','download-menu-conflict','download-menu-foreign','download-menu-malformed','download-menu-collision','download-menu-stop','download-menu-context','download-menu-account','download-menu-row-replaced','download-menu-busy','download-menu-preopened','download-menu-takeover','download-menu-panel-replaced','download-menu-owner-changed'];
 const invalidLinkCases=['download-official-links-foreign','download-official-links-non-http','download-official-links-malformed','download-official-links-collision','download-official-links-ambiguous-row'];
@@ -62,7 +63,7 @@ const root=()=>document.getElementById('af3-dev-panel')?.shadowRoot;
 const ui=name=>root()?.getElementById('af3-'+name)||document.getElementById('af3-'+name);
 const assert=(value,message)=>{if(!value)throw Error(message)};
 async function until(read,timeout=15000){const end=Date.now()+timeout;while(Date.now()<end){if(read())return;await pause(30)}throw Error('Timed out: '+(ui('download-status')?.textContent||''))}
-const state={page:0,pages:[],downloads:[],menus:[],bulkDownloads:[],rowOpens:0,submits:0,clones:0,deletes:0,confirms:0,nativeCheckboxClicks:0,nativeInputChanges:0,nativeClears:0,errors:[],transportCalls:[],selected:new Set(),visited:[],readiness:[],changes:0,stopTriggered:false,phase:'idle'};
+const state={page:0,pages:[],sizeChanges:[],navigation:[],paginationSizes:[],sizePending:false,earlySizeNavigation:false,downloads:[],menus:[],bulkDownloads:[],rowOpens:0,submits:0,clones:0,deletes:0,confirms:0,nativeCheckboxClicks:0,nativeInputChanges:0,nativeClears:0,errors:[],transportCalls:[],selected:new Set(),visited:[],readiness:[],changes:0,stopTriggered:false,phase:'idle'};
 window.__af3PrivateTabCalls=[];
 window.GM_openInTab=(url,options)=>{window.__af3PrivateTabCalls.push({url,options});return {closed:false,close(){}}};
 let manualActions=0,manualRecords=0;
@@ -109,11 +110,31 @@ if(dateScan){
  if(id==='download-menu-date-boundary')for(const [index,value] of [[1,'2026-11-08 23:59'],[2,'2026-11-08 12:00'],[3,'2026-11-08 00:00'],[4,'2026-11-07 23:59'],[5,'2026-11-06 00:00']])jobs[index].modified=value;
  if(id==='download-menu-date-boundary')for(const job of jobs.slice(6))job.modified='2026-11-05 12:00';
 }
-const pageSize=id==='download-over-fifty'?20:2;
-const pageOption=document.querySelector('mat-paginator select option');pageOption.value=String(pageSize);pageOption.textContent=String(pageSize);
-state.pages=Array.from({length:Math.ceil(jobs.length/pageSize)},(_,index)=>jobs.slice(index*pageSize,(index+1)*pageSize));
-if(id==='download-reset-first')state.page=2;
+let fillerIndex=0;
+const fillers=(count,modified='2020-02-01 00:00')=>Array.from({length:count},()=>({id:'filler-'+(++fillerIndex),name:'outside_filler_'+fillerIndex,modified,filler:true}));
+// ponytail: preserve jobs[] indices; filler IDs avoid hundreds of menu lookups.
+const visibleJobs=[];
+if(id==='download-page-size-last-page'){
+ visibleJobs.push(...Array.from({length:250},(_,index)=>({id:'last-page-'+index,name:'last_page_'+index,modified:'2026-11-13 12:00',filler:true})));
+}else if(dateScan){
+ // Outside-range rows cannot split matching dates without breaking descending order.
+ visibleJobs.push(...fillers(100,'2026-11-14 00:00'),...jobs,...fillers(200));
+}else{
+ const groupSize=id==='download-over-fifty'?20:2;
+ for(let index=0;index<jobs.length;index+=groupSize){
+  if(index)visibleJobs.push(...fillers(100-groupSize));
+  visibleJobs.push(...jobs.slice(index,index+groupSize));
+ }
+}
+let pageSize=id==='download-page-size-already'?100:id==='download-over-fifty'?20:sizeScan?25:2;
+const pageSelect=document.querySelector('mat-paginator select');pageSelect.value=String(pageSize);
+let pageControl=pageSelect;
+const sizeValue=()=>pageControl.tagName==='SELECT'?pageControl.value:pageControl.querySelector('.mat-mdc-select-value').textContent.trim();
+function reflowPages(){state.pages=Array.from({length:Math.ceil(visibleJobs.length/pageSize)},(_,index)=>visibleJobs.slice(index*pageSize,(index+1)*pageSize))}
+reflowPages();
+if(id==='download-reset-first')state.page=200/pageSize;
 if(id==='download-menu-date-reset')state.page=state.pages.length-1;
+if(id==='download-page-size-last-page')state.page=state.pages.length-1;
 const submissionStatuses=[];
 let closedIdentityMenus=0;
 function showIdentityMenu(button,job){
@@ -202,10 +223,12 @@ function nativeSelectionChanged(job,checkbox){
  }
 }
 function renderRows(){
- state.visited.push(state.page);const body=document.getElementById('rows');body.replaceChildren();
+ state.visited.push(state.page);const body=document.getElementById('rows');
+ if(!body)return; // Empty native history omits the table, including during size reflow.
+ body.replaceChildren();
  for(const job of state.pages[state.page]){
   const row=document.createElement('tr');row.className='mat-mdc-row';row.dataset.fixtureJob=job.id;
-  if(['download-stable-ids','download-stable-collision','download-changed-metadata'].includes(id))row.setAttribute('data-job-id',job.id);
+  if(job.filler||['download-stable-ids','download-stable-collision','download-changed-metadata'].includes(id))row.setAttribute('data-job-id',job.id);
   const select=document.createElement('td');select.className='mat-column-selected';
   const wrapper=document.createElement('mat-checkbox');wrapper.className='mat-mdc-checkbox';
   const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='mdc-checkbox__native-control';checkbox.checked=state.selected.has(job.id);
@@ -221,7 +244,7 @@ function renderRows(){
   const icon=document.createElement('mat-icon');icon.textContent='more_vert';menu.append(icon);options.append(menu);
   menu.onclick=event=>{event.stopPropagation();if(menuIdentity&&menu.getAttribute('aria-expanded')==='true'){document.getElementById(menu.getAttribute('aria-controls'))?.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));return}state.menus.push(job.id);if(menuIdentity){showIdentityMenu(menu,job);return}const download=document.createElement('a');download.textContent='Download';download.href='data:application/zip;base64,UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==';download.setAttribute('role','menuitem');download.onclick=event=>{event.preventDefault();state.downloads.push(job.id)};document.getElementById('overlay').replaceChildren(download)};
   row.append(select,statusCell,name,modified,options);body.append(row);row.onclick=()=>state.rowOpens++;
-  if(officialLinks){
+  if(officialLinks&&!job.filler){
    const link=document.createElement('a');
    const jobId=id==='download-official-links-collision'&&job.id==='start-late'?'end-early':job.id;
    const path='/fold/'+jobId;
@@ -240,11 +263,12 @@ function renderRows(){
  }
  const first=document.querySelector('[aria-label="First page"]'),previous=document.querySelector('[aria-label="Previous page"]'),next=document.querySelector('[aria-label="Next page"]'),last=document.querySelector('[aria-label="Last page"]');
  first.disabled=previous.disabled=state.page===0;next.disabled=last.disabled=state.page===state.pages.length-1;
- document.getElementById('page-range').textContent=(state.page*pageSize+1)+' – '+Math.min(jobs.length,state.page*pageSize+pageSize)+' of '+jobs.length;
+ document.getElementById('page-range').textContent=(state.page*pageSize+1)+' – '+Math.min(visibleJobs.length,state.page*pageSize+pageSize)+' of '+visibleJobs.length;
  renderNativeSelection();
 }
 function changePage(target){
- state.changes++;recordReadiness();
+ state.changes++;state.navigation.push(target);state.paginationSizes.push(pageSize);recordReadiness();
+ if(state.sizePending)state.earlySizeNavigation=true;
  if(id==='download-stale-page')return;
  if(id==='download-menu-date-sort-change'&&target===1)document.querySelector('th.mat-column-date').setAttribute('aria-sort','ascending');
  if(id==='download-loading-page'||id==='download-loading-paginator'||id==='download-menu-date-loading'){
@@ -264,6 +288,37 @@ function changePage(target){
  if(id==='download-context-change')setTimeout(()=>setFilter('draft'),80);
  if(id==='download-busy')setTimeout(()=>{const start=ui('v20-btn');start.disabled=false;start.click()},80);
  setTimeout(()=>{state.page=target;renderRows()},wait);
+}
+function changePageSize(size){
+ const target=Math.floor(state.page*pageSize/size);pageSize=size;state.sizeChanges.push(size);reflowPages();state.sizePending=true;
+ setTimeout(()=>{state.page=target;renderRows();state.sizePending=false},id==='download-page-size-last-page'?1000:sizeScan?350:0);
+ if(size===100&&id==='download-page-size-context')setTimeout(()=>{document.getElementById('history-search').value='changed during size refresh'},30);
+ if(size===100&&id==='download-page-size-user-change')setTimeout(()=>{pageSelect.value='20';pageSelect.dispatchEvent(new Event('change',{bubbles:true}))},100);
+}
+pageSelect.onchange=()=>changePageSize(Number(pageSelect.value));
+if(id==='download-page-size-native-missing')pageSelect.querySelector('[value="100"]').remove();
+if(id.startsWith('download-page-size-material')){
+ const value=document.createElement('span');value.className='mat-mdc-select-value';value.textContent=String(pageSize);
+ pageControl=document.createElement('mat-select');pageControl.setAttribute('role','combobox');pageControl.setAttribute('aria-label','Items per page');pageControl.setAttribute('aria-expanded','false');pageControl.append(value);pageSelect.replaceWith(pageControl);
+ const decoy=document.createElement('div');decoy.id='foreign-size-panel';decoy.setAttribute('role','listbox');
+ const foreign=document.createElement('mat-option');foreign.setAttribute('role','option');foreign.textContent='100';foreign.onclick=()=>state.foreignOptionClicks=(state.foreignOptionClicks||0)+1;decoy.append(foreign);document.getElementById('overlay').append(decoy);
+ pageControl.onclick=()=>{
+  state.selectOpens=(state.selectOpens||0)+1;
+  if(pageControl.getAttribute('aria-expanded')==='true'){document.getElementById('download-size-panel')?.remove();pageControl.setAttribute('aria-expanded','false');pageControl.removeAttribute('aria-controls');pageControl.removeAttribute('aria-owns');return}
+  pageControl.setAttribute('aria-expanded','true');
+  setTimeout(()=>{
+   if(pageControl.getAttribute('aria-expanded')!=='true')return;
+   const panel=document.createElement('div');panel.id='download-size-panel';panel.setAttribute('role','listbox');pageControl.setAttribute(id.endsWith('-owns')?'aria-owns':'aria-controls',panel.id);
+   for(const text of ['25','100']){
+    const option=document.createElement('mat-option');option.setAttribute('role','option');option.textContent=text;
+    option.onclick=()=>{
+     state.sizeOptionClicks=(state.sizeOptionClicks||0)+1;panel.remove();pageControl.setAttribute('aria-expanded','false');pageControl.removeAttribute('aria-controls');pageControl.removeAttribute('aria-owns');
+     setTimeout(()=>{value.textContent=' '+text+' ';changePageSize(Number(text))},70);
+    };panel.append(option);
+   }
+   document.getElementById('overlay').append(panel);
+  },100);
+ };
 }
 document.querySelector('[aria-label="First page"]').onclick=()=>changePage(0);
 document.querySelector('[aria-label="Previous page"]').onclick=()=>changePage(Math.max(0,state.page-1));
@@ -308,9 +363,13 @@ async function scan(start='2026-11-12',end='2026-11-13'){
  ui('download-start').value=start;ui('download-end').value=end;
  ui('download-start').dispatchEvent(new Event('change',{bubbles:true}));ui('download-end').dispatchEvent(new Event('change',{bubbles:true}));
  ui('download-scan').click();if(id==='download-busy')assertAccountSwitchBlocked();await pause(60);await until(()=>!ui('download-scan').disabled);await pause(60);
+ if(reviewChecks().length){
+  assert(pageSize===100&&sizeValue()==='100'&&!state.sizePending,'Scan published results before the100-row list refreshed');
+  assert(!state.earlySizeNavigation&&state.paginationSizes.every(size=>size===100),'Scan paginated before the100-row list refreshed');
+ }
 }
-async function apply(){state.phase='active';ui('download-apply').click();if(id==='download-busy')assertAccountSwitchBlocked();await pause(50);await until(()=>!ui('download-scan').disabled);await pause(150);state.phase='idle';assertNoScriptDownload()}
-async function next(){state.phase='next';ui('download-next').click();await pause(50);await until(()=>!ui('download-scan').disabled);await pause(150);state.phase='idle';assertNoScriptDownload()}
+async function apply(){const size=sizeValue(),changes=state.sizeChanges.length;state.phase='active';ui('download-apply').click();if(id==='download-busy')assertAccountSwitchBlocked();await pause(50);await until(()=>!ui('download-scan').disabled);await pause(150);state.phase='idle';assert(sizeValue()===size&&state.sizeChanges.length===changes,'Apply/collect changed native page size');assertNoScriptDownload()}
+async function next(){const size=sizeValue(),changes=state.sizeChanges.length;state.phase='next';ui('download-next').click();await pause(50);await until(()=>!ui('download-scan').disabled);await pause(150);state.phase='idle';assert(sizeValue()===size&&state.sizeChanges.length===changes,'Next/collect changed native page size');assertNoScriptDownload()}
 async function manualNativeDownload(){
  assertNoScriptDownload();const ids=[...state.selected],confirms=state.confirms;
  const button=document.querySelector('button.download-button');assert(button&&!button.disabled,'Official Download is unavailable');
@@ -387,6 +446,7 @@ async function checkIndividual(){
   else if(id==='download-individual-range-change'){ui('download-start').value='2026-11-13';ui('download-start').dispatchEvent(new Event('change',{bubbles:true}))}
   else if(id==='download-individual-search-change')document.getElementById('history-search').value='changed while queue idle';
   else if(id==='download-individual-filter-change')setFilter('draft');
+  else if(id==='download-individual-page-size-change'){pageSelect.value='20';pageSelect.dispatchEvent(new Event('change',{bubbles:true}));await until(()=>!state.sizePending)}
   else if(id==='download-individual-native-change')nativeCheckbox('newer').click();
   else if(id==='download-individual-native-clear')document.querySelector('#native-selection button[aria-label="Clear selection"]').click();
   else throw Error('Unknown individual test: '+id);
@@ -512,6 +572,29 @@ async function checkIndividual(){
   ui('download-apply').disabled=false;await apply();
   if(id==='download-account-queue')await assertInvalidNext();
   assert(state.nativeInputChanges===changes&&state.nativeClears===clears,'Account change applied previous account selection');
+ }else if(id==='download-page-size-last-page'){
+  assert(document.getElementById('page-range').textContent==='226 – 250 of 250','Fixture did not start on the last25-row page');
+  await scan();
+  assert(reviewChecks().length===250&&!ui('download-apply').disabled,'Delayed last-page reflow lost matching rows: '+reviewChecks().length);
+  assert(!state.earlySizeNavigation&&state.page===0&&state.sizeChanges.join(',')==='100','Scan started pagination before the100-row refresh');
+ }else if(sizeScan){
+  const before=[...state.selected],fails=['download-page-size-native-missing','download-page-size-context','download-page-size-user-change'].includes(id);
+  await scan();
+  if(fails){
+   assert(!reviewChecks().length&&ui('download-apply').disabled,'Failed100-row preparation published an actionable scan');assertReviewUnavailable();
+   assert(/100|筛选|搜索|每页|changed/i.test(ui('download-status').textContent),'Preparation failure was not explained: '+ui('download-status').textContent);
+   if(id==='download-page-size-native-missing')assert(sizeValue()==='25'&&state.sizeChanges.length===0,'Missing100 option changed page size');
+   else assert(state.sizeChanges.join(',')===(id==='download-page-size-context'?'100':'100,20'),'Preparation overrode the user context/size change');
+   ui('download-apply').disabled=false;await apply();assertNativeIds(before);
+   assert(state.changes===0&&state.nativeInputChanges===0&&state.nativeClears===0,'Failed preparation paginated or changed native selection');
+  }else{
+   assert(reviewChecks().length===4&&state.pages.length===3&&new Set(state.navigation).size===3&&state.page===0,'100-row scan lost real pagination/date matches');
+   const changes=id==='download-page-size-already'?0:1;
+   assert(state.sizeChanges.length===changes,'Page size was not chosen exactly once');
+   await apply();assertNativeIds(rangeIds);
+   await scan();assert(reviewChecks().length===4&&state.sizeChanges.length===changes,'Rescan clicked an already100 page-size control');
+   if(id.startsWith('download-page-size-material'))assert(state.selectOpens===1&&state.sizeOptionClicks===1&&!state.foreignOptionClicks&&!document.getElementById('download-size-panel')&&document.getElementById('foreign-size-panel'),'Material selection used an unrelated100 option or leaked its panel');
+  }
  }else if(applyRange){
   await scan();assert(reviewChecks().length===4,'Apply range fixture lost its date matches');
   assert(state.nativeCheckboxClicks===0&&state.nativeClears===0,'Finding jobs changed pre-existing selection');
@@ -544,7 +627,7 @@ async function checkIndividual(){
   await checkIndividual();
  }else if(dateScan){
   state.selected.add('older');state.selected.add('hidden-old-selection');renderNativeSelection();
-  const before=[...state.selected];state.visited=[];
+  const before=[...state.selected];state.visited=[];state.navigation=[];
   const boundary=id==='download-menu-date-boundary',future=id==='download-menu-date-future';
   const start=boundary?'2026-11-08':future?'2027-01-01':'2026-11-12';
   const end=boundary?'2026-11-08':future?'2027-01-02':'2026-11-13';
@@ -559,8 +642,9 @@ async function checkIndividual(){
    assert(reviewChecks().every(input=>expected.includes(input.dataset.jobKey.slice(3))),'Date fast path chose an outside job');
    assert(state.menus.length===expected.length&&state.menus.every(jobId=>expected.includes(jobId)),'Scan resolved IDs outside its date range');
    const fallback=['download-menu-date-ascending','download-menu-date-name','download-menu-date-search','download-menu-date-generic','download-menu-date-unknown','download-menu-date-disorder'].includes(id);
-   const pages=fallback?state.pages.length:future?1:3;
-   assert(new Set([0,...state.visited]).size===pages,'Wrong scanned page count: '+state.visited+' expected '+pages);
+   const pages=fallback?state.pages.length:future?1:2;
+   assert(pageSize===100&&sizeValue()==='100','Date scan did not keep100 rows per page');
+   assert(new Set([0,...state.navigation]).size===pages,'Wrong scanned page count: '+state.navigation+' expected '+pages);
    assert(state.page===0,'Date scan did not return to the first page');
    if(id==='download-menu-date-unknown')assert(/1\s*个/.test(ui('download-status').textContent),'Unreadable date was not counted');
    if(future)assertReviewUnavailable();
@@ -590,7 +674,8 @@ async function checkIndividual(){
   assert(reviewChecks().length===expected,'Wrong date range count: '+reviewChecks().length+' expected '+expected+'; '+ui('download-status').textContent);
   assert(new Set(reviewChecks().map(input=>input.dataset.jobKey)).size===expected,'Distinct review tasks share an identity');
   assertNoScriptDownload();assert(state.nativeCheckboxClicks===0&&state.nativeClears===0,'Scanning changed native selection');
-  assert(new Set(state.visited).size===3,'Scan omitted a native page');
+  assert(pageSize===100&&state.pages.length===3&&new Set([0,...state.navigation]).size===3,'Scan omitted a native100-row page');
+  if(id==='download-reset-first')assert(state.navigation[0]===0&&state.page===0,'Scan did not reset the native100-row paginator to First');
   if(['download-unknown-date','download-calendar-invalid','download-clock-invalid'].includes(id))assert(/无法|识别|未知|unknown|unreadable|invalid/i.test(ui('download-status').textContent),'Unrecognized date was not reported');
   if(id==='download-busy'){
    assert(state.confirms===0,'Submission bypassed exclusion during scan');
@@ -603,7 +688,7 @@ async function checkIndividual(){
    reviewChecks()[0].click();await apply();assert(state.selected.size===3,'Individual deselection was ignored');
   }else if(id==='download-apply-fallback-twin'){
    ui('download-clear').click();reviewChecks().find(input=>input.dataset.jobKey==='row:'+JSON.stringify([jobs[1].name,jobs[1].modified])).click();
-   const twin={...jobs[1],id:'new-unreviewed-twin'};jobs.push(twin);state.pages.push([twin]);
+   const twin={...jobs[1],id:'new-unreviewed-twin'};jobs.push(twin);visibleJobs.push(...fillers(100-visibleJobs.length%100),twin);reflowPages();
    await apply();
    assert(ui('download-apply').disabled&&state.visited.includes(3),'A newly ambiguous fallback identity escaped full-history verification');
    assertNativeIds(['end-late']);
@@ -613,10 +698,13 @@ async function checkIndividual(){
   }else if(id==='download-changed-range'){
    ui('download-start').value='2026-11-13';ui('download-start').dispatchEvent(new Event('change',{bubbles:true}));
    await apply();assert(state.nativeCheckboxClicks===0&&state.confirms===0&&reviewChecks().length===0&&ui('download-apply').disabled,'Changed date range reused prior results');
-  }else if(id==='download-changed-filter'||id==='download-changed-search'){
-   if(id==='download-changed-filter')setFilter('draft');else document.getElementById('history-search').value='changed after scan';
+  }else if(id==='download-changed-filter'||id==='download-changed-search'||id==='download-changed-page-size'){
+   if(id==='download-changed-filter')setFilter('draft');
+   else if(id==='download-changed-search')document.getElementById('history-search').value='changed after scan';
+   else{pageSelect.value='20';pageSelect.dispatchEvent(new Event('change',{bubbles:true}));await until(()=>!state.sizePending)}
    await apply();assert(state.nativeCheckboxClicks===0&&state.nativeClears===0&&state.confirms===0,'Changed context applied old results');
    assert(selectedReview().length===4,'Changed context lost review choices');
+   if(id==='download-changed-page-size')assert(pageSize===20&&state.sizeChanges.join(',')==='100,20','Apply restored100 after a user page-size change');
   }else if(id==='download-changed-metadata'||id==='download-changed-fallback'){
    ui('download-clear').click();const key=id==='download-changed-metadata'?'id:end-late':'row:'+JSON.stringify([jobs[1].name,jobs[1].modified]);
    const selected=reviewChecks().find(element=>element.dataset.jobKey===key);assert(selected,'Target review row is missing');selected.click();
@@ -698,6 +786,9 @@ SCENARIOS = [
     'panel-sections', 'download-date-folding',
     'download-account-change', 'download-account-queue',
     'history-status-filters', 'history-status-click',
+    'download-page-size-native', 'download-page-size-already', 'download-page-size-native-missing',
+    'download-page-size-last-page',
+    'download-page-size-material', 'download-page-size-material-owns', 'download-page-size-context', 'download-page-size-user-change',
     'download-range', 'download-reset-first', 'download-single-day', 'download-select', 'download-loading-rows',
     'download-day-selection', 'download-zero', 'download-invalid-range',
     'download-menu-apply-range', 'download-menu-apply-subset', 'download-menu-apply-no-count',
@@ -721,7 +812,7 @@ SCENARIOS = [
     'download-context-change', 'download-busy', 'download-stale-page',
     'download-repeating-page', 'download-loading-page', 'download-loading-paginator',
     'download-empty-history', 'download-empty-loading-history', 'download-changed-range', 'download-changed-filter',
-    'download-changed-search', 'download-changed-metadata', 'download-changed-fallback',
+    'download-changed-search', 'download-changed-page-size', 'download-changed-metadata', 'download-changed-fallback',
     'download-cancel-apply', 'download-confirm-context-change', 'download-clear-failure', 'download-partial-error',
     'download-stop-apply', 'download-stop-restart', 'download-apply-native-change',
     'download-apply-context-change', 'download-apply-metadata-change', 'download-apply-offpage-metadata-change',
@@ -733,7 +824,7 @@ SCENARIOS = [
     'download-individual-item-change', 'download-individual-day-change',
     'download-individual-clear-all', 'download-individual-all-change',
     'download-individual-mode-change', 'download-individual-range-change',
-    'download-individual-search-change', 'download-individual-filter-change',
+    'download-individual-search-change', 'download-individual-filter-change', 'download-individual-page-size-change',
     'download-individual-native-change', 'download-individual-native-clear',
     'download-individual-native-identity-swap',
     'download-individual-stop-next', 'download-individual-error-next',

@@ -28,7 +28,7 @@ button,input{margin:4px}td,th{padding:6px}.job{display:block}
 <mat-chip-option><button aria-selected="false">In progress</button></mat-chip-option>
 </div>
 <table><thead><tr><th class="mat-column-status">Status</th><th>Name</th><th>Modified</th></tr></thead><tbody id="rows"></tbody></table>
-<mat-paginator><select aria-label="Items per page"><option value="10">10</option></select>
+<mat-paginator><select aria-label="Items per page"><option value="10">10</option><option value="20">20</option><option value="100">100</option></select>
 <button aria-label="First page">First</button><button aria-label="Previous page">Previous</button>
 <span class="mat-mdc-paginator-range-label"></span><button aria-label="Next page">Next</button>
 </mat-paginator></gdm-af-history>
@@ -43,7 +43,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const ui=name=>document.getElementById('af3-dev-panel')?.shadowRoot?.getElementById('af3-'+name);
 const assert=(value,message)=>{if(!value)throw Error(message)};
 async function until(read,label,timeout=16000){const end=Date.now()+timeout;while(Date.now()<end){if(read())return;await pause(25)}throw Error('Timed out: '+label+'; '+ui('fasta-status')?.textContent)}
-const state={history:[],page:0,pageMoves:[],uploads:[],saves:[],validations:0,closed:0,pickers:0,commits:[],aborts:0,
+const state={history:[],page:0,pageSize:10,sizeChanges:[],pageMoves:[],uploads:[],saves:[],validations:0,closed:0,pickers:0,commits:[],aborts:0,
     confirms:[],confirmValue:true,behavior:'success',nativeSaved:0,rowOpens:0,predictions:0,errors:[],transports:[],writeError:'',pickerMode:'normal',pageDelay:90};
 window.addEventListener('error',event=>state.errors.push(event.message));
 window.addEventListener('unhandledrejection',event=>state.errors.push(String(event.reason)));
@@ -92,8 +92,8 @@ function visibleHistory(){const names=Array.from(document.querySelectorAll('#fil
 const historyTable=document.querySelector('gdm-af-history table'),emptyHistory=document.createElement('div');
 emptyHistory.className='loading';emptyHistory.textContent='No jobs found with filters specified';
 function renderHistory(){
- const jobs=visibleHistory();state.page=Math.min(state.page,Math.max(0,Math.ceil(jobs.length/10)-1));const body=historyTable.querySelector('tbody');body.replaceChildren();
- for(const job of jobs.slice(state.page*10,state.page*10+10)){
+ const jobs=visibleHistory();state.page=Math.min(state.page,Math.max(0,Math.ceil(jobs.length/state.pageSize)-1));const body=historyTable.querySelector('tbody');body.replaceChildren();
+ for(const job of jobs.slice(state.page*state.pageSize,(state.page+1)*state.pageSize)){
   const row=document.createElement('tr');if(!state.omitIds)row.dataset.jobId=job.id;row.className='mat-mdc-row';
   const status=document.createElement('td');status.className='mat-column-status';status.textContent=job.status;const checkbox=document.createElement('input');checkbox.type='checkbox';status.append(checkbox);
   const name=document.createElement('td');name.className='mat-column-name';name.textContent=job.name;const date=document.createElement('td');date.className='mat-column-date';date.textContent='2026-11-16 12:00';
@@ -102,13 +102,19 @@ function renderHistory(){
  const paginator=document.querySelector('mat-paginator');
  paginator.querySelector('[aria-label="First page"]').disabled=state.page===0;
  paginator.querySelector('[aria-label="Previous page"]').disabled=state.page===0;
- paginator.querySelector('[aria-label="Next page"]').disabled=(state.page+1)*10>=jobs.length;
- paginator.querySelector('span').textContent=state.rangeOverride??(jobs.length?`${state.page*10+1} – ${Math.min((state.page+1)*10,jobs.length)} of ${jobs.length}`:'0 of 0');
+ paginator.querySelector('[aria-label="Next page"]').disabled=(state.page+1)*state.pageSize>=jobs.length;
+ paginator.querySelector('.mat-mdc-paginator-range-label').textContent=state.rangeOverride??(jobs.length?`${state.page*state.pageSize+1} – ${Math.min((state.page+1)*state.pageSize,jobs.length)} of ${jobs.length}`:'0 of 0');
  if(id==='fasta-empty-history'){
   if(jobs.length){emptyHistory.remove();paginator.before(historyTable)}
   else{historyTable.remove();paginator.before(emptyHistory)}
  }
 }
+const pageSelect=document.querySelector('mat-paginator select');
+pageSelect.onchange=()=>{
+ state.page=Math.floor(state.page*state.pageSize/Number(pageSelect.value));state.pageSize=Number(pageSelect.value);state.sizeChanges.push(state.pageSize);
+ if(id==='fasta-page-size-native-failed'){pageSelect.value='10';state.pageSize=10}
+ renderHistory();
+};
 for(const [label,change] of [['First page',()=>0],['Previous page',()=>state.page-1],['Next page',()=>state.page+1]])document.querySelector(`[aria-label="${label}"]`).onclick=()=>{
  const target=change();state.pageMoves.push(target);
  if(id.startsWith('fasta-history-placeholders')){
@@ -132,7 +138,46 @@ function showPrediction(job){
  };request.append(next);
 }
 function addHistory(jobs,status='Saved draft',account=owner){for(const job of jobs)if(!state.history.some(old=>old.name===job.name&&old.account===account))state.history.push({name:job.name,id:'fixture-'+(state.history.length+1),status,account});renderHistory()}
-addHistory(Array.from({length:12},(_,i)=>({name:'unrelated_'+i})));
+addHistory(Array.from({length:112},(_,i)=>({name:'unrelated_'+i})));
+if(id.startsWith('fasta-page-size-material')){
+ const control=document.createElement('mat-select'),value=document.createElement('span');
+ control.setAttribute('role','combobox');control.setAttribute('aria-expanded','false');
+ value.className='mat-mdc-select-value';value.textContent='10';control.append(value);pageSelect.replaceWith(control);
+ const decoy=document.createElement('mat-option');decoy.setAttribute('role','option');decoy.textContent='100';
+ decoy.onclick=()=>state.foreignOptionClicks=(state.foreignOptionClicks||0)+1;document.getElementById('overlay').append(decoy);
+ control.onkeydown=event=>{
+  if(event.key==='Escape'){event.stopPropagation();document.getElementById('fasta-size-panel')?.remove();control.setAttribute('aria-expanded','false');control.removeAttribute('aria-controls');control.removeAttribute('aria-owns')}
+ };
+ control.onclick=()=>{
+  state.selectOpens=(state.selectOpens||0)+1;
+  if(control.getAttribute('aria-expanded')==='true'){
+   document.getElementById('fasta-size-panel')?.remove();control.setAttribute('aria-expanded','false');control.removeAttribute('aria-controls');control.removeAttribute('aria-owns');return;
+  }
+  control.setAttribute('aria-expanded','true');
+  if(id==='fasta-page-size-material-account')setTimeout(()=>{window.WIZ_global_data.oPEP7c='other@example.com';renderHistory()},30);
+  if(id==='fasta-page-size-material-stop')setTimeout(()=>ui('fasta-stop').click(),30);
+  if(id==='fasta-page-size-material-stop-late')setTimeout(()=>ui('fasta-stop').click(),90);
+  setTimeout(()=>{
+   if(control.getAttribute('aria-expanded')!=='true')return;
+   const panel=document.createElement('div');panel.id='fasta-size-panel';panel.setAttribute('role','listbox');panel.onkeydown=control.onkeydown;
+   control.setAttribute(id==='fasta-page-size-material-owns'?'aria-owns':'aria-controls',panel.id);
+   const values=id==='fasta-page-size-material-missing'?['10','20']:id==='fasta-page-size-material-duplicate'?['10','100','100']:['10','20','100'];
+   for(const text of values){
+    const option=document.createElement('mat-option');option.setAttribute('role','option');option.textContent=text;
+    option.onclick=()=>{
+     state.sizeOptionClicks=(state.sizeOptionClicks||0)+1;panel.remove();control.setAttribute('aria-expanded','false');control.removeAttribute('aria-controls');control.removeAttribute('aria-owns');
+     setTimeout(()=>{
+      const size=Number(text);state.page=Math.floor(state.page*state.pageSize/size);state.pageSize=size;state.sizeChanges.push(size);value.textContent=' '+text+' ';
+      const spinner=document.createElement('mat-spinner');document.querySelector('gdm-af-history').append(spinner);
+      setTimeout(()=>{renderHistory();spinner.remove()},100);
+      if(id==='fasta-page-size-material-user-change')setTimeout(()=>{value.textContent='20';state.pageSize=20;renderHistory()},30);
+     },70);
+    };panel.append(option);
+   }
+   document.getElementById('overlay').append(panel);
+  },100);
+ };
+}
 function cancelDialog(dialog){if(dialog.isConnected){dialog.remove();state.closed++}}
 document.getElementById('native-upload').onclick=()=>{
  assert(state.uploadAuthorized,'Upload occurred before explicit confirmation');state.uploadAuthorized=false;
@@ -307,6 +352,22 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   window.WIZ_global_data.oPEP7c=owner;renderHistory();ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));await clickFasta('sync');
   assert(/核对完成/.test(ui('fasta-status').textContent)&&/1\/1/.test(ui('fasta-status').textContent),'Chinese history result is missing');
   assert(state.uploads.length===1&&state.saves.length===1,'History check triggered another upload');
+ }else if(id.startsWith('fasta-page-size-')){
+  const dir=await generate(fasta(1)),original=dir.files.get('manifest.json');
+  if(id==='fasta-page-size-already'){pageSelect.value='100';pageSelect.onchange();state.sizeChanges=[]}
+  if(id==='fasta-page-size-native-missing')pageSelect.querySelector('[value="100"]').remove();
+  const fails=/missing|failed|duplicate|account|user-change|stop/.test(id);
+  await clickFasta(fails?'import':'sync');
+  if(fails){
+   assert(/100|account changed|page size changed|Stopped/.test(ui('fasta-status').textContent),'Page-size failure did not stop clearly: '+ui('fasta-status').textContent);
+   assert(dir.files.get('manifest.json')===original&&!state.uploads.length&&!state.saves.length,'Failed size selection uploaded or rewrote records');
+  }else{
+   assert(state.pageSize===100&&/No script import records/.test(ui('fasta-status').textContent),'History did not finish using100: '+ui('fasta-status').textContent);
+   assert(state.sizeChanges.length===(id==='fasta-page-size-already'?0:1),'100 was not chosen exactly once');
+   await clickFasta('import');assert(manifest(dir).importComplete&&state.uploads.length===1&&state.saves.length===1,'Import/reconciliation lost the100-row context');
+   assert(state.sizeChanges.length===(id==='fasta-page-size-already'?0:1),'An already100 paginator was clicked again');
+  }
+  await pause(200);assert(!state.foreignOptionClicks&&!document.getElementById('fasta-size-panel'),'An unrelated option was clicked or our dropdown was left open');
  }else if(id==='fasta-empty-history'){
   const dir=await generate(fasta(31));state.history=[];renderHistory();
   assert(!document.querySelector('gdm-af-history table')&&emptyHistory.isConnected,'Empty history retained a table');
@@ -337,8 +398,8 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   assert(progress.getAttribute('aria-label')&&progress.getAttribute('aria-describedby')==='af3-fasta-status','Progress bar lacks an accessible label/status');
   state.pageDelay=500;ui('fasta-sync').click();
   assert(!progress.hidden&&!progress.hasAttribute('value'),'A new check reused stale progress instead of waiting for a total');
-  await until(()=>progress.hasAttribute('value')&&progress.value===10,'First scanned page');
-  assert(progress.max===12&&/10\/12/.test(ui('fasta-status').textContent),'Scan progress does not reflect the website total');
+  await until(()=>progress.hasAttribute('value')&&progress.value===100,'First scanned page');
+  assert(progress.max===112&&/100\/112/.test(ui('fasta-status').textContent),'Scan progress does not reflect the website total');
   ui('fasta-stop').click();await settled();
   assert(progress.hidden&&/Stopped/.test(ui('fasta-status').textContent)&&!manifest(dir).lastHistoryCheck,'Stopped scan showed completion or saved a check');
   state.rangeOverride='Unknown total';renderHistory();ui('fasta-sync').click();
@@ -346,16 +407,16 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   assert(!progress.hidden&&!progress.hasAttribute('value'),'Unknown total displayed a fake percentage');await settled();
   assert(progress.hidden&&!state.uploads.length&&!state.saves.length,'Completed scan left progress running or uploaded data');
   state.rangeOverride=null;renderHistory();ui('fasta-sync').click();
-  await until(()=>progress.hasAttribute('value')&&progress.value===10,'Retry scan progress');await settled();
+  await until(()=>progress.hasAttribute('value')&&progress.value===100,'Retry scan progress');await settled();
   assert(progress.hidden&&/No script import records/.test(ui('fasta-status').textContent),'Retry progress did not finish normally');
-  addHistory(Array.from({length:12},(_,i)=>({name:'extra_'+i})));ui('fasta-sync').click();
-  await until(()=>progress.hasAttribute('value')&&progress.value===10,'Stable total before a change');assert(progress.max===24,'Wrong initial total');
-  state.rangeOverride='11 – 20 of 25';
+  addHistory(Array.from({length:112},(_,i)=>({name:'extra_'+i})));ui('fasta-sync').click();
+  await until(()=>progress.hasAttribute('value')&&progress.value===100,'Stable total before a change');assert(progress.max===224,'Wrong initial total');
+  state.rangeOverride='101 – 200 of 225';
   await until(()=>/page 2/.test(ui('fasta-status').textContent),'Changed-total page');
   assert(!progress.hasAttribute('value')&&!ui('fasta-status').textContent.includes('%'),'Changing totals retained a misleading percentage');await settled();
-  state.rangeOverride='1 – 10 of 1,234';renderHistory();ui('fasta-sync').click();
+  state.rangeOverride='1 – 100 of 1,234';renderHistory();ui('fasta-sync').click();
   await until(()=>progress.hasAttribute('value'),'Thousands-separated total');assert(progress.max===1234,'Grouped native total was not parsed');ui('fasta-stop').click();await settled();
-  state.rangeOverride='1 – 10 of 9007199254740992';renderHistory();ui('fasta-sync').click();
+  state.rangeOverride='1 – 100 of 9007199254740992';renderHistory();ui('fasta-sync').click();
   await until(()=>/Checking website history.*page/.test(ui('fasta-status').textContent),'Unsafe total');
   assert(!progress.hasAttribute('value'),'Unsafe integer total displayed a percentage');ui('fasta-stop').click();await settled();
   state.rangeOverride=null;state.writeError='manifest.json';ui('fasta-sync').click();await settled();
@@ -373,7 +434,7 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   for(const [change,restore,reason] of [
    [()=>{window.WIZ_global_data.oPEP7c='other@example.com'},()=>{window.WIZ_global_data.oPEP7c=owner},/account changed/],
    [()=>filters(['Completed']),()=>filters(['Saved draft']),/filters changed/],
-   [()=>{size.value='20'},()=>{size.value='10'},/page size changed/],
+   [()=>{size.value='20'},()=>{size.value='100'},/page size changed/],
    [()=>heading.setAttribute('aria-sort','ascending'),()=>heading.removeAttribute('aria-sort'),/sort changed/],
    [()=>history.replaceState(null,'',url+'&changed=1'),()=>history.replaceState(null,'',url),/page address changed/],
   ]){
@@ -477,7 +538,7 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   }
   let m=manifest(dir);assert(m.importComplete&&m.summary.imported===31&&!m.predictionComplete&&!m.predictionFinished&&m.summary.submitted===0&&m.summary.completed===0,'Import completion conflated with prediction');
   assert(m.batches.every(batch=>batch.jobs.every(job=>job.jobId&&job.importedAt&&job.predictionStatus==='draft'&&!job.submittedAt&&!job.completedAt)),'Confirmed imports missing durable IDs/timestamps');
-  assert(state.pageMoves.includes(4)&&state.page===0,'Ten-row history pagination not exhausted/reset');
+  assert(state.pageSize===100&&state.pageMoves.includes(1)&&state.page===0,'Hundred-row history pagination not exhausted/reset');
   const jobs=m.batches.flatMap(batch=>batch.jobs);for(const [i,job] of jobs.entries())state.history.find(row=>row.name===job.name).status=i===0?'Completed':i===1?'Failed':'In progress';
   filters(['Completed','Failed','In progress']);await clickFasta('sync');m=manifest(dir);assert(m.summary.completed===1&&m.summary.failed===1&&m.summary.submitted===31&&!m.predictionComplete&&!m.predictionFinished,'Status sync did not distinguish completed/failed/running');
   for(const row of state.history)if(jobs.some(job=>job.name===row.name))row.status='Completed';filters(['Completed']);await clickFasta('sync');m=manifest(dir);assert(m.predictionComplete&&m.predictionFinished&&m.summary.completed===31,'Completion sync failed');
@@ -536,6 +597,10 @@ SCENARIOS = [
     'fasta-account-save', 'fasta-account-confirm', 'fasta-mutual-exclusion',
     'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-not-saved-restore',
     'fasta-manifest-limit', 'fasta-batch-limit', 'fasta-presubmit-record', 'fasta-sync-feedback',
+    'fasta-page-size-native', 'fasta-page-size-already', 'fasta-page-size-native-missing', 'fasta-page-size-native-failed',
+    'fasta-page-size-material', 'fasta-page-size-material-owns', 'fasta-page-size-material-missing', 'fasta-page-size-material-duplicate',
+    'fasta-page-size-material-account', 'fasta-page-size-material-user-change', 'fasta-page-size-material-stop',
+    'fasta-page-size-material-stop-late',
     'fasta-sync-progress', 'fasta-context-errors', 'fasta-empty-history', 'fasta-history-placeholders', 'fasta-history-placeholders-stop', 'fasta-history-ambiguous',
 ]
 SHORT_CASES = {'fasta-partial', 'fasta-unclosed', 'fasta-validation-timeout'}
