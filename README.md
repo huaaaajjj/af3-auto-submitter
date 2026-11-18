@@ -4,16 +4,16 @@
 
 ## 安装 4.0 正式版
 
-[安装或更新 4.0.4](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 4.0.5](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 **从 4.0 起只发布正式版，不再维护独立开发版渠道。** 安装文件为 `af3-auto-submitter.user.js`，正常开发、安装、测试和更新均以 `main` 的正式文件为准。
 
-**4.0.4 更新：** 草稿历史核对、导入前后校验及按日期查找任务时，先自动选择官网每页 100 个，等待列表刷新后再扫描，结束后保留 100。切换失败或扫描期间账号、筛选、排序、每页数量等条件变化时停止，不上传或应用不完整结果。保留历史翻页占位行及空草稿列表识别修复。
+**4.0.5 更新：** 已发送保存但当时未核对成功的批次，在脚本自身确认提交过同名任务后，可用官网 Completed / Failed / In progress 记录确认导入，并更新完成数；仍不会仅凭同名旧记录猜测导入。脚本与更新元数据同步升版。
 
 1. 安装 Tampermonkey，点击上方正式安装链接并确认。若仅显示源码，在油猴原脚本编辑器中完整替换并保存。
 2. 允许脚本在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。使用 Edge InPrivate 时，需要开启扩展的“允许在 InPrivate 中使用”。
 3. 普通窗口与 InPrivate 要共用账号目录，需在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 刷新官网，确认标题显示 **v4.0.4**，并核对当前账号和官网额度。网站控件与通知需使用英文。
+4. 刷新官网，确认标题显示 **v4.0.5**，并核对当前账号和官网额度。网站控件与通知需使用英文。
 5. 首次仅试 1 个任务；生成 JSON、导入草稿、预测提交、预测完成是四个不同阶段。结果不确定时不要重复点击 Confirm 或刷新后直接重试。
 
 正式更新检查地址是 `main/af3-auto-submitter.meta.js`，完整下载地址是 `main/af3-auto-submitter.user.js`。启用油猴“检查更新”即可接收后续正式版本。
@@ -147,7 +147,7 @@ python -I -X utf8 test_fasta.py
 git diff --check
 ```
 
-浏览器回归共 217 个场景（提交与账户 32、下载 139、FASTA 46）。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
+浏览器回归共 218 个场景（提交与账户 32、下载 139、FASTA 47）。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
 
 面板不显示时先核对版本、站点权限并确认只启用一份脚本。额度显示“无法识别”不等于额度为零。提交结果不确定、部分导入或锁定时，先人工核对官网记录，再决定后续操作；不要用反复启动代替确认。
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      4.0.4
+// @version      4.0.5
 // @description  正式版：FASTA 每 30 条分批保存、带 manifest 的草稿导入、提交确认、日期折叠勾选及本地账户记录。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '4.0.4';
+    const SCRIPT_VERSION = '4.0.5';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -1161,13 +1161,17 @@
                 const match = matches[0];
                 if (!match) continue; // Absence under a filter never proves deletion, failure or completion.
                 const attempt = batch.attempts.at(-1);
-                // A pending job is confirmed only by a draft seen after this run durably sent its save.
-                // Completed/Failed history with a reused title cannot prove this import happened.
-                if (job.importStatus !== 'confirmed' &&
-                    (match.status !== 'draft' || !attempt?.saveClickedAt || attempt.account !== account || attempt.result === 'not_saved')) {
+                const saveSent = Boolean(attempt?.saveClickedAt && attempt.account === account && attempt.result !== 'not_saved');
+                // A pending job is confirmed by a draft seen after this run durably sent its save.
+                const draftEvidence = saveSent && match.status === 'draft';
+                // Or by this run's own confirmed launch of the same name after that save: a launched
+                // prediction proves the job existed, which a reused old Completed/Failed title cannot.
+                const submitEvidence = saveSent && Boolean(job.submittedAt) && Date.parse(job.submittedAt) >= Date.parse(attempt.saveClickedAt) &&
+                    match.status !== 'draft';
+                if (job.importStatus !== 'confirmed' && !draftEvidence && !submitEvidence) {
                     result.unverified++; continue;
                 }
-                if (fastaState.manifest.settings.sequenceFormat === 'protein-lines' && match.status !== 'draft' &&
+                if (fastaState.manifest.settings.sequenceFormat === 'protein-lines' && match.status !== 'draft' && !submitEvidence &&
                     (!job.jobId || !match.jobId)) throw new Error(t('fastaIdentity'));
                 if (job.jobId && match.jobId && job.jobId !== match.jobId) throw new Error(t('fastaChanged'));
                 result.matched++;

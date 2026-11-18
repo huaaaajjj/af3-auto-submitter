@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 正式版 4.0.4：历史扫描前自动选择官网每页 100 个，减少翻页等待。FASTA 标题作为任务名、每行序列一条蛋白链，每 30 个任务生成分批输入和官网 JSON，保存到所选本地文件夹后，明确确认才导入草稿。manifest 记录导入尝试、逐任务确认及预测完成状态；保留日期折叠、勾选提速和顶部账号。从 4.0 起统一使用 main 正式版，不再发布独立开发版。</p>
+            <p class="version-note">本 fork 正式版 4.0.5：修复已提交批次无法确认导入的问题；历史扫描前自动选择官网每页 100 个。FASTA 标题作为任务名、每行序列一条蛋白链，每 30 个任务生成分批输入和官网 JSON，保存到所选本地文件夹后，明确确认才导入草稿。manifest 记录导入尝试、逐任务确认及预测完成状态；保留日期折叠、勾选提速和顶部账号。从 4.0 起统一使用 main 正式版，不再发布独立开发版。</p>
             <p class="version-note">升级前请备份油猴脚本及脚本数据；在原已安装条目内更新并核对账号，不要先卸载旧脚本。新建条目不能保证继承原 GM 账号记录。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 4.0.4 正式版</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 4.0.5 正式版</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/main" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看正式源码</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先备份并在原脚本条目内更新；禁用其他 AlphaFold 提交脚本，只启用一份</p>
@@ -295,9 +295,9 @@
         </section>
 
         <section>
-            <h2>✨ 4.0.4 正式版更新重点</h2>
+            <h2>✨ 4.0.5 正式版更新重点</h2>
             <ul class="release-list">
-                <li>4.0.4 在草稿历史核对、导入前后校验及按日期查找前自动选择每页 100 个，确认列表刷新后开始扫描，结束后保留 100；切换失败或页面条件变化时安全停止。保留官网翻页占位行和空草稿列表识别修复。脚本与更新元数据同步升版，可通过 Tampermonkey 检查更新升级。</li>
+                <li>4.0.5 修复已提交预测的批次停留在“需核对历史”：本次导入已发送保存且脚本确认提交过同名任务时，可用 Completed 等历史确认导入并统计完成。保留每页 100 个扫描，确认列表刷新后开始扫描，结束后保留 100；切换失败或页面条件变化时安全停止。保留官网翻页占位行和空草稿列表识别修复。脚本与更新元数据同步升版，可通过 Tampermonkey 检查更新升级。</li>
                 <li>保留官网历史核对进度条，显示已扫描页数、记录数和稳定总数下的百分比；总数未知时显示不定进度。账号未识别、搜索未清空及页面条件变化时分别提示具体停止原因，核对结束保留结果。</li>
                 <li>FASTA 不再需要蛋白链模式：每个 &gt;名称 作为任务名，后续每个非空序列行是一条蛋白链，下一个 &gt; 开始新任务。只生成蛋白，每 30 个任务分一批；链不拼接、不自动拆肽，长链不要手动折行。输出 FASTA 保留完整链行，旧清单继续按原 JSON 恢复，输入错误不静默跳过。</li>
                 <li>明确确认后才通过原生 Upload JSON 上传校验并保存草稿，不启动预测；核对全部名称和全绿状态，单击一次保存，再跨页确认草稿。manifest 记录逐批尝试、账号、时间、错误和逐任务导入/预测状态，结果不明时停止且不自动重导，已有目录可校验恢复；清单用版本检查和独占写入拒绝旧页面覆盖新记录，生成前检查大小及批次数上限。</li>
@@ -438,7 +438,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 4.0.4 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 4.0.5 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -448,7 +448,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter 4.0.4 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter 4.0.5 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

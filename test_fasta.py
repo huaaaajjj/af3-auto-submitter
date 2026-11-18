@@ -492,6 +492,26 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   await clickFasta('sync');
   assert(!manifest(dir).predictionComplete&&manifest(dir).summary.completed===0,'Prediction without a bound draft ID was guessed from a reused title');
   assert(/job IDs/.test(ui('fasta-status').textContent),'Missing task-identity diagnostic for reused title');
+ }else if(id==='fasta-submit-evidence-completed'){
+  const dir=await generate(fasta(2)),m=manifest(dir),batch=m.batches[0],saveAt=new Date(Date.now()-60000).toISOString();
+  batch.account=owner;batch.status='uncertain';
+  batch.attempts=[{account:owner,phase:'saving_drafts',startedAt:saveAt,saveClickedAt:saveAt,endedAt:new Date(Date.now()-50000).toISOString(),result:'not_saved'}];
+  for(const job of batch.jobs){job.submittedAt=new Date(Date.now()-30000).toISOString();job.predictionStatus='submitted'}
+  dir.files.set('manifest.json',JSON.stringify(m));
+  addHistory(batch.jobs.map(job=>({name:job.name})),'Completed',owner);
+  await restore(dir);filters(['Completed']);await clickFasta('sync');
+  let after=manifest(dir);
+  assert(after.summary.imported===0&&after.batches[0].status!=='imported'&&after.lastHistoryCheck.unverified===2,'A proven-unsent attempt used submission history to confirm import');
+  const fresh=JSON.parse(dir.files.get('manifest.json'));fresh.batches[0].attempts[0].result='pending';fresh.batches[0].attempts[0].endedAt=null;fresh.batches[0].status='uncertain';
+  dir.files.set('manifest.json',JSON.stringify(fresh));await restore(dir);filters(['Completed']);await clickFasta('sync');
+  after=manifest(dir);
+  assert(/核对完成|verified 2\/2/.test(ui('fasta-status').textContent),'Confirmed submission history check has no result: '+ui('fasta-status').textContent);
+  assert(after.batches[0].status==='imported'&&after.summary.imported===2,'Sent save plus confirmed submission did not confirm the import');
+  assert(after.summary.completed===2&&after.predictionComplete&&after.batches[0].attempts[0].result==='confirmed','Completed history did not update prediction totals');
+  assert(after.batches[0].jobs.every(job=>job.importStatus==='confirmed'&&job.predictionStatus==='completed'&&job.completedAt),'Per-job completion was not recorded');
+  const before=dir.files.get('manifest.json');await clickFasta('sync');
+  assert(dir.files.get('manifest.json')!==before&&manifest(dir).summary.imported===2,'Repeated check changed the confirmed totals');
+  assert(!state.uploads.length&&!state.saves.length&&state.predictions===0,'History confirmation uploaded or launched predictions');
  }else if(id==='fasta-not-saved-restore'){
   const dir=await generate(fasta(1));state.stopAtSaveJournal=true;
   await clickFasta('import');
@@ -595,7 +615,7 @@ SCENARIOS = [
     'fasta-partial', 'fasta-unclosed', 'fasta-warning', 'fasta-validation-timeout',
     'fasta-stop-validation', 'fasta-stop-save', 'fasta-account-validation',
     'fasta-account-save', 'fasta-account-confirm', 'fasta-mutual-exclusion',
-    'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-not-saved-restore',
+    'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-submit-evidence-completed', 'fasta-not-saved-restore',
     'fasta-manifest-limit', 'fasta-batch-limit', 'fasta-presubmit-record', 'fasta-sync-feedback',
     'fasta-page-size-native', 'fasta-page-size-already', 'fasta-page-size-native-missing', 'fasta-page-size-native-failed',
     'fasta-page-size-material', 'fasta-page-size-material-owns', 'fasta-page-size-material-missing', 'fasta-page-size-material-duplicate',
