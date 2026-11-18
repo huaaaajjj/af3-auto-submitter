@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      4.0.6
+// @version      4.0.7
 // @description  正式版：FASTA 每 30 条分批保存、带 manifest 的草稿导入、提交确认、日期折叠勾选及本地账户记录。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '4.0.6';
+    const SCRIPT_VERSION = '4.0.7';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -590,6 +590,8 @@
         downloadIdle: 'Choose dates, find jobs, then apply your reviewed selection to the website.',
         downloadScanning: 'Scanning page {page}… {count} matches',
         downloadFound: '{count} matches; {selected} selected. Unreadable dates skipped on scanned pages: {unknown}.',
+        downloadLogStart: 'Find jobs started: {start} to {end}; filters {filters}.',
+        downloadLogResult: 'Find jobs finished: {count} matches; unreadable dates {unknown}.',
         downloadHint: 'Apply replaces the website checkboxes. Combined: click the website Download for one ZIP (up to 50 jobs). Separate: download the current job on the website, then click Next job to select another. Next job only changes checkboxes; it does not verify saved files.',
         downloadFormat: 'Download mode', downloadCombined: 'Combined ZIP (website limit: 50)', downloadIndividual: 'Separate ZIPs (select one at a time)',
         downloadNext: 'Next job', downloadQueue: 'Current job {index}/{total}: {name} · {modified}',
@@ -637,6 +639,8 @@
             downloadIdle: '先选择日期并查找任务，核对后将勾选应用到官网。',
             downloadScanning: '正在扫描第 {page} 页…已找到 {count} 个',
             downloadFound: '匹配 {count} 个，已选 {selected} 个；已扫描页面中日期无法识别、未纳入 {unknown} 个。',
+            downloadLogStart: '开始查找任务：{start} 至 {end}；筛选 {filters}。',
+            downloadLogResult: '查找完成：匹配 {count} 个；日期无法识别 {unknown} 个。',
             downloadHint: '应用会替换官网勾选。合并：手动点击官网 Download，最多 50 个任务合成一个 ZIP。分开：在官网下载当前任务后，点“下一任务”切换勾选；此按钮只切换任务，不检测文件是否保存。',
             downloadFormat: '下载方式', downloadCombined: '合并一个 ZIP（官网最多 50 个）', downloadIndividual: '分开下载（逐个勾选）',
             downloadNext: '下一任务', downloadQueue: '当前第 {index}/{total} 个：{name} · {modified}',
@@ -744,6 +748,15 @@
         fastaHistoryReturning: 'History read. Returning to the first page…',
         fastaUpdating: 'History read. Checking and saving local records…',
         fastaChecked: 'History check complete: verified {matched}/{total} tracked jobs in the current filters. Records saved.',
+        fastaLogCheckStart: 'History check started: account {account}; filters {filters}.',
+        fastaLogImportStart: 'Import started: batch {index} ({count} jobs); account {account}.',
+        fastaLogPageSize: 'History scan page size: 100 rows.',
+        fastaLogScan: 'History read: {names} names, {rows} rows.',
+        fastaLogBatch: 'Batch {index} ({count} jobs): confirmed {confirmed}; duplicate titles resolved {resolved}; unverified {unverified}; status {status}.',
+        fastaLogResult: 'History check result: verified {matched}/{total}; unverified {unverified}.',
+        fastaLogSaveSent: 'Draft save sent for batch {index}; verifying history…',
+        fastaLogConfirmed: 'Batch {index} import confirmed.',
+        fastaLogError: 'Stopped: {detail}',
         fastaCheckUnverified: '{unverified} same-name records lack evidence of this run saving a draft; import was not confirmed.',
         fastaNoImports: 'No script import records for this run; matching titles alone cannot link history. If not uploaded, use “Import next batch as drafts”. Do not reimport jobs already uploaded manually.',
         fastaOtherAccount: 'No tracked batches belong to this account. Switch to the original import account; other accounts’ job records were not changed.',
@@ -793,6 +806,15 @@
         fastaHistoryReturning: '历史读取完成，正在回到首页…',
         fastaUpdating: '历史读取完成，正在核对并保存本地记录…',
         fastaChecked: '核对完成：当前筛选下确认 {matched}/{total} 个跟踪任务，记录已保存。',
+        fastaLogCheckStart: '开始核对历史：账号 {account}；筛选 {filters}。',
+        fastaLogImportStart: '开始导入：第 {index} 批（{count} 个）；账号 {account}。',
+        fastaLogPageSize: '历史扫描每页数量：100 个。',
+        fastaLogScan: '历史读取完成：{names} 个名称，共 {rows} 行。',
+        fastaLogBatch: '第 {index} 批（{count} 个）：已确认 {confirmed}；同名消歧 {resolved}；未确认 {unverified}；状态 {status}。',
+        fastaLogResult: '核对结果：确认 {matched}/{total}；未确认 {unverified}。',
+        fastaLogSaveSent: '第 {index} 批已发送草稿保存，正在核对历史…',
+        fastaLogConfirmed: '第 {index} 批已确认导入。',
+        fastaLogError: '已停止：{detail}',
         fastaCheckUnverified: '{unverified} 条同名记录缺少本次草稿保存证据，未确认导入。',
         fastaNoImports: '本清单尚无脚本导入记录，无法仅凭同名历史自动关联。未上传时请用“导入下一批为草稿”；若已手动上传，请勿重复导入。',
         fastaOtherAccount: '当前账号没有对应的跟踪批次，请切换到原导入账号核对；未更改其他账号的任务记录。',
@@ -1155,6 +1177,8 @@
         for (const batch of fastaState.manifest.batches) {
             if (batch.account !== account) continue;
             result.total += batch.jobs.length;
+            const confirmedBefore = batch.jobs.filter(job => job.importStatus === 'confirmed').length;
+            let resolved = 0;
             for (const job of batch.jobs) {
                 const matches = found.get(job.name) || [];
                 if (!matches.length) continue; // Absence under a filter never proves deletion, failure or completion.
@@ -1172,6 +1196,7 @@
                     const candidates = bound.length === 1 ? bound : recent.length === 1 ? recent : [];
                     if (candidates.length !== 1) throw new Error(t('fastaExisting'));
                     match = candidates[0];
+                    resolved++;
                 }
                 // A pending job is confirmed by a draft seen after this run durably sent its save.
                 const draftEvidence = saveSent && match.status === 'draft';
@@ -1194,6 +1219,10 @@
             }
             const confirmed = batch.jobs.filter(job => job.importStatus === 'confirmed').length;
             batch.status = confirmed === batch.jobs.length ? 'imported' : confirmed ? 'partial' : batch.status;
+            if (confirmed !== confirmedBefore) {
+                addLog(t('fastaLogBatch', { index: batch.index, count: batch.jobs.length, confirmed, resolved,
+                    unverified: batch.jobs.length - confirmed, status: batch.status }));
+            }
             if (batch.status === 'imported') {
                 batch.importedAt ||= now;
                 const attempt = batch.attempts.at(-1);
@@ -1214,12 +1243,16 @@
         try {
             fastaState.context = getFastaContext();
             const { account, selected } = JSON.parse(fastaState.context);
+            addLog(checkOnly ? t('fastaLogCheckStart', { account, filters: selected.join(', ') })
+                : t('fastaLogImportStart', { index: batch.index, count: batch.jobs.length, account }));
             if (Array.from(document.querySelectorAll('gdm-af-upload-dialog, [role="dialog"], mat-dialog-container, [role="menu"]')).some(downloadVisible)) throw new Error(t('fastaCloseDialog'));
             if (!checkOnly && (selected.length !== 1 || selected[0] !== 'saved draft')) throw new Error(t('fastaNeedDraft'));
             if (!checkOnly && !confirm(t('fastaConfirm', { index: batch.index, count: batch.jobs.length, account }))) return;
             fastaCheck();
             await selectHistoryScanPageSize(fastaState, getFastaContext, 'size', fastaCheck);
+            addLog(t('fastaLogPageSize'));
             const before = await readFastaHistory();
+            addLog(t('fastaLogScan', { names: before.size, rows: [...before.values()].reduce((sum, list) => sum + list.length, 0) }));
             if (checkOnly) {
                 fastaState.message = t('fastaUpdating'); renderFastaSection();
                 const result = await reconcileFastaHistory(before, account);
@@ -1227,6 +1260,7 @@
                 await persistFastaManifest();
                 fastaState.message = result.total ? t('fastaChecked', result) + (result.unverified ? ' ' + t('fastaCheckUnverified', result) : '') :
                     t(fastaState.manifest.batches.some(item => item.account) ? 'fastaOtherAccount' : 'fastaNoImports');
+                addLog(t('fastaLogResult', result));
                 return;
             }
             if (batch.jobs.some(job => before.has(job.name))) throw new Error(t('fastaExisting'));
@@ -1274,6 +1308,7 @@
             fastaCheck();
             if (validatedSave() !== save || !save.isConnected) throw new Error(t('fastaPreview'));
             saveSent = true; save.click(); // Exactly one native draft-save click; never a prediction button.
+            addLog(t('fastaLogSaveSent', { index: batch.index }));
             fastaState.message = t('fastaVerifying', { index: batch.index }); renderFastaSection();
             // A successful history refresh cannot settle a still-open save dialog.
             await fastaWait(() => { if (nativeError) throw new Error(nativeError); return !dialog.isConnected; });
@@ -1288,8 +1323,10 @@
             } while (Date.now() < deadline);
             if (batch.status !== 'imported') throw new Error(t('fastaTimeout', { detail: '' }));
             attempt.result = 'confirmed'; fastaState.message = '';
+            addLog(t('fastaLogConfirmed', { index: batch.index }));
         } catch (error) {
             fastaState.message = isUserStopError(error) ? t('fastaStopped') : error.message;
+            addLog(t('fastaLogError', { detail: fastaState.message }), 'error');
             if (attempt) {
                 attempt.result = saveSent ? 'unconfirmed' : 'not_saved'; attempt.error = fastaState.message;
                 if (!saveSent && attempt.saveClickedAt) { attempt.savePreparedAt = attempt.saveClickedAt; attempt.saveClickedAt = null; }
@@ -1985,7 +2022,7 @@
     function addLog(message, level = 'info') {
         const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
         logEntries.push({ time, message, level });
-        if (logEntries.length > 40) logEntries.shift();
+        if (logEntries.length > 120) logEntries.shift();
 
         const consoleFn = level === 'warn' ? console.warn : level === 'error' ? console.error : console.log;
         consoleFn(`[AF3] ${message}`);
@@ -3045,6 +3082,7 @@
             downloadState.context = getDownloadContext();
             await selectHistoryScanPageSize(downloadState, getDownloadContext, 'pageSize', checkDownloadActive);
             downloadState.scanContext = downloadState.context;
+            addLog(t('downloadLogStart', { start, end, filters: JSON.parse(downloadState.context).selected.join(', ') }));
             const history = getDownloadHistory();
             const { sort, search } = JSON.parse(downloadState.context);
             // Native unsearched MatTable data is sorted by Modified before pagination; search results need not be.
@@ -3084,8 +3122,10 @@
             downloadState.selected = new Set(matches.map(job => job.key));
             downloadState.complete = true;
             setDownloadMessage('downloadFound');
+            addLog(t('downloadLogResult', { count: matches.length, unknown: downloadState.unknown }));
         } catch (error) {
             setDownloadMessage(isUserStopError(error) ? 'downloadIncomplete' : 'error', { detail: error.message });
+            addLog(t('fastaLogError', { detail: error.message }), 'error');
         } finally {
             downloadState.busy = false;
             renderDownloadSection();

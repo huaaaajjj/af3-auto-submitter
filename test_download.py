@@ -593,6 +593,9 @@ async function checkIndividual(){
    assert(state.sizeChanges.length===changes,'Page size was not chosen exactly once');
    await apply();assertNativeIds(rangeIds);
    await scan();assert(reviewChecks().length===4&&state.sizeChanges.length===changes,'Rescan clicked an already100 page-size control');
+   const logText=document.getElementById('af3-dev-panel').shadowRoot.getElementById('af3-log-body')?.textContent||'';
+   assert(/开始查找任务：2026-11-12 至 2026-11-13；筛选 completed。/.test(logText),'Detailed find-jobs start log missing: '+logText.slice(-400));
+   assert(/查找完成：匹配 4 个；日期无法识别 0 个。/.test(logText),'Detailed find-jobs result log missing: '+logText.slice(-400));
    if(id.startsWith('download-page-size-material'))assert(state.selectOpens===1&&state.sizeOptionClicks===1&&!state.foreignOptionClicks&&!document.getElementById('download-size-panel')&&document.getElementById('foreign-size-panel'),'Material selection used an unrelated100 option or leaked its panel');
   }
  }else if(applyRange){

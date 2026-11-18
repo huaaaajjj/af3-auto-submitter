@@ -530,6 +530,10 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   assert(after.summary.completed===2&&after.predictionComplete,'This run completed rows were not applied');
   assert(after.batches[0].jobs.every(job=>job.predictionStatus==='completed'&&job.modified===recent),'A duplicated row outside this run was chosen');
   await clickFasta('sync');assert(manifest(dir).summary.imported===2&&manifest(dir).summary.completed===2,'Repeated sync lost duplicate disambiguation');
+  const logText=document.getElementById('af3-dev-panel').shadowRoot.getElementById('af3-log-body')?.textContent||'';
+  assert(/History check started: account fixture@example\.com; filters completed\./.test(logText),'Detailed check-start log missing: '+logText.slice(-500));
+  assert(/History read: 2 names, 4 rows\./.test(logText),'Detailed scan-total log missing');
+  assert(/Batch 1 \(2 jobs\): confirmed 2; duplicate titles resolved 2; unverified 0; status imported\./.test(logText),'Detailed batch log missing: '+logText.slice(-300));
   const dup=await generate(fasta(1)),dm=manifest(dup),db=dm.batches[0];
   db.account=owner;db.status='uncertain';
   db.attempts=[{account:owner,phase:'saving_drafts',startedAt:iso(-180000),saveClickedAt:iso(-120000),endedAt:null,result:'pending'}];

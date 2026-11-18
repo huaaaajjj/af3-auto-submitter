@@ -4,16 +4,16 @@
 
 ## 安装 4.0 正式版
 
-[安装或更新 4.0.6](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 4.0.7](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 **从 4.0 起只发布正式版，不再维护独立开发版渠道。** 安装文件为 `af3-auto-submitter.user.js`，正常开发、安装、测试和更新均以 `main` 的正式文件为准。
 
-**4.0.6 更新：** 官网存在同名旧任务时，历史核对会用本次运行保存/提交之后产生的唯一记录确认导入，不再整体报“已存在本批任务名称”；无法唯一确定时仍停止。脚本与更新元数据同步升版。
+**4.0.7 更新：** 日志更详细：历史核对与草稿导入记录账号、筛选、每页数量、读取的名称与行数，并逐批记录已确认数、同名消歧数和未确认数；按日期查找记录起止条件与匹配结果；停止时记录原因。日志保留最近 120 条。脚本与更新元数据同步升版。
 
 1. 安装 Tampermonkey，点击上方正式安装链接并确认。若仅显示源码，在油猴原脚本编辑器中完整替换并保存。
 2. 允许脚本在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。使用 Edge InPrivate 时，需要开启扩展的“允许在 InPrivate 中使用”。
 3. 普通窗口与 InPrivate 要共用账号目录，需在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 刷新官网，确认标题显示 **v4.0.6**，并核对当前账号和官网额度。网站控件与通知需使用英文。
+4. 刷新官网，确认标题显示 **v4.0.7**，并核对当前账号和官网额度。网站控件与通知需使用英文。
 5. 首次仅试 1 个任务；生成 JSON、导入草稿、预测提交、预测完成是四个不同阶段。结果不确定时不要重复点击 Confirm 或刷新后直接重试。
 
 正式更新检查地址是 `main/af3-auto-submitter.meta.js`，完整下载地址是 `main/af3-auto-submitter.user.js`。启用油猴“检查更新”即可接收后续正式版本。
