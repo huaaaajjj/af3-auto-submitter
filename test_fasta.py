@@ -96,7 +96,7 @@ function renderHistory(){
  for(const job of jobs.slice(state.page*state.pageSize,(state.page+1)*state.pageSize)){
   const row=document.createElement('tr');if(!state.omitIds)row.dataset.jobId=job.id;row.className='mat-mdc-row';
   const status=document.createElement('td');status.className='mat-column-status';status.textContent=job.status;const checkbox=document.createElement('input');checkbox.type='checkbox';status.append(checkbox);
-  const name=document.createElement('td');name.className='mat-column-name';name.textContent=job.name;const date=document.createElement('td');date.className='mat-column-date';date.textContent='2026-11-16 12:00';
+  const name=document.createElement('td');name.className='mat-column-name';name.textContent=job.name;const date=document.createElement('td');date.className='mat-column-date';date.textContent=job.modified||'2026-11-16 12:00';
   row.append(status,name,date);row.onclick=()=>{state.rowOpens++;if(id==='fasta-presubmit-record')showPrediction(job)};body.append(row);
  }
  const paginator=document.querySelector('mat-paginator');
@@ -512,6 +512,36 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   const before=dir.files.get('manifest.json');await clickFasta('sync');
   assert(dir.files.get('manifest.json')!==before&&manifest(dir).summary.imported===2,'Repeated check changed the confirmed totals');
   assert(!state.uploads.length&&!state.saves.length&&state.predictions===0,'History confirmation uploaded or launched predictions');
+ }else if(id==='fasta-duplicate-reconcile'){
+  const iso=ms=>new Date(Date.now()+ms).toISOString();
+  const local=ms=>{const d=new Date(Date.now()+ms),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`};
+  const recent=local(-30000),dir=await generate(fasta(2)),m=manifest(dir),batch=m.batches[0];
+  batch.account=owner;batch.status='uncertain';
+  batch.attempts=[{account:owner,phase:'saving_drafts',startedAt:iso(-180000),saveClickedAt:iso(-120000),endedAt:null,result:'pending'}];
+  for(const job of batch.jobs){job.submittedAt=iso(-60000);job.predictionStatus='submitted'}
+  dir.files.set('manifest.json',JSON.stringify(m));
+  for(const job of batch.jobs){
+   state.history.push({name:job.name,id:'old-'+job.record,status:'Completed',account:owner,modified:'2026-11-02 16:35'});
+   state.history.push({name:job.name,id:'new-'+job.record,status:'Completed',account:owner,modified:recent});
+  }
+  renderHistory();await restore(dir);filters(['Completed']);await clickFasta('sync');
+  let after=manifest(dir);
+  assert(after.batches[0].status==='imported'&&after.summary.imported===2,'Reused old titles blocked this run import');
+  assert(after.summary.completed===2&&after.predictionComplete,'This run completed rows were not applied');
+  assert(after.batches[0].jobs.every(job=>job.predictionStatus==='completed'&&job.modified===recent),'A duplicated row outside this run was chosen');
+  await clickFasta('sync');assert(manifest(dir).summary.imported===2&&manifest(dir).summary.completed===2,'Repeated sync lost duplicate disambiguation');
+  const dup=await generate(fasta(1)),dm=manifest(dup),db=dm.batches[0];
+  db.account=owner;db.status='uncertain';
+  db.attempts=[{account:owner,phase:'saving_drafts',startedAt:iso(-180000),saveClickedAt:iso(-120000),endedAt:null,result:'pending'}];
+  for(const job of db.jobs){job.submittedAt=iso(-60000);job.predictionStatus='submitted'}
+  dup.files.set('manifest.json',JSON.stringify(dm));
+  for(const job of db.jobs){
+   state.history.push({name:job.name,id:'dup-a',status:'Completed',account:owner,modified:local(-50000)});
+   state.history.push({name:job.name,id:'dup-b',status:'Completed',account:owner,modified:local(-40000)});
+  }
+  renderHistory();await restore(dup);filters(['Completed']);await clickFasta('sync');
+  assert(manifest(dup).summary.imported===0&&/already exists|已存在本批/.test(ui('fasta-status').textContent),'Two plausible duplicate records were silently accepted');
+  assert(!state.uploads.length&&state.saves.length===0&&state.predictions===0,'Duplicate reconciliation uploaded or launched predictions');
  }else if(id==='fasta-not-saved-restore'){
   const dir=await generate(fasta(1));state.stopAtSaveJournal=true;
   await clickFasta('import');
@@ -615,7 +645,7 @@ SCENARIOS = [
     'fasta-partial', 'fasta-unclosed', 'fasta-warning', 'fasta-validation-timeout',
     'fasta-stop-validation', 'fasta-stop-save', 'fasta-account-validation',
     'fasta-account-save', 'fasta-account-confirm', 'fasta-mutual-exclusion',
-    'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-submit-evidence-completed', 'fasta-not-saved-restore',
+    'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-submit-evidence-completed', 'fasta-duplicate-reconcile', 'fasta-not-saved-restore',
     'fasta-manifest-limit', 'fasta-batch-limit', 'fasta-presubmit-record', 'fasta-sync-feedback',
     'fasta-page-size-native', 'fasta-page-size-already', 'fasta-page-size-native-missing', 'fasta-page-size-native-failed',
     'fasta-page-size-material', 'fasta-page-size-material-owns', 'fasta-page-size-material-missing', 'fasta-page-size-material-duplicate',

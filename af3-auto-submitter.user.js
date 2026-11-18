@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      4.0.5
+// @version      4.0.6
 // @description  正式版：FASTA 每 30 条分批保存、带 manifest 的草稿导入、提交确认、日期折叠勾选及本地账户记录。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '4.0.5';
+    const SCRIPT_VERSION = '4.0.6';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -1157,11 +1157,22 @@
             result.total += batch.jobs.length;
             for (const job of batch.jobs) {
                 const matches = found.get(job.name) || [];
-                if (matches.length > 1) throw new Error(t('fastaExisting'));
-                const match = matches[0];
-                if (!match) continue; // Absence under a filter never proves deletion, failure or completion.
+                if (!matches.length) continue; // Absence under a filter never proves deletion, failure or completion.
                 const attempt = batch.attempts.at(-1);
                 const saveSent = Boolean(attempt?.saveClickedAt && attempt.account === account && attempt.result !== 'not_saved');
+                let match = matches[0];
+                if (matches.length > 1) {
+                    // A reused title can also exist from an older run. Keep only records bound to this
+                    // run: an already-bound ID, or the single non-draft record modified after its save.
+                    // History times have minute precision, so allow a small tolerance before the save.
+                    const bound = job.jobId ? matches.filter(item => item.jobId === job.jobId) : [];
+                    const evidenceAt = Date.parse(attempt?.saveClickedAt || attempt?.startedAt || job.submittedAt || '');
+                    const recent = Number.isFinite(evidenceAt) ? matches.filter(item =>
+                        item.status !== 'draft' && Date.parse(item.modified) >= evidenceAt - 10 * 60 * 1000) : [];
+                    const candidates = bound.length === 1 ? bound : recent.length === 1 ? recent : [];
+                    if (candidates.length !== 1) throw new Error(t('fastaExisting'));
+                    match = candidates[0];
+                }
                 // A pending job is confirmed by a draft seen after this run durably sent its save.
                 const draftEvidence = saveSent && match.status === 'draft';
                 // Or by this run's own confirmed launch of the same name after that save: a launched
