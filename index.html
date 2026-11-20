@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 正式版 4.0.7：脚本日志更详细，逐条记录历史核对、草稿导入与按日期查找的条件和结果；保留同名旧任务消歧与每页 100 个扫描。FASTA 标题作为任务名、每行序列一条蛋白链，每 30 个任务生成分批输入和官网 JSON，保存到所选本地文件夹后，明确确认才导入草稿。manifest 记录导入尝试、逐任务确认及预测完成状态；保留日期折叠、勾选提速和顶部账号。从 4.0 起统一使用 main 正式版，不再发布独立开发版。</p>
+            <p class="version-note">本 fork 正式版 4.0.9：结果保存自动沿用当前页面已打开的有效批次目录，不再重复选择；未打开批次时才选含 manifest.json 的文件夹，重新校验并确认目标后逐任务保存 ZIP；校验账号与绑定 ID，已有文件跳过、不覆盖，原始输入与清单不变。保留详细日志、同名旧任务消歧与每页 100 个扫描。FASTA 标题作为任务名、每行序列一条蛋白链，每 30 个任务生成分批输入和官网 JSON，保存到所选本地文件夹后，明确确认才导入草稿。manifest 记录导入尝试、逐任务确认及预测完成状态；保留日期折叠、勾选提速和顶部账号。从 4.0 起统一使用 main 正式版，不再发布独立开发版。</p>
             <p class="version-note">升级前请备份油猴脚本及脚本数据；在原已安装条目内更新并核对账号，不要先卸载旧脚本。新建条目不能保证继承原 GM 账号记录。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 4.0.7 正式版</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 4.0.9 正式版</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/main" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看正式源码</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先备份并在原脚本条目内更新；禁用其他 AlphaFold 提交脚本，只启用一份</p>
@@ -257,7 +257,7 @@
             <div class="features-grid">
                 <div class="feature-card">
                     <h3>📅 按日期应用勾选</h3>
-                    <p>按 Modified 日期查找 Completed 任务，确认倒序后越过开始日即结束，排序不确定时扫描所有分页。按天或逐项核对后应用到官网复选框；合并模式一次勾选全部，分开模式逐个勾选并提供“下一任务”。下载仍由你手动使用官网原生控件。</p>
+                    <p>按 Modified 日期查找 Completed 任务，确认倒序后越过开始日即结束，排序不确定时扫描所有分页。按天或逐项核对后应用到官网复选框；合并模式一次勾选全部，分开模式逐个勾选并提供“下一任务”。下载可继续手动使用官网原生控件；也可选择含 manifest.json 的原批次文件夹，确认后将匹配的独立 ZIP 保存到其 results 子目录。</p>
                 </div>
                 <div class="feature-card">
                     <h3>🖐️ 可移动、可调尺寸</h3>
@@ -295,10 +295,11 @@
         </section>
 
         <section>
-            <h2>✨ 4.0.7 正式版更新重点</h2>
+            <h2>✨ 4.0.9 正式版更新重点</h2>
             <ul class="release-list">
-                <li>4.0.7 脚本日志更详细：历史核对/导入记录账号、筛选、每页数量、读取的名称与行数，逐批记录已确认数、同名消歧数和未确认数；按日期查找记录起止条件与匹配结果；停止时记录原因。日志保留最近 120 条。</li>
-                <li>4.0.7 修复同名旧任务导致的历史核对失败：同名多条记录时，按已绑定任务 ID 或本次运行保存/提交后产生的唯一记录确定本批任务；本次已发送保存且脚本确认提交过同名任务时，Completed 等历史可确认导入并统计完成，无法唯一确定时仍停止。保留每页 100 个扫描，确认列表刷新后开始扫描，结束后保留 100；切换失败或页面条件变化时安全停止。保留官网翻页占位行和空草稿列表识别修复。脚本与更新元数据同步升版，可通过 Tampermonkey 检查更新升级。</li>
+                <li>4.0.9 结果保存沿用当前页面已打开的有效批次目录，未打开批次或刷新后才需选择。仍只读校验磁盘清单、任务与账号，确认目标后才逐个保存 ZIP；清单或权限失效会停止，不自动换目录。保留已有文件跳过、停止与部分完成计数。</li>
+                <li>保留详细日志：历史核对/导入记录账号、筛选、每页数量、读取的名称与行数，逐批记录已确认数、同名消歧数和未确认数；按日期查找记录起止条件与匹配结果；停止时记录原因。日志保留最近 120 条。</li>
+                <li>保留同名旧任务的历史核对消歧：同名多条记录时，按已绑定任务 ID 或本次运行保存/提交后产生的唯一记录确定本批任务；本次已发送保存且脚本确认提交过同名任务时，Completed 等历史可确认导入并统计完成，无法唯一确定时仍停止。保留每页 100 个扫描，确认列表刷新后开始扫描，结束后保留 100；切换失败或页面条件变化时安全停止。保留官网翻页占位行和空草稿列表识别修复。脚本与更新元数据同步升版，可通过 Tampermonkey 检查更新升级。</li>
                 <li>保留官网历史核对进度条，显示已扫描页数、记录数和稳定总数下的百分比；总数未知时显示不定进度。账号未识别、搜索未清空及页面条件变化时分别提示具体停止原因，核对结束保留结果。</li>
                 <li>FASTA 不再需要蛋白链模式：每个 &gt;名称 作为任务名，后续每个非空序列行是一条蛋白链，下一个 &gt; 开始新任务。只生成蛋白，每 30 个任务分一批；链不拼接、不自动拆肽，长链不要手动折行。输出 FASTA 保留完整链行，旧清单继续按原 JSON 恢复，输入错误不静默跳过。</li>
                 <li>明确确认后才通过原生 Upload JSON 上传校验并保存草稿，不启动预测；核对全部名称和全绿状态，单击一次保存，再跨页确认草稿。manifest 记录逐批尝试、账号、时间、错误和逐任务导入/预测状态，结果不明时停止且不自动重导，已有目录可校验恢复；清单用版本检查和独占写入拒绝旧页面覆盖新记录，生成前检查大小及批次数上限。</li>
@@ -324,7 +325,7 @@
                 <li>面板上方是提交任务，下方是下载任务，均不折叠；匹配任务按日期默认折叠，点击日期展开或收起；日期前的复选框仍可按天勾选，折叠不改变选择。</li>
                 <li>仅选中 Saved draft 才显示草稿提交就绪，仅选中 Failed 才显示失败重跑就绪；混选或未选标签时待机并禁用启动，点击启动和确认后均重新核对标签。</li>
                 <li>按日期查找任务：起止日期均包含当天，同一天可单独筛选；可按天或逐项核对，再应用到官网勾选。</li>
-                <li>保留合并 ZIP / 分开下载两种方式：合并时一次应用全部勾选；分开时每次只选一个任务，并提供“下一任务”。下载均由用户点击官网原生 Download。</li>
+                <li>保留合并 ZIP / 分开下载两种方式：合并时一次应用全部勾选；分开时每次只选一个任务，并提供“下一任务”。这两种勾选方式的下载均由用户点击官网原生 Download；结果目录保存是另外明确确认的操作。</li>
                 <li>应用选择会替换官网已有勾选；官网合并 ZIP 最多 50 个任务，超过时需自行调整，不自动拆批。</li>
                 <li>两个区域分别显示状态：仅选中 Saved draft 时上方显示草稿提交就绪，仅选中 Completed 时下方显示下载就绪；混选或未选标签时均待机。查找或应用下载选择时，运行状态只显示在下方。</li>
                 <li>默认中文界面，并提供 6 种语言选择。</li>
@@ -402,9 +403,18 @@
                 <li>下方下载区域显示<strong>待机 / 就绪 / 运行中</strong>，仅选中 Completed 时显示下载就绪；上方提交区域独立显示状态。点<strong>停止</strong>会停止查找或应用选择；应用中停止或出错可能留下部分勾选，不会自动恢复旧选择，请先核对官网复选框。</li>
                 <li>手动下载后，请在浏览器下载列表核对文件保存情况。浏览器询问时，按需允许官网的多个文件下载。</li>
             </ol>
-            <p><strong>“应用到官网勾选”和“下一任务”会替换官网原有选择。</strong>合并模式可以应用超过 50 个任务，但官网合并 ZIP 每次最多 <strong>50 个任务</strong>；应用时会提示此限制，请自行减少官网勾选后再下载。脚本没有下载按钮或下载位置选项，不点击行下载或批量下载，也不自动拆批或在本地打包。“下一任务”仅切换勾选，不检测文件是否下载成功。</p>
+            <p><strong>“应用到官网勾选”和“下一任务”会替换官网原有选择。</strong>合并模式可以应用超过 50 个任务，但官网合并 ZIP 每次最多 <strong>50 个任务</strong>；应用时会提示此限制，请自行减少官网勾选后再下载。这两个勾选操作不点击行下载或批量下载，也不自动拆批或在本地打包；需要直接保存到批次 results 时，使用下面的独立操作。“下一任务”仅切换勾选，不检测文件是否下载成功。</p>
             <p>下载方式保存在当前浏览器本地。分开模式的队列只在当前页面有效；刷新、重新查找、修改日期、面板勾选、全选、清空、下载方式或官网筛选、搜索、排序、每页数量、复选框，都会使队列失效。面板选择或官网勾选变化后请核对并重新应用；日期或官网列表条件变化后请重新查找。停止或出错不会推进队列；停止后可重新应用，出错后需重新查找。</p>
             <p>查找和应用选择期间保持页面打开，不要修改官网搜索、筛选、排序或每页数量；需要调整时先停止，再重新查找。应用完成后，可在官网调整勾选并手动下载。</p>
+
+            <h3>4. 保存到原批次文件夹的 results</h3>
+            <ol>
+                <li>在原账号仅选 <code>Completed</code>，查找后只勾选同一批次的已完成任务。清单尚未绑定 ID 时，先打开原批次并“核对官网历史 / 更新记录”；不要重新导入。</li>
+                <li>点<strong>保存到批次 results…</strong>。当前页面已打开有效批次文件夹时直接沿用，不再选目录；否则选择直接包含 <code>manifest.json</code> 的 <code>af3_…</code> 子目录。不是父目录或 results，不必先应用官网勾选。保存前仍重新校验磁盘清单；账号、名称或唯一 ID 不匹配时拒绝输出。</li>
+                <li>确认任务数与 <code>批次文件夹名/results</code> 后，逐个保存独立 ZIP。文件名含任务名和稳定 ID 短码；已有同名文件跳过、不验证内容，也不覆盖。</li>
+                <li>以面板实际保存与跳过数量为准。停止会中断传输，已提交文件保留；错误响应或未完成 ZIP 不计成功。目录权限、空间不足或清理失败按提示处理。</li>
+            </ol>
+            <p>保存只读 manifest，不修改原 FASTA、分批 JSON 或浏览器全局下载目录。刷新后需重新选择；先打开已有批次再保存可直接沿用。仅支持安全可读的同源官方链接与普通单卷、非 ZIP64 ZIP，不本地合并或猜接口；不支持时使用原生 Download。请只用一个浏览器操作同一目录；尚未恢复真实账号端到端验证。完整限制见 <a href="README.md">README</a>。</p>
 
             <!-- 上游界面参考截图 -->
             <div class="screenshot-gallery">
@@ -431,6 +441,7 @@ python -I -X utf8 test_release.py
 python -I -X utf8 test_submission.py
 python -I -X utf8 test_download.py
 python -I -X utf8 test_fasta.py
+python -I -X utf8 test_results.py
 git diff --check</code></pre>
             <div class="alert">
                 <strong>配额不足：</strong> 额度以官网为准；不足时停止，无法识别时不当作 0。请先核对官网状态，不要靠反复启动解决。
@@ -439,7 +450,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 4.0.7 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 4.0.9 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -449,7 +460,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter 4.0.7 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter 4.0.9 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

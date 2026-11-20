@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FASTA 草稿分批教程</title>
+<style>
+/* 操作与实测截图对照排列，窄屏按步骤顺序阅读。 */
+:root {
+  --bg: #f3f7f8; --surface: #fff; --fg: #172d36; --muted: #48606a;
+  --accent: #006975; --line: #bfd4d9; --tint: #e5f2f4;
+  --display: "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+  --body: "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  --mono: "Cascadia Code", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #122127; --surface: #192d34; --fg: #e5f2f4; --muted: #b5cbd0;
+    --accent: #89dee5; --line: #3b585f; --tint: #203e46; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #122127; --surface: #192d34; --fg: #e5f2f4; --muted: #b5cbd0;
+  --accent: #89dee5; --line: #3b585f; --tint: #203e46; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.75 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 63rem; margin-inline: auto; padding-block: clamp(2rem, 5vw, 4rem); }
+h1, h2, h3, p, figure, ol, pre { margin: 0; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.3; text-wrap: balance; }
+h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+h2 { font-size: clamp(1.45rem, 3vw, 2rem); }
+h3 { font-size: 1.16rem; }
+header, .copy, .media { display: grid; gap: .75rem; align-content: start; min-width: 0; }
+.kicker { color: var(--accent); font: .84rem/1.5 var(--mono); }
+.lead { max-width: 42rem; color: var(--muted); }
+nav { display: flex; flex-wrap: wrap; gap: .6rem; }
+nav a { color: var(--accent); background: var(--surface); border: 1px solid var(--line); border-radius: .3rem; padding: .4rem .8rem; font-weight: 650; text-decoration: none; }
+nav a:hover { background: var(--tint); }
+nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.note { background: var(--tint); padding: .85rem 1rem; border-radius: .3rem; }
+section { margin-block-start: 2.75rem; }
+.steps { list-style: none; padding: 0; margin-block-start: 1rem; counter-reset: step; }
+.steps > li { counter-increment: step; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(.9rem, 3vw, 2rem); padding-block: 1.4rem; border-top: 1px solid var(--line); }
+.steps h3::before { content: counter(step, decimal-leading-zero); color: var(--accent); font: .9rem var(--mono); margin-inline-end: .65rem; }
+figure { display: grid; gap: .3rem; justify-items: start; }
+figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: .32rem; }
+figcaption, footer { font-size: .87rem; color: var(--muted); }
+code, pre { font-family: var(--mono); font-size: .9em; }
+code { overflow-wrap: anywhere; }
+pre { background: var(--surface); border: 1px solid var(--line); border-radius: .3rem; padding: .7rem .9rem; overflow-x: auto; }
+footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-block-start: 1.5rem; }
+@media (max-width: 700px) { .steps > li { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="kicker">AF3 自动助手 v4.0.7 · 已有实测材料整理</p>
+    <h1>FASTA 草稿分批教程</h1>
+    <p class="lead">用 50 个真实蛋白测试任务，演示本地生成、草稿导入和真实预测。刷新或重开页面后，用原批次文件夹继续，不重新生成或重复上传。</p>
+    <nav aria-label="教程章节">
+      <a href="#start">从头开始</a>
+      <a href="#resume">继续上一批任务</a>
+    </nav>
+    <p>示例文件：<a href="../../example_50_proteins.fasta"><code>example_50_proteins.fasta</code></a>。单链 17 个、双链 17 个、三链 16 个，共 99 条不同序列。序列来自 UniProt 已审阅的酿酒酵母蛋白条目，标题按链顺序保留登录号。多链组合只用于测试，不代表已知天然复合物。</p>
+    <p class="note"><strong>实测进度：已暂停。</strong>本地生成 50 个任务，分成 30 + 20 两批。第一批 30 个草稿已确认导入，其中 15 个真实预测已成功完成（单链、双链、三链各 5 个），另 15 个仍为草稿。第二批 20 个未上传。下文为暂停前最后核实的记录，不是 50 个全部完成的结果。</p>
+    <p class="lead">已有截图来自同一份 50 任务文件的 Edge 无痕窗口实测，已裁剪脱敏。ego lite 已装好脚本，但缺少的恢复、换账号及后续预测截图暂不补拍。首次使用建议先用一条记录试跑。</p>
+  </header>
+
+  <section aria-labelledby="start">
+    <h2 id="start">从头开始</h2>
+    <ol class="steps" role="list">
+      <li>
+        <div class="copy">
+          <h3>选示例文件，生成本地批次</h3>
+          <p>登录官网，确认面板显示的是要使用的账号。若没有面板，先安装 Tampermonkey 和 AF3 脚本，按浏览器提示开启用户脚本运行权限；无痕窗口还需允许扩展在无痕模式运行。</p>
+          <p>选择 <code>example_50_proteins.fasta</code>，点<strong>「生成并选择保存目录」</strong>，选择并授权输出父目录（实测为 <code>test2/</code>）。脚本建立新的 <code>af3_…</code> 子目录，写出两组 FASTA/JSON 和清单；这一步不上传。</p>
+          <p>输入文件按本脚本规则每条链独占一行，不要折行。第一批 30 个任务，单链、双链、三链各 10 个；第二批 20 个，分别为 7、7、6 个。</p>
+          <pre aria-label="本次示例的输出结构">test2/
+└─ af3_…/
+   ├─ manifest.json
+   ├─ example_50_proteins_part001.fasta
+   ├─ example_50_proteins_part001.json
+   ├─ example_50_proteins_part002.fasta
+   └─ example_50_proteins_part002.json</pre>
+        </div>
+        <div class="media">
+          <figure><img src="images/real50-generated.png" alt="本地生成 example_50_proteins.fasta 的 50 个任务，共两批"><figcaption>新文件的本地生成结果，不是此前 590 任务的演示。</figcaption></figure>
+        </div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>清空搜索，导入第一批草稿</h3>
+          <p>清空官网 <code>Search History</code>，只选 <code>Saved draft</code>，关闭已有官网弹窗或菜单。点<strong>「导入下一批为草稿」</strong>，核对确认框中的账号、批次号和任务数。</p>
+          <p>本例是<strong>第 1 批，30 个任务</strong>。确认后才发送该批 JSON 校验并保存草稿；导入草稿不会启动预测，也不要用「提交任务」区的「启动」代替草稿导入。</p>
+        </div>
+        <div class="media">
+          <figure><img src="images/real50-import-confirm.png" alt="第一批 30 个任务的草稿上传确认，账号已遮盖"><figcaption>草稿上传确认，说明不会启动预测。</figcaption></figure>
+        </div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>先确认草稿入库</h3>
+          <p>弹窗关闭不代表保存成功。本次保存后出现了 <code>Timeout</code>，最初只确认到部分记录，没有重传。</p>
+          <p>等官网列表更新后，在原账号清空搜索、保持 <code>Saved draft</code>，点<strong>「核对官网历史 / 更新记录」</strong>，确认了 <strong>30/30</strong>，清单记录「生成 50，已导入 30，已提交 0」。若仍有缺项，先检查官网和日志，不能用反复导入代替核对。</p>
+        </div>
+        <div class="media">
+          <figure><img src="images/real50-drafts-verified.png" alt="核对确认第一批 30/30，生成 50、已导入 30、已提交 0"><figcaption>草稿入库已核对，预测尚未提交。</figcaption></figure>
+        </div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>隔离目标草稿，启动真实预测</h3>
+          <p>仅选 <code>Saved draft</code>，用本批独有的名称前缀筛选。本次搜索 <code>yeast_</code>，逐项核对全部结果正好是新导入的 30 个，没有之前的草稿。若账号中已有同前缀旧任务，应继续核对；无法隔离时不要批量启动。</p>
+          <p><strong>官网勾选不能限定提交范围。</strong>脚本每轮取当前列表首条，后续任务会补入；「本次数量」只是处理上限。核对账号与官网额度后填写数量，点「启动」并检查运行前摘要。</p>
+          <p class="note">这是会消耗官网额度的真实预测。本次计划上限 30，不代表最后 30 个都已提交。</p>
+        </div>
+        <div class="media">
+          <figure><img src="images/real50-search-filter.png" alt="搜索 yeast_，仅选中 Saved draft"><figcaption>先隔离本批任务，再检查完整结果。</figcaption></figure>
+          <figure><img src="images/real50-prediction-confirm.png" alt="真实预测的运行前摘要，当前识别 30 行，处理上限 30"><figcaption>预测提交前的确认，与草稿导入确认不同。</figcaption></figure>
+        </div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>官网报错后先停止核对</h3>
+          <p>本次前 15 个收到官网启动成功确认，第 16 次提交返回 <code>Failed to launch job</code>。脚本停止并锁定启动，不能把计划上限 30 当成实际提交数。</p>
+          <p>此汇总的「完成 15」表示<strong>提交已确认</strong>，不是预测已完成。「失败 1」是一次提交报错，不等于一个已启动的预测任务失败。先核对原账号历史与额度，结果不明时不要直接刷新解锁或重提。</p>
+          <p>暂停后没有再次执行该提交请求。</p>
+        </div>
+        <div class="media">
+          <figure><img src="images/real50-submit-error.png" alt="运行汇总记录 15 次提交成功，一次官网启动报错后停止"><figcaption>实测报错原样保留，没有改写成全部成功。</figcaption></figure>
+        </div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>核对预测成功完成的结果</h3>
+          <p>在原账号下清空搜索、取消 <code>Examples</code>，选择需要核对的状态。查看成功结果可选 <code>Completed</code>，再点<strong>「核对官网历史 / 更新记录」</strong>，而不是重新导入。</p>
+          <p>官网对应 15 个任务均为 <code>Succeeded</code>。清单写回「已导入 30，已提交 15，已完成 15，失败 0」，包括单链、双链、三链各 5 个。第一批另 15 个仍为草稿，第二批没有上传。</p>
+        </div>
+        <div class="media">
+          <figure><img src="images/real50-completed-rows.png" alt="官网历史中本次真实蛋白任务的成功状态和修改时间"><figcaption>官网成功记录的局部截图。</figcaption></figure>
+          <figure><img src="images/real50-completed-summary.png" alt="生成 50、已导入 30、已提交 15、已完成 15，第二批 20 个待导入"><figcaption>暂停前最后核实的本地进度。</figcaption></figure>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="resume">
+    <h2 id="resume">继续上一批任务</h2>
+    <p class="note">以下是后续操作说明。剩余 15 个预测和换账号导入第二批尚未完成演示；缺图稍后补，当前不把计划步骤写成成功结果。</p>
+    <ol class="steps" role="list">
+      <li>
+        <div class="copy">
+          <h3>打开本次 50 任务的原目录</h3>
+          <p>刷新、重新登录或换浏览器后，点<strong>「打开已有批次文件夹」</strong>，选择本次文件对应的 <code>test2/af3_…/</code> 子目录。目录应含 <code>manifest.json</code> 和 <code>example_50_proteins_part001</code>、<code>part002</code> 的 FASTA/JSON 配对文件。</p>
+          <p>不要选父目录 <code>test2/</code> 或早先 590 任务的目录，不用重新生成或选择原 FASTA。文件夹恢复不会迁移官网任务。</p>
+        </div>
+        <div class="media"><p class="note"><strong>待补截图：</strong>ego lite 中选择并恢复本次 50 任务的批次目录。</p></div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>原账号继续第一批剩余草稿</h3>
+          <p>第一批的 15 个已完成预测和另 15 个草稿仍留在原账号。恢复后先核对账号、清单和官网历史，不能把已完成任务当作待提交任务。</p>
+          <p>继续时仅选 <code>Saved draft</code>，筛选并核对未提交的任务；数量不超过实际目标数和当前可用额度。先前报错或结果不明的，先人工核对，再决定是否刷新与继续。</p>
+        </div>
+        <div class="media"><p class="note"><strong>待补截图：</strong>剩余草稿、重新核对后的摘要及继续结果。暂停后未执行。</p></div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>另一账号继续未导入的第二批</h3>
+          <p><strong>计划演示，尚未执行。</strong>仅在官网允许的账号使用方式和额度范围内操作，不绕过限制。登录后恢复同一文件夹，核对账号及批次。第 2 批为「待导入」时，切到仅选 <code>Saved draft</code>，检查弹窗应为<strong>第 2 批，20 个任务</strong>。</p>
+          <p>第一批不会随文件夹转移，结果仍需回原账号核对。不重传第一批，不重新生成同名批次，也不跳过「需核对历史」的批次。</p>
+        </div>
+        <div class="media"><p class="note"><strong>待补截图：</strong>换账号后恢复清单、第二批 20 个任务的确认和实际核对结果。目前第二批未上传。</p></div>
+      </li>
+    </ol>
+  </section>
+  <footer>本页仅整理已有材料，不操作浏览器或发送预测请求。截图已裁剪脱敏；未完成的演示和待补图均已标明。<a href="../../README.md">返回 README</a></footer>
+</main>
+</body>
+</html>

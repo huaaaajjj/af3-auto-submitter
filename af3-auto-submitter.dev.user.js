@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      4.0.7
-// @description  正式版：FASTA 每 30 条分批保存、带 manifest 的草稿导入、提交确认、日期折叠勾选及本地账户记录。
+// @version      4.0.9
+// @description  正式版：FASTA 每 30 条分批保存、manifest 草稿导入、提交确认、按日期勾选及结果 ZIP 保存到批次 results。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '4.0.7';
+    const SCRIPT_VERSION = '4.0.9';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -630,6 +630,22 @@
         downloadMissing: 'A selected job changed or could not be found. Selection stopped.',
         downloadIncomplete: 'Scan stopped or incomplete. Find jobs again before applying the selection.',
         downloadDay: '{day} · {count} jobs', downloadUnknown: 'Unknown date',
+        downloadSave: 'Save to batch results…', downloadRunningSave: 'Running: saving result ZIPs',
+        downloadSaveHint: 'Uses the currently opened batch folder when available; otherwise choose the folder containing manifest.json. Saves separate ZIPs in results; existing filenames are skipped without verifying their contents. Only jobs already bound to this batch and account are accepted. Original batch files are not changed.',
+        downloadSaveConfirm: 'Save {count} selected jobs as separate ZIPs to {folder}/results? Only this batch’s matching job IDs and account are accepted. Existing files will not be overwritten; manifest.json and input files stay unchanged.',
+        downloadSaveProgress: 'Saved {saved}/{total}; skipped {skipped} existing files. Saving {name} to {folder}/results…',
+        downloadSaveDone: 'Saved {saved}/{total} to {folder}/results. Skipped {skipped} existing files (contents not verified).',
+        downloadSaveCancelled: 'Folder save cancelled. Saved {saved}/{total}; skipped {skipped} existing files.',
+        downloadSaveError: 'Folder save stopped. Saved {saved}/{total}; skipped {skipped} existing files. {detail}',
+        downloadSaveUnsupported: 'Writable folders or Web Locks are unavailable. Use supported Edge/Chrome, or download manually on the website.',
+        downloadSaveFolder: 'Choose a supported batch folder containing a valid manifest.json, not its parent folder or results.',
+        downloadSaveMismatch: 'A selected job is not bound to this folder and signed-in account by name and unique job ID. Open the original batch folder and check history / update records, then select only this batch’s completed jobs.',
+        downloadSaveLink: 'Cannot safely read a single same-origin ZIP Download link from this job’s own result menu. Use the website Download manually; no API URL was guessed.',
+        downloadSaveResponse: 'The website did not return a complete supported ZIP. Check sign-in and try the website Download manually.',
+        downloadSaveTransfer: 'ZIP transfer failed, was interrupted or timed out. Already saved files are retained.',
+        downloadSaveWrite: 'Could not commit a result file. Check folder permission, free space and other writers. Already saved files are retained.',
+        downloadSaveCleanup: 'Could not remove the new incomplete file {name}. Remove that file manually before retrying; existing files are never overwritten.',
+        downloadSaveLocked: 'Another page is saving results for this batch. Stop that save before retrying.',
     };
     const downloadTranslations = {
         zh: {
@@ -679,6 +695,22 @@
             downloadMissing: '所选任务已变化或未找到，已停止应用。',
             downloadIncomplete: '查找已停止或未完成，请重新查找后再应用勾选。',
             downloadDay: '{day} · {count} 个', downloadUnknown: '日期无法识别',
+            downloadSave: '保存到批次 results…', downloadRunningSave: '运行中：正在保存结果 ZIP',
+            downloadSaveHint: '如果当前页面已打开有效批次文件夹，将直接沿用；否则选择含 manifest.json 的批次文件夹。在 results 中逐个保存 ZIP；已有同名文件跳过，不校验其内容。仅接受已绑定到本批次和当前账号的任务，不修改原始批次文件。',
+            downloadSaveConfirm: '将所选 {count} 个任务分别保存为 ZIP 到 {folder}/results？只接受本批次与当前账号匹配的任务 ID。已有文件不覆盖，manifest.json 和输入文件不修改。',
+            downloadSaveProgress: '已保存 {saved}/{total}，跳过已有文件 {skipped} 个；正在将 {name} 保存到 {folder}/results…',
+            downloadSaveDone: '已保存 {saved}/{total} 到 {folder}/results；跳过已有文件 {skipped} 个（未校验内容）。',
+            downloadSaveCancelled: '已取消目录保存。已保存 {saved}/{total}，跳过已有文件 {skipped} 个。',
+            downloadSaveError: '目录保存已停止。已保存 {saved}/{total}，跳过已有文件 {skipped} 个。{detail}',
+            downloadSaveUnsupported: '当前浏览器不支持可写目录或 Web Locks。请使用支持的 Edge/Chrome，或在官网手动下载。',
+            downloadSaveFolder: '请选择含有效 manifest.json 的受支持批次文件夹，不要选父目录或 results。',
+            downloadSaveMismatch: '所选任务未通过名称、唯一任务 ID 和当前账号绑定到此文件夹。请打开原批次文件夹并“核对官网历史 / 更新记录”，再仅选择本批次已完成任务。',
+            downloadSaveLink: '未能从该任务自己的结果菜单中安全读取唯一、同源的 ZIP Download 链接。请在官网手动下载；脚本不会猜测接口地址。',
+            downloadSaveResponse: '官网未返回完整、受支持的 ZIP。请检查登录状态，尝试官网手动下载。',
+            downloadSaveTransfer: 'ZIP 传输失败、中断或超时；已保存的文件保留。',
+            downloadSaveWrite: '结果文件未能提交保存。请检查目录权限、剩余空间和其他写入程序；已保存的文件保留。',
+            downloadSaveCleanup: '未能清理本次新建的未完成文件 {name}，请手动删除该文件后重试；脚本不会覆盖已有文件。',
+            downloadSaveLocked: '另一页面正在保存本批次结果，请先停止那次保存再重试。',
         },
         ja: { submitTitle: 'ジョブを送信', downloadTitle: 'ジョブをダウンロード', downloadStart: '開始日', downloadEnd: '終了日', downloadScan: 'ジョブを検索', downloadAll: '全選択', downloadClear: '選択解除', downloadApply: '公式サイトの選択に反映' },
         ko: { submitTitle: '작업 제출', downloadTitle: '작업 다운로드', downloadStart: '시작일', downloadEnd: '종료일', downloadScan: '작업 찾기', downloadAll: '전체 선택', downloadClear: '선택 해제', downloadApply: '웹사이트 선택에 적용' },
@@ -1118,34 +1150,40 @@
         finally { fastaState.busy = false; renderFastaSection(); checkSystemStatus(); }
     }
 
+    async function readFastaManifest(dir) {
+        const file = await (await dir.getFileHandle('manifest.json')).getFile();
+        if (file.size > FASTA_MANIFEST_LIMIT) throw new Error(t('fastaManifestLimit'));
+        const text = await file.text();
+        const manifest = JSON.parse(text);
+        if (manifest?.format !== 'af3-fasta-batches' || manifest.version !== 1 || !manifest.generationComplete ||
+            manifest.settings?.batchSize !== 30 || (manifest.settings.sequenceFormat !== 'protein-lines' &&
+                (manifest.settings.sequenceFormat !== undefined || !['monomer', 'complex'].includes(manifest.settings.mode))) ||
+            !Number.isSafeInteger(manifest.revision) || manifest.revision < 1 || manifest.revision >= Number.MAX_SAFE_INTEGER ||
+            !Number.isSafeInteger(manifest.source?.records) || manifest.source.records < 1 || manifest.source.records > 30 * FASTA_MAX_BATCHES ||
+            !/^[\d]{14}_[a-f\d]{8}$/.test(manifest.runId) || !Array.isArray(manifest.batches) ||
+            manifest.batches.length !== Math.ceil(manifest.source.records / 30)) throw new Error(t('fastaChanged'));
+        const names = new Set();
+        for (const [i, batch] of manifest.batches.entries()) {
+            if (batch.index !== i + 1 || !/^[A-Za-z0-9_-]+_part\d+\.json$/.test(batch.jsonFile) || batch.fastaFile !== batch.jsonFile.replace(/\.json$/, '.fasta') ||
+                !Array.isArray(batch.jobs) || batch.jobs.length !== Math.min(30, manifest.source.records - i * 30) || !Array.isArray(batch.attempts) ||
+                (batch.account !== null && !normalizeAccountEmail(batch.account))) throw new Error(t('fastaChanged'));
+            for (const [position, job] of batch.jobs.entries()) {
+                if (job.record !== i * 30 + position + 1 || typeof job.name !== 'string' || (manifest.settings.sequenceFormat !== 'protein-lines' && !job.name.startsWith('af3_' + manifest.runId + '_')) || !/^[A-Za-z0-9 _:-]{1,100}$/.test(job.name) || names.has(job.name) ||
+                    typeof job.header !== 'string' || !['pending', 'confirmed'].includes(job.importStatus) ||
+                    !['unknown', 'draft', 'submitted', 'in_progress', 'completed', 'failed'].includes(job.predictionStatus)) throw new Error(t('fastaChanged'));
+                names.add(job.name);
+            }
+        }
+        return { manifest, text };
+    }
+
     async function restoreFastaBatches() {
         if (fastaState.busy || isRunning || downloadState.busy) return;
         if (typeof window.showDirectoryPicker !== 'function') { fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
         fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.progress = null; renderFastaSection(); checkSystemStatus();
         try {
             const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
-            const file = await (await dir.getFileHandle('manifest.json')).getFile();
-            if (file.size > FASTA_MANIFEST_LIMIT) throw new Error(t('fastaManifestLimit'));
-            const manifest = JSON.parse(await file.text());
-            if (manifest?.format !== 'af3-fasta-batches' || manifest.version !== 1 || !manifest.generationComplete ||
-                manifest.settings?.batchSize !== 30 || (manifest.settings.sequenceFormat !== 'protein-lines' &&
-                    (manifest.settings.sequenceFormat !== undefined || !['monomer', 'complex'].includes(manifest.settings.mode))) ||
-                !Number.isSafeInteger(manifest.revision) || manifest.revision < 1 || manifest.revision >= Number.MAX_SAFE_INTEGER ||
-                !Number.isSafeInteger(manifest.source?.records) || manifest.source.records < 1 || manifest.source.records > 30 * FASTA_MAX_BATCHES ||
-                !/^[\d]{14}_[a-f\d]{8}$/.test(manifest.runId) || !Array.isArray(manifest.batches) ||
-                manifest.batches.length !== Math.ceil(manifest.source.records / 30)) throw new Error(t('fastaChanged'));
-            const names = new Set();
-            for (const [i, batch] of manifest.batches.entries()) {
-                if (batch.index !== i + 1 || !/^[A-Za-z0-9_-]+_part\d+\.json$/.test(batch.jsonFile) || batch.fastaFile !== batch.jsonFile.replace(/\.json$/, '.fasta') ||
-                    !Array.isArray(batch.jobs) || batch.jobs.length !== Math.min(30, manifest.source.records - i * 30) || !Array.isArray(batch.attempts) ||
-                    (batch.account !== null && !normalizeAccountEmail(batch.account))) throw new Error(t('fastaChanged'));
-                for (const [position, job] of batch.jobs.entries()) {
-                    if (job.record !== i * 30 + position + 1 || typeof job.name !== 'string' || (manifest.settings.sequenceFormat !== 'protein-lines' && !job.name.startsWith('af3_' + manifest.runId + '_')) || !/^[A-Za-z0-9 _:-]{1,100}$/.test(job.name) || names.has(job.name) ||
-                        typeof job.header !== 'string' || !['pending', 'confirmed'].includes(job.importStatus) ||
-                        !['unknown', 'draft', 'submitted', 'in_progress', 'completed', 'failed'].includes(job.predictionStatus)) throw new Error(t('fastaChanged'));
-                    names.add(job.name);
-                }
-            }
+            const { manifest } = await readFastaManifest(dir);
             const previous = { dir: fastaState.dir, manifest: fastaState.manifest, saved: fastaState.saved, inputChanged: fastaState.inputChanged };
             fastaState.dir = dir; fastaState.manifest = manifest; fastaState.saved = false; fastaState.inputChanged = false;
             try {
@@ -1452,7 +1490,7 @@
         busy: false, stop: false, complete: false, jobs: [], selected: new Set(),
         unknown: 0, context: null, scanContext: null, message: '', messageVars: {}, phase: '',
         watchNative: false, nativeMutation: false, selectionChanged: false,
-        format: getSavedDownloadFormat(), queue: null,
+        format: getSavedDownloadFormat(), queue: null, controller: null,
     };
     let logExpanded = false;
     let currentLanguage = getSavedLanguage();
@@ -2642,7 +2680,7 @@
         return { jobs, first, previous, next, range, signature: JSON.stringify([range, jobs.map(job => [job.key, job.modified])]) };
     }
 
-    async function readDownloadMenuIdentity(row) {
+    async function readDownloadMenuIdentity(row, resultJob = null) {
         const triggers = row.querySelectorAll('td.mat-column-options button.fold-actions[aria-haspopup="menu"]');
         if (!triggers.length) return null;
         if (triggers.length !== 1) throw new Error(t('downloadMenuIdentity'));
@@ -2677,7 +2715,18 @@
                     visibleMenus().length > 1) throw new Error(t('downloadMenuIdentity'));
                 if (panel && downloadVisible(panel)) {
                     const jobId = readDownloadIdentity(panel);
-                    if (jobId) return jobId;
+                    if (jobId) {
+                        if (!resultJob) return jobId;
+                        if (`id:${jobId}` !== resultJob.key) throw new Error(t('downloadMissing'));
+                        const links = Array.from(panel.querySelectorAll('a[href]')).filter(link =>
+                            downloadVisible(link) && downloadText(link) === 'Download' && link.getAttribute('aria-disabled') !== 'true');
+                        if (links.length !== 1) throw new Error(t('downloadSaveLink'));
+                        let url;
+                        try { url = new URL(links[0].getAttribute('href'), document.baseURI); }
+                        catch (_) { throw new Error(t('downloadSaveLink')); }
+                        if (!/^https?:$/.test(url.protocol) || url.origin !== location.origin || url.username || url.password || url.hash) throw new Error(t('downloadSaveLink'));
+                        return url.href;
+                    }
                 }
                 await downloadDelay(30);
             }
@@ -2921,7 +2970,7 @@
 
     function downloadReadiness() {
         if (fastaState.busy) return { key: 'fastaBusy', color: 'var(--af3-warning)' };
-        if (downloadState.busy) return { key: downloadState.phase === 'scan' ? 'downloadRunningScan' : 'downloadRunningApply', color: 'var(--af3-warning)' };
+        if (downloadState.busy) return { key: downloadState.phase === 'scan' ? 'downloadRunningScan' : downloadState.phase === 'save' ? 'downloadRunningSave' : 'downloadRunningApply', color: 'var(--af3-warning)' };
         if (isRunning) return { key: 'downloadSubmissionBusy', color: 'var(--af3-warning)' };
         let context;
         try { context = getDownloadContext(); }
@@ -2967,8 +3016,10 @@
             const control = getUiElement(`af3-download-${id}`);
             if (control) control.disabled = busy || (['all', 'clear'].includes(id) && (!downloadState.complete || !downloadState.jobs.length));
         }
-        const apply = getUiElement('af3-download-apply');
-        if (apply) apply.disabled = busy || !downloadState.complete || downloadState.selected.size === 0;
+        for (const id of ['apply', 'save']) {
+            const button = getUiElement(`af3-download-${id}`);
+            if (button) button.disabled = busy || !downloadState.complete || downloadState.selected.size === 0;
+        }
         const next = getUiElement('af3-download-next');
         if (next) {
             next.hidden = downloadState.format !== 'individual';
@@ -3193,6 +3244,207 @@
         }
     }
 
+    function resultZipComplete(tail, size) {
+        const view = new DataView(tail.buffer, tail.byteOffset, tail.byteLength);
+        for (let i = tail.length - 22; i >= 0; i--) {
+            if (view.getUint32(i, true) !== 0x06054b50 || i + 22 + view.getUint16(i + 20, true) !== tail.length) continue;
+            // Single-file, non-ZIP64 archives only; never commit a truncated response as a ZIP.
+            return view.getUint16(i + 4, true) === 0 && view.getUint16(i + 6, true) === 0 &&
+                view.getUint16(i + 8, true) === view.getUint16(i + 10, true) && view.getUint16(i + 10, true) !== 0xffff &&
+                view.getUint32(i + 12, true) + view.getUint32(i + 16, true) <= size - (tail.length - i);
+        }
+        return false;
+    }
+
+    async function saveResultZip(directory, name, url, verify) {
+        checkDownloadActive();
+        const controller = downloadState.controller;
+        let reader = null, writer = null, handle = null, committed = false, timer = null;
+        const resetTimeout = () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => controller.abort(), 60000);
+        };
+        try {
+            resetTimeout();
+            let response;
+            try { response = await fetch(url, { mode: 'same-origin', credentials: 'same-origin', redirect: 'error', signal: controller.signal }); }
+            catch (_) { throw new Error(t('downloadSaveTransfer')); }
+            checkDownloadActive();
+            const type = response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase();
+            if (!response.ok || response.redirected || !response.body ||
+                !['application/zip', 'application/x-zip-compressed', 'application/octet-stream'].includes(type)) throw new Error(t('downloadSaveResponse'));
+            reader = response.body.getReader();
+            handle = await directory.getFileHandle(name, { create: true });
+            if ((await handle.getFile()).size !== 0) { handle = null; throw new Error(t('downloadSaveWrite')); }
+            checkDownloadActive();
+            try { writer = await handle.createWritable({ mode: 'exclusive' }); }
+            catch (_) { throw new Error(t('downloadSaveWrite')); }
+            let size = 0, prefix = new Uint8Array(), tail = new Uint8Array();
+            while (true) {
+                checkDownloadActive();
+                let chunk;
+                try { chunk = await reader.read(); }
+                catch (_) { throw new Error(t('downloadSaveTransfer')); }
+                checkDownloadActive();
+                if (chunk.done) break;
+                resetTimeout();
+                const bytes = chunk.value;
+                size += bytes.length;
+                if (prefix.length < 4) {
+                    const joined = new Uint8Array(prefix.length + bytes.length);
+                    joined.set(prefix); joined.set(bytes, prefix.length); prefix = joined.slice(0, 4);
+                }
+                if (prefix.length === 4 && !(prefix[0] === 80 && prefix[1] === 75 &&
+                    ((prefix[2] === 3 && prefix[3] === 4) || (prefix[2] === 5 && prefix[3] === 6)))) throw new Error(t('downloadSaveResponse'));
+                const joined = new Uint8Array(tail.length + bytes.length);
+                joined.set(tail); joined.set(bytes, tail.length); tail = joined.slice(-65557);
+                try { await writer.write(bytes); }
+                catch (_) { throw new Error(t('downloadSaveWrite')); }
+            }
+            const length = response.headers.get('Content-Length');
+            const encoding = response.headers.get('Content-Encoding');
+            if (size < 22 || !resultZipComplete(tail, size) ||
+                ((!encoding || encoding === 'identity') && length !== null && (!/^\d+$/.test(length) || Number(length) !== size))) throw new Error(t('downloadSaveResponse'));
+            await verify();
+            checkDownloadActive();
+            if (controller.signal.aborted) throw new Error(t('downloadSaveTransfer'));
+            try { await writer.close(); committed = true; }
+            catch (_) { throw new Error(t('downloadSaveWrite')); }
+        } finally {
+            clearTimeout(timer);
+            try { await reader?.cancel(); } catch (_) {}
+            if (!committed) {
+                try { await writer?.abort(); } catch (_) {}
+                // Only remove this operation's new, still-empty placeholder, never an existing result.
+                if (handle) {
+                    try {
+                        const current = await directory.getFileHandle(name);
+                        if (await current.isSameEntry(handle) && (await current.getFile()).size === 0) await directory.removeEntry(name);
+                    } catch (_) { throw Object.assign(new Error(t('downloadSaveCleanup', { name })), { resultCleanup: true }); }
+                }
+            }
+        }
+    }
+
+    async function saveDownloadResults() {
+        if (isRunning || downloadState.busy || fastaState.busy) return;
+        if (!downloadState.complete || !downloadState.selected.size) { setDownloadMessage('downloadNoSelection'); return; }
+        const progress = { saved: 0, skipped: 0, total: downloadState.selected.size, folder: '' };
+        const records = downloadState.jobs.filter(job => downloadState.selected.has(job.key));
+        const openedDirectory = fastaState.dir && fastaState.saved && fastaState.manifest?.generationComplete ? fastaState.dir : null;
+        if ((!openedDirectory && typeof window.showDirectoryPicker !== 'function') || !navigator.locks?.request) {
+            setDownloadMessage('downloadSaveError', { ...progress, detail: t('downloadSaveUnsupported') }); return;
+        }
+        downloadState.context = downloadState.scanContext;
+        downloadState.stop = false; downloadState.selectionChanged = false;
+        downloadState.busy = true; downloadState.phase = 'save';
+        downloadState.controller = new AbortController();
+        resetDownloadQueue();
+        let watcher = null, abortReason = null;
+        checkSystemStatus();
+        renderDownloadSection();
+        try {
+            checkDownloadActive();
+            const account = JSON.parse(downloadState.context).account;
+            if (!account) throw new Error(t('fastaContextAccountMissing'));
+            // Reuse the writable handle from “Open existing batch folder” or generation. Only ask for a picker when this page has no valid open batch.
+            const directory = openedDirectory || await window.showDirectoryPicker({ mode: 'readwrite' });
+            checkDownloadActive();
+            progress.folder = directory.name;
+            let snapshot;
+            try { snapshot = await readFastaManifest(directory); }
+            catch (_) { throw new Error(t('downloadSaveFolder')); }
+            checkDownloadActive();
+            const { manifest, text } = snapshot;
+            const bound = new Map();
+            for (const batch of manifest.batches) {
+                if (normalizeAccountEmail(batch.account) !== account) continue;
+                for (const job of batch.jobs) {
+                    if (!job.jobId || typeof job.jobId !== 'string' || /[\\/\s?#\x00-\x1f\x7f]/.test(job.jobId) || job.importStatus !== 'confirmed') continue;
+                    const key = 'id:' + job.jobId;
+                    if (bound.has(key)) throw new Error(t('downloadSaveMismatch'));
+                    bound.set(key, job);
+                }
+            }
+            if (records.length !== progress.total || records.some(job => !job.id || bound.get(job.key)?.name !== job.name)) throw new Error(t('downloadSaveMismatch'));
+            if (!confirm(t('downloadSaveConfirm', { count: records.length, folder: directory.name }))) {
+                setDownloadMessage('downloadSaveCancelled', progress); return;
+            }
+            checkDownloadActive();
+            watcher = setInterval(() => {
+                try { checkDownloadActive(); }
+                catch (error) { abortReason ||= error; downloadState.controller?.abort(); }
+            }, 100);
+            // ponytail: same-origin tabs share one batch lock; use only one browser on a physical folder.
+            await navigator.locks.request('af3-results:' + manifest.runId, { mode: 'exclusive', ifAvailable: true }, async lock => {
+                if (!lock) throw new Error(t('downloadSaveLocked'));
+                checkDownloadActive();
+                const output = await directory.getDirectoryHandle('results', { create: true });
+                const pending = new Map(records.map(job => [job.key, job]));
+                const visited = new Set();
+                let page = await firstDownloadPage();
+                while (pending.size) {
+                    checkDownloadActive();
+                    if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
+                    visited.add(page.signature);
+                    page = await resolveDownloadPage(page, page.jobs.filter(job =>
+                        records.some(target => target.name === job.name && target.modified === job.modified)));
+                    for (const job of page.jobs) {
+                        const target = pending.get(job.key);
+                        if (!target) continue;
+                        if (!sameDownloadJob(job, target)) throw new Error(t('downloadMissing'));
+                        let stem = job.name.replace(/[<>:"/\\|?*\x00-\x1f\x7f]/g, '_').replace(/[. ]+$/g, '') || 'result';
+                        if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(stem)) stem = '_' + stem;
+                        const name = stem.slice(0, 100) + '__' + (await fastaHash(job.key)).slice(0, 16) + '.zip';
+                        checkDownloadActive();
+                        let exists = false;
+                        try { await output.getFileHandle(name); exists = true; }
+                        catch (error) { if (error.name !== 'NotFoundError') throw error; }
+                        if (exists) progress.skipped++;
+                        else {
+                            const url = await readDownloadMenuIdentity(job.row, job);
+                            if (!url) throw new Error(t('downloadSaveLink'));
+                            const verify = async () => {
+                                if (!sameDownloadJob(await resolveDownloadJob(job), target)) throw new Error(t('downloadMissing'));
+                                const current = await (await directory.getFileHandle('manifest.json')).getFile();
+                                if (current.size > FASTA_MANIFEST_LIMIT || await current.text() !== text) throw new Error(t('fastaJournalChanged'));
+                            };
+                            await verify();
+                            setDownloadMessage('downloadSaveProgress', { ...progress, name: job.name });
+                            await saveResultZip(output, name, url, verify);
+                            // Count only committed files, even if Stop arrived while close() was in flight.
+                            progress.saved++;
+                            addLog(t('downloadSaveProgress', { ...progress, name: job.name }));
+                        }
+                        pending.delete(job.key);
+                        checkDownloadActive();
+                    }
+                    if (!pending.size) break;
+                    if (!downloadButtonEnabled(page.next)) throw new Error(t('downloadMissing'));
+                    page = await moveDownloadPage(page.next, page.signature);
+                }
+                await firstDownloadPage();
+                checkDownloadActive();
+            });
+            setDownloadMessage('downloadSaveDone', progress);
+            addLog(t('downloadSaveDone', progress));
+        } catch (error) {
+            if (!error.resultCleanup) {
+                error = abortReason || error;
+                if (downloadState.stop) error = makeStoppedError();
+            }
+            const cancelled = error.name === 'AbortError' || isUserStopError(error);
+            if (!cancelled) downloadState.complete = false;
+            setDownloadMessage(cancelled ? 'downloadSaveCancelled' : 'downloadSaveError', { ...progress, detail: error.message });
+            addLog(t(cancelled ? 'downloadSaveCancelled' : 'downloadSaveError', { ...progress, detail: error.message }), cancelled ? 'warn' : 'error');
+        } finally {
+            clearInterval(watcher);
+            downloadState.controller.abort(); downloadState.controller = null;
+            downloadState.busy = false;
+            renderDownloadSection(); checkSystemStatus();
+        }
+    }
+
     function createDownloadSection() {
         const section = document.createElement('section');
         section.id = 'af3-download-section';
@@ -3231,7 +3483,7 @@
             ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning || fastaState.busy || !downloadState.complete || !downloadState.jobs.length) return; resetDownloadQueue(); downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
             ['apply', 'downloadApply', () => applySelectionToWebsite()],
             ['next', 'downloadNext', () => applySelectionToWebsite(true)],
-            ['stop', 'stopButton', () => { downloadState.stop = true; updateDownloadControls(); }],
+            ['stop', 'stopButton', () => { downloadState.stop = true; downloadState.controller?.abort(); updateDownloadControls(); }],
         ]) {
             const button = translated('button', key); button.type = 'button'; button.id = `af3-download-${id}`;
             button.className = id === 'apply' ? 'af3-primary' : id === 'stop' ? 'af3-danger' : id === 'all' || id === 'clear' ? 'af3-quiet' : '';
@@ -3260,6 +3512,9 @@
         const queue = document.createElement('p'); queue.id = 'af3-download-queue';
         queue.setAttribute('role', 'status'); queue.setAttribute('aria-live', 'polite'); section.appendChild(queue);
         const hint = translated('p', 'downloadHint'); hint.className = 'af3-help af3-download-hint'; section.appendChild(hint);
+        const save = translated('button', 'downloadSave'); save.type = 'button'; save.id = 'af3-download-save';
+        save.onclick = saveDownloadResults; section.appendChild(save);
+        const saveHint = translated('p', 'downloadSaveHint'); saveHint.className = 'af3-help'; section.appendChild(saveHint);
         return section;
     }
 
