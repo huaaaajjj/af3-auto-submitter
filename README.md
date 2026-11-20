@@ -2,11 +2,13 @@
 
 本仓库基于 [siyuanj/af3-auto-submitter](https://github.com/siyuanj/af3-auto-submitter)，保留原作者 Jiang Siyuan 的署名和 [MIT 许可证](LICENSE)。支持 AlphaFold Server 的 FASTA 分批保存与草稿导入、Saved Drafts 批量提交、Failed jobs 克隆重提和按日期应用结果勾选。预测结果可手动使用官网原生 `Download` 下载，也可明确选择原批次文件夹，将所选任务的独立 ZIP 保存到其 `results/` 子目录。
 
-## 安装 4.0 正式版
+## 安装 5.0 正式版
 
-[安装或更新 4.0.9](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 5.0.0](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 **从 4.0 起只发布正式版，不再维护独立开发版渠道。** 安装文件为 `af3-auto-submitter.user.js`，正常开发、安装、测试和更新均以 `main` 的正式文件为准。
+
+**5.0.0 更新：** 新增“提取 results 数据为 CSV…”：浏览器本地读取 `results/*.zip`，按既有提取脚本的指标计算每包最佳模型/链对 CSV、整批最佳模型/全模型/缺失表，保留原 ZIP 和清单。自动沿用已打开批次，替换已有 CSV 前明确确认。无需 Python、官网扫描或网络请求；manifest 格式仍为 1，旧账号与面板设置继续沿用。
 
 **4.0.9 更新：** 结果保存优先沿用当前页面已打开且有效的批次文件夹，不再重复弹出目录选择器；未打开批次或刷新页面后才需选择。保存前仍只读重新校验磁盘清单，并确认任务数与 `批次文件夹名/results`；校验或权限失败会停止，不自动改用其他目录。
 
@@ -17,14 +19,14 @@
 1. 安装 Tampermonkey，点击上方正式安装链接并确认。若仅显示源码，在油猴原脚本编辑器中完整替换并保存。
 2. 允许脚本在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。使用 Edge InPrivate 时，需要开启扩展的“允许在 InPrivate 中使用”。
 3. 普通窗口与 InPrivate 要共用账号目录，需在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 刷新官网，确认标题显示 **v4.0.9**，并核对当前账号和官网额度。网站控件与通知需使用英文。
+4. 刷新官网，确认标题显示 **v5.0.0**，并核对当前账号和官网额度。网站控件与通知需使用英文。
 5. 首次仅试 1 个任务；生成 JSON、导入草稿、预测提交、预测完成是四个不同阶段。结果不确定时不要重复点击 Confirm 或刷新后直接重试。
 
 正式更新检查地址是 `main/af3-auto-submitter.meta.js`，完整下载地址是 `main/af3-auto-submitter.user.js`。启用油猴“检查更新”即可接收后续正式版本。
 
 ### 从旧版升级：先备份，不要先卸载
 
-- 升级前通过 Tampermonkey 备份原脚本及其脚本数据。建议打开**原已安装脚本的编辑器**，以 4.0 完整源码原位替换保存，再核对账号目录；请勿先删除旧条目。只启用一份 AlphaFold 自动提交脚本。
+- 升级前通过 Tampermonkey 备份原脚本及其脚本数据。建议打开**原已安装脚本的编辑器**，以当前正式版完整源码原位替换保存，再核对账号目录；请勿先删除旧条目。只启用一份 AlphaFold 自动提交脚本。
 - 旧脚本与新建脚本的 GM 存储相互独立。安装器若显示“新安装”而非更新，不能承诺账号、备注和历史额度自动迁移；保留旧条目及备份，改用原位替换。保留相同的 GM key 不等于跨脚本迁移数据。
 - 4.0 保留旧版本的本地存储键，原 v3 的语言、位置、尺寸和下载方式继续读取；v2 的语言与位置在没有新记录时作为回退。网站的 www / 非 www 存储及不同浏览器配置仍互相隔离。
 - `af3-auto-submitter.js` 和 `af3-auto-submitter.dev.user.js` 仅为旧地址兼容副本，与正式安装文件内容完全一致，不是额外发布渠道。旧分支的原安装地址在迁移期保留一次 4.0 更新，后续更新转往 main。
@@ -198,6 +200,29 @@ af3_20261119112126_8d528a42/
 
 目录保存与上方“合并 / 分开”的官网勾选方式相互独立，**不在本地合并 ZIP**。只接受任务自身菜单中唯一、同源的 HTTP(S) Download 链接，不猜测服务接口，不跟随重定向；登录页、HTTP 错误、非 ZIP 内容、长度不符及缺失 ZIP 结束记录不会提交为成功结果。目前支持普通单卷、非 ZIP64 ZIP，检查不是对全部条目 CRC 的解压验证。官网若没有可安全读取的链接或返回不支持的格式，请沿用原生手动下载。此功能使用隔离页面与内存文件系统回归，真实账号浏览器操作仍暂停，尚未宣称真实官网端到端验证。
 
+### 本地提取 results 数据为 CSV（5.0）
+
+1. 点下载区 **“提取 results 数据为 CSV…”**。当前页面已打开有效批次时自动沿用；否则选择**含 `manifest.json` 的批次目录**，不是 `results` 子目录。它读取已有的本地结果，**无需先按日期查找、勾选官网任务或重新下载**，也不要求清单已绑定官网任务 ID。
+2. 自动读取 `results` 直接子级中的所有 `.zip`，同时支持官网合并下载的 `folds_*.zip` 和脚本逐任务保存的 `任务名__ID短码.zip`。只解析 job request、summary confidences 和 full data 的 JSON，不将整个 ZIP 解压到磁盘，不调用目录里的 Python 脚本，不发送网络请求。
+3. 完整解析、CRC 校验和计算后，确认框列出目标、输出数及**会被覆盖的生成 CSV 文件名**；确认后才写入。取消不会写文件。ZIP、manifest、FASTA 和输入 JSON 不修改。
+4. 运行期间显示正在读取的 ZIP 和已保存 CSV 数；可点“停止”。每个 CSV 成功关闭提交后才计数。写入失败会中止当前文件，保留其旧内容并清理新建空文件；已提交的 CSV 保留，因此**多个 CSV 不是一个原子事务**，部分完成时请核对计数后重新运行。
+
+| 输出文件（位于 `results/`） | 内容 |
+| --- | --- |
+| `<ZIP名去扩展名>_scores_best.csv` | 包内每个 job 取 `ranking_score` 最高模型，按该分数降序排列 |
+| `<ZIP名去扩展名>_scores_pairs.csv` | 包内全部模型的有向链对 ipTM / 最小 PAE，排除对角线 |
+| `all_scores.csv` | 跨包每个 job 取最佳模型，按清单原始任务顺序排列，额外任务排在后面 |
+| `all_scores_all_models.csv` | 全部模型，保留跨 ZIP 的重复模型记录及 `source_zip` 来源 |
+| `all_scores_missing.csv` | 清单中没有本地结果的任务；没有缺失时仍写表头，以清除旧的缺失提示 |
+
+指标包括 `iptm`、`ptm`、`ranking_score`、`fraction_disordered`、`has_clash`，动态展开的 `chain_iptm_*`、`chain_ptm_*`、非对角 `pair_iptm_*` / `pair_pae_min_*`，以及 `n_tokens`、`n_atoms`、原子 pLDDT 均值/最小值、跨链 token PAE 最小值/均值。`interface_iptm` 保留原脚本含义：第一、第二链的 `[0][1]` 值；多链完整信息看全部链对列。单包的 `long_peptide` / `short_peptide` 以及汇总的 `receptor_len` / `peptide` / `peptide_len` 分别来自请求中的**前两条序列**，不自动按长短重排，不推断是否真实受体/肽。缺失/`null` 指标留空，不伪造 0；缺少 full data 时结构指标留空。
+
+批次汇总优先使用 job request 的原任务名匹配清单中的实际任务名，再用原脚本的小写、去非字母数字及目录 `_数字` 后缀规范化进行无歧义回退。同名 job 在不同 ZIP 中序列/链数冲突、或多个候选无法唯一匹配时拒绝生成；不会猜认。`in_fasta=yes/no` 表示本地清单匹配结果，**不是官网预测状态，也不修改完成记录**。
+
+CSV 为 UTF-8 BOM / CRLF，字段顺序和有效数据的舍入/最佳模型规则与已有提取脚本保持一致；数字 `0` 与 `0.0` 的显示形式可能不同。含逗号、引号、换行的文本正确转义，疑似电子表格公式的文本前加单引号；数值负数不变。
+
+**支持范围：** 使用新版 Edge/Chrome 的 File System Access、Web Locks 及 `DecompressionStream('deflate-raw')`。仅普通单卷、非 ZIP64 的 stored/deflate ZIP；单 ZIP 小于 4 GiB、中央目录最多 32 MiB，相关单个 JSON/压缩块最多 128 MiB、每包相关 JSON 解压总量最多 2 GiB；每次最多 1000 个 ZIP、100000 条模型、1000000 条链对，全部输出 CSV 总量最多 128 MiB。逐条目读取，PAE 统计不构建额外跨链矩阵；解析单个大 JSON 仍可能短暂占用主线程。加密、不支持的压缩、路径异常、重复条目、CRC/长度错误或坏 JSON 将停止整个计算，**全部输入解析成功前不写 CSV**。仅校验读取的指标条目，不验证未读取的 CIF/MSA 文件。和结果保存共用批次锁，请只在一个浏览器操作同一物理文件夹。
+
 ### 提交结果确认
 
 - 启动时和确认摘要后重新核对标签；若不再是原先单独选择的 `Saved draft` 或 `Failed`，不会启动提交。
@@ -238,10 +263,12 @@ python -I -X utf8 test_submission.py
 python -I -X utf8 test_download.py
 python -I -X utf8 test_fasta.py
 python -I -X utf8 test_results.py
+python -I -X utf8 test_score_extraction.py
+node test_score_core.mjs
 git diff --check
 ```
 
-浏览器回归共 276 个场景（提交与账户 32、原有下载 139、FASTA 48、结果目录保存 57）。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
+浏览器回归共 312 个场景（提交与账户 32、原有下载 139、FASTA 48、结果目录保存 57、本地指标提取 36）。另有无依赖的指标核心检查，覆盖舍入、CSV 转义及单/多链统计。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
 
 面板不显示时先核对版本、站点权限并确认只启用一份脚本。额度显示“无法识别”不等于额度为零。提交结果不确定、部分导入或锁定时，先人工核对官网记录，再决定后续操作；不要用反复启动代替确认。
 
@@ -251,7 +278,7 @@ git diff --check
 - `af3-auto-submitter.meta.js`：与正式文件一致的更新元数据头。
 - `af3-auto-submitter.js`、`af3-auto-submitter.dev.user.js`：字节一致的旧地址兼容副本；修改正式文件后同步，不单独开发。
 - `test_release.py`：版本、更新地址、grants、元数据和兼容副本一致性检查。
-- `test_submission.py`、`test_download.py`、`test_fasta.py`、`test_results.py`：账号无关的完整浏览器回归；原有下载测试仍禁止传输，只有结果目录专用夹具显式启用模拟 ZIP 响应。
+- `test_submission.py`、`test_download.py`、`test_fasta.py`、`test_results.py`、`test_score_extraction.py`：账号无关的完整浏览器回归；原有下载测试仍禁止传输，只有结果目录专用夹具显式启用模拟 ZIP 响应。`test_score_core.mjs` 检查舍入、匹配、单/多链与 CSV 边界。
 - `index.html`：中文正式安装说明。
 - `init.png`、`saved_draft.png`、`failed.png`：历史参考截图，不代表当前界面或版本。
 

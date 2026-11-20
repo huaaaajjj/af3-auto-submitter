@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 正式版 4.0.9：结果保存自动沿用当前页面已打开的有效批次目录，不再重复选择；未打开批次时才选含 manifest.json 的文件夹，重新校验并确认目标后逐任务保存 ZIP；校验账号与绑定 ID，已有文件跳过、不覆盖，原始输入与清单不变。保留详细日志、同名旧任务消歧与每页 100 个扫描。FASTA 标题作为任务名、每行序列一条蛋白链，每 30 个任务生成分批输入和官网 JSON，保存到所选本地文件夹后，明确确认才导入草稿。manifest 记录导入尝试、逐任务确认及预测完成状态；保留日期折叠、勾选提速和顶部账号。从 4.0 起统一使用 main 正式版，不再发布独立开发版。</p>
+            <p class="version-note">本 fork 正式版 5.0.0：新增本地“提取 results 数据为 CSV…”；无需 Python 或官网扫描，直接从 ZIP 计算最佳模型、链对、PAE / pLDDT 和批次汇总，替换已有 CSV 前确认，原 ZIP 和 manifest 不修改。结果保存自动沿用当前页面已打开的有效批次目录，不再重复选择；未打开批次时才选含 manifest.json 的文件夹，重新校验并确认目标后逐任务保存 ZIP；校验账号与绑定 ID，已有文件跳过、不覆盖，原始输入与清单不变。保留详细日志、同名旧任务消歧与每页 100 个扫描。FASTA 标题作为任务名、每行序列一条蛋白链，每 30 个任务生成分批输入和官网 JSON，保存到所选本地文件夹后，明确确认才导入草稿。manifest 记录导入尝试、逐任务确认及预测完成状态；保留日期折叠、勾选提速和顶部账号。从 4.0 起统一使用 main 正式版，不再发布独立开发版。</p>
             <p class="version-note">升级前请备份油猴脚本及脚本数据；在原已安装条目内更新并核对账号，不要先卸载旧脚本。新建条目不能保证继承原 GM 账号记录。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 4.0.9 正式版</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 5.0.0 正式版</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/main" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看正式源码</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先备份并在原脚本条目内更新；禁用其他 AlphaFold 提交脚本，只启用一份</p>
@@ -295,8 +295,9 @@
         </section>
 
         <section>
-            <h2>✨ 4.0.9 正式版更新重点</h2>
+            <h2>✨ 5.0.0 正式版更新重点</h2>
             <ul class="release-list">
+                <li>5.0.0 新增本地 ZIP 指标提取：读取 results 下的合并包或逐任务 ZIP，生成每包最佳模型/链对 CSV 和整批最佳模型/全模型/缺失表。沿用已打开批次，完整解析及校验后确认覆盖清单；不调用 Python、不联网、不修改原 ZIP、FASTA 或 manifest。</li>
                 <li>4.0.9 结果保存沿用当前页面已打开的有效批次目录，未打开批次或刷新后才需选择。仍只读校验磁盘清单、任务与账号，确认目标后才逐个保存 ZIP；清单或权限失效会停止，不自动换目录。保留已有文件跳过、停止与部分完成计数。</li>
                 <li>保留详细日志：历史核对/导入记录账号、筛选、每页数量、读取的名称与行数，逐批记录已确认数、同名消歧数和未确认数；按日期查找记录起止条件与匹配结果；停止时记录原因。日志保留最近 120 条。</li>
                 <li>保留同名旧任务的历史核对消歧：同名多条记录时，按已绑定任务 ID 或本次运行保存/提交后产生的唯一记录确定本批任务；本次已发送保存且脚本确认提交过同名任务时，Completed 等历史可确认导入并统计完成，无法唯一确定时仍停止。保留每页 100 个扫描，确认列表刷新后开始扫描，结束后保留 100；切换失败或页面条件变化时安全停止。保留官网翻页占位行和空草稿列表识别修复。脚本与更新元数据同步升版，可通过 Tampermonkey 检查更新升级。</li>
@@ -416,6 +417,16 @@
             </ol>
             <p>保存只读 manifest，不修改原 FASTA、分批 JSON 或浏览器全局下载目录。刷新后需重新选择；先打开已有批次再保存可直接沿用。仅支持安全可读的同源官方链接与普通单卷、非 ZIP64 ZIP，不本地合并或猜接口；不支持时使用原生 Download。请只用一个浏览器操作同一目录；尚未恢复真实账号端到端验证。完整限制见 <a href="README.md">README</a>。</p>
 
+            <h3>5. 本地提取 results 数据为 CSV</h3>
+            <ol>
+                <li>点下载区<strong>提取 results 数据为 CSV…</strong>。自动沿用当前页面已打开的有效批次；否则选择包含 <code>manifest.json</code> 的批次文件夹。无需先查找或勾选官网任务。</li>
+                <li>读取 <code>results/*.zip</code> 中的 job request、summary confidences 与 full data。支持目录式合并包及平铺逐任务 ZIP，计算 ipTM/pTM、ranking、逐链/链对、pLDDT 和跨链 PAE；仅在本机运行，不上传数据。</li>
+                <li>解析成功后核对确认框的目标和将覆盖的 CSV 文件名。输出每包的 <code>_scores_best.csv</code> / <code>_scores_pairs.csv</code>，以及 <code>all_scores.csv</code>、<code>all_scores_all_models.csv</code>、<code>all_scores_missing.csv</code>。</li>
+                <li>最佳模型按 ranking_score 选择，整批表按清单原任务顺序排列。没有本地结果的任务写缺失表；没有缺失时仅写表头。结果只描述本地 ZIP，不更改官网/清单预测状态。</li>
+                <li>可点停止；已提交 CSV 保留，未提交的当前写入中止，不用部分成功冒充全部完成。多个 CSV 不提供跨文件原子提交。原 ZIP、manifest 和输入文件保持不变。</li>
+            </ol>
+            <p>CSV 使用 UTF-8 BOM。数字 <code>0</code> 与 <code>0.0</code> 的显示可不同，数值计算沿用原提取逻辑；公式形文本会做表格注入防护。仅支持单卷非 ZIP64 的 stored/deflate ZIP，需要支持 deflate-raw 的新版 Edge/Chrome。格式/CRC/JSON 无效或匹配冲突时停止；资源上限及字段含义见 <a href="README.md">README</a>。</p>
+
             <!-- 上游界面参考截图 -->
             <div class="screenshot-gallery">
                 <div class="gallery-item">
@@ -442,6 +453,8 @@ python -I -X utf8 test_submission.py
 python -I -X utf8 test_download.py
 python -I -X utf8 test_fasta.py
 python -I -X utf8 test_results.py
+python -I -X utf8 test_score_extraction.py
+node test_score_core.mjs
 git diff --check</code></pre>
             <div class="alert">
                 <strong>配额不足：</strong> 额度以官网为准；不足时停止，无法识别时不当作 0。请先核对官网状态，不要靠反复启动解决。
@@ -450,7 +463,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 4.0.9 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 5.0.0 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -460,7 +473,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter 4.0.9 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter 5.0.0 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

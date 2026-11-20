@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      4.0.9
-// @description  正式版：FASTA 每 30 条分批保存、manifest 草稿导入、提交确认、按日期勾选及结果 ZIP 保存到批次 results。
+// @version      5.0.0
+// @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期下载、结果 ZIP 保存及本地指标 CSV 提取汇总。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '4.0.9';
+    const SCRIPT_VERSION = '5.0.0';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -646,6 +646,24 @@
         downloadSaveWrite: 'Could not commit a result file. Check folder permission, free space and other writers. Already saved files are retained.',
         downloadSaveCleanup: 'Could not remove the new incomplete file {name}. Remove that file manually before retrying; existing files are never overwritten.',
         downloadSaveLocked: 'Another page is saving results for this batch. Stop that save before retrying.',
+        scoreExtract: 'Extract results to CSV…', scoreRunning: 'Running: extracting local ZIP scores',
+        scoreHint: 'Reads every ZIP in the batch results folder locally (no website scan or download). Reuses the opened batch or asks for its folder. Exports per-ZIP best/pair CSVs and batch best/all-model/missing tables; asks before replacing generated CSVs. ZIPs and manifest stay unchanged.',
+        scoreReading: 'Reading ZIP {index}/{total}: {name}…', scoreWriting: 'Saved {saved}/{total} CSV files; writing {name}…',
+        scoreConfirm: 'Read {count} ZIPs, {models} model rows. Save {files} CSV files to {folder}/results? Existing generated CSVs to overwrite: {existing}.\n{names}\nSource ZIPs, input files and manifest.json will not change.',
+        scoreDone: 'Saved {saved} CSV files to {folder}/results: {zips} ZIPs, {jobs} jobs, {models} models; {missing} manifest jobs without local results.',
+        scoreCancelled: 'Extraction cancelled/stopped. Saved {saved} CSV files; earlier committed files are retained.',
+        scoreError: 'Extraction stopped. Saved {saved} CSV files. {detail}',
+        scoreInvalidZip: 'Invalid, truncated or CRC-mismatched ZIP: {name}. No scores from this archive were accepted.',
+        scoreUnsupportedZip: 'Unsupported ZIP format/compression: {name}. Use ordinary single-volume, non-ZIP64 stored or deflated ZIPs.',
+        scoreUnsupportedBrowser: 'This browser cannot decompress deflate-raw ZIP entries. Use a current Edge/Chrome.',
+        scoreInvalidData: 'Invalid AlphaFold score JSON or dimensions: {name}. No report was written for an incomplete parse.',
+        scoreLimit: 'Score extraction exceeded supported archive/JSON/CSV/row limits: {name}. Split the results into smaller batches.',
+        scoreNoZips: 'No ZIP files found in results. Select the batch folder containing manifest.json and a results subfolder.',
+        scoreNoModels: 'No summary_confidences model scores found in ZIP: {name}.',
+        scoreAmbiguous: 'Conflicting result identities/sequences or ambiguous manifest match: {name}. No CSVs were written.',
+        scoreOutputConflict: 'Derived CSV filenames conflict or are not safe filenames. No CSVs were written.',
+        scoreSourceChanged: 'An input or output file changed during extraction. Stopped without overwriting the changed file.',
+        scoreFileError: 'Cannot read/write files. Check results folder permissions, free space and competing writers.',
     };
     const downloadTranslations = {
         zh: {
@@ -711,6 +729,24 @@
             downloadSaveWrite: '结果文件未能提交保存。请检查目录权限、剩余空间和其他写入程序；已保存的文件保留。',
             downloadSaveCleanup: '未能清理本次新建的未完成文件 {name}，请手动删除该文件后重试；脚本不会覆盖已有文件。',
             downloadSaveLocked: '另一页面正在保存本批次结果，请先停止那次保存再重试。',
+            scoreExtract: '提取 results 数据为 CSV…', scoreRunning: '运行中：正在提取本地 ZIP 指标',
+            scoreHint: '本地读取批次 results 中的全部 ZIP，无需查找官网任务或下载。优先沿用已打开批次，否则选择文件夹；输出每包最佳模型/链对 CSV 和整批最佳/全模型/缺失表。替换已有 CSV 前确认，不改 ZIP、输入文件或清单。',
+            scoreReading: '正在读取 ZIP {index}/{total}：{name}…', scoreWriting: '已保存 CSV {saved}/{total}；正在写入 {name}…',
+            scoreConfirm: '已读取 {count} 个 ZIP、{models} 条模型记录。将 {files} 个 CSV 保存到 {folder}/results？将覆盖的已有生成 CSV：{existing} 个。\n{names}\n原 ZIP、输入文件和 manifest.json 不修改。',
+            scoreDone: '已保存 {saved} 个 CSV 到 {folder}/results：{zips} 个 ZIP，{jobs} 个任务，{models} 个模型；清单中 {missing} 个任务没有本地结果。',
+            scoreCancelled: '提取已取消/停止。已保存 {saved} 个 CSV，之前已提交的文件保留。',
+            scoreError: '提取已停止。已保存 {saved} 个 CSV。{detail}',
+            scoreInvalidZip: 'ZIP 无效、截断或 CRC 不匹配：{name}；未接受此包的指标。',
+            scoreUnsupportedZip: '不支持的 ZIP 格式/压缩方式：{name}。仅支持普通单卷、非 ZIP64 的存储或 deflate ZIP。',
+            scoreUnsupportedBrowser: '当前浏览器无法解压 deflate-raw ZIP 条目，请使用新版 Edge/Chrome。',
+            scoreInvalidData: 'AlphaFold 指标 JSON 或矩阵维度无效：{name}；未为未完整解析的数据写报告。',
+            scoreLimit: '提取超过支持的 ZIP/JSON/CSV/行数上限：{name}。请将结果拆成较小批次。',
+            scoreNoZips: 'results 中未找到 ZIP；请选择包含 manifest.json 和 results 子目录的批次文件夹。',
+            scoreNoModels: 'ZIP 中未找到 summary_confidences 模型指标：{name}。',
+            scoreAmbiguous: '结果身份/序列冲突或与清单匹配有歧义：{name}；未写入 CSV。',
+            scoreOutputConflict: '生成的 CSV 文件名冲突或不安全，未写入 CSV。',
+            scoreSourceChanged: '提取期间输入或输出文件发生变化，已停止，不覆盖已变化的文件。',
+            scoreFileError: '无法读写文件，请检查 results 目录权限、剩余空间和其他写入程序。',
         },
         ja: { submitTitle: 'ジョブを送信', downloadTitle: 'ジョブをダウンロード', downloadStart: '開始日', downloadEnd: '終了日', downloadScan: 'ジョブを検索', downloadAll: '全選択', downloadClear: '選択解除', downloadApply: '公式サイトの選択に反映' },
         ko: { submitTitle: '작업 제출', downloadTitle: '작업 다운로드', downloadStart: '시작일', downloadEnd: '종료일', downloadScan: '작업 찾기', downloadAll: '전체 선택', downloadClear: '선택 해제', downloadApply: '웹사이트 선택에 적용' },
@@ -2970,7 +3006,7 @@
 
     function downloadReadiness() {
         if (fastaState.busy) return { key: 'fastaBusy', color: 'var(--af3-warning)' };
-        if (downloadState.busy) return { key: downloadState.phase === 'scan' ? 'downloadRunningScan' : downloadState.phase === 'save' ? 'downloadRunningSave' : 'downloadRunningApply', color: 'var(--af3-warning)' };
+        if (downloadState.busy) return { key: downloadState.phase === 'extract' ? 'scoreRunning' : downloadState.phase === 'scan' ? 'downloadRunningScan' : downloadState.phase === 'save' ? 'downloadRunningSave' : 'downloadRunningApply', color: 'var(--af3-warning)' };
         if (isRunning) return { key: 'downloadSubmissionBusy', color: 'var(--af3-warning)' };
         let context;
         try { context = getDownloadContext(); }
@@ -3020,6 +3056,8 @@
             const button = getUiElement(`af3-download-${id}`);
             if (button) button.disabled = busy || !downloadState.complete || downloadState.selected.size === 0;
         }
+        const extract = getUiElement('af3-download-extract');
+        if (extract) extract.disabled = busy;
         const next = getUiElement('af3-download-next');
         if (next) {
             next.hidden = downloadState.format !== 'individual';
@@ -3445,6 +3483,433 @@
         }
     }
 
+    // --- Local score extraction: milk-compatible metrics; no website requests. ---
+    const SCORE_JSON_LIMIT = 128 * 1024 * 1024;
+    const SCORE_CSV_LIMIT = 128 * 1024 * 1024;
+    const SCORE_ROW_LIMIT = 100000;
+    const SCORE_SCALARS = ['iptm', 'ptm', 'ranking_score', 'fraction_disordered', 'has_clash'];
+    const SCORE_STRUCTURE = ['n_tokens', 'n_atoms', 'plddt_mean', 'plddt_min', 'pae_inter_min', 'pae_inter_mean'];
+    const SCORE_SINGLE_FIELDS = ['job', 'job_name', 'model', 'n_chains', 'chain_ids', 'long_peptide', 'long_peptide_len',
+        'short_peptide', 'short_peptide_len', 'iptm', 'ptm', 'interface_iptm', 'ranking_score', 'fraction_disordered', 'has_clash'];
+    const SCORE_MERGED_FIELDS = ['fasta_header', 'in_fasta', 'job', 'source_zip', 'model', 'n_chains', 'chain_ids',
+        'receptor_len', 'peptide', 'peptide_len', 'iptm', 'ptm', 'interface_iptm', 'ranking_score', 'fraction_disordered', 'has_clash'];
+    const SCORE_PAIR_FIELDS = ['job', 'model', 'chain_i', 'chain_j', 'pair_iptm', 'pair_pae_min'];
+    const SCORE_MISSING_FIELDS = ['fasta_header', 'norm_key', 'n_jobs_found', 'n_fasta_copies'];
+    const SCORE_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, value) => {
+        for (let bit = 0; bit < 8; bit++) value = (value >>> 1) ^ ((value & 1) ? 0xedb88320 : 0);
+        return value >>> 0;
+    });
+
+    function scoreCheck() {
+        if (downloadState.stop) throw makeStoppedError();
+    }
+
+    function scoreFail(key = 'scoreInvalidZip', name = '') {
+        return new Error(t(key, { name }));
+    }
+
+    function scoreCompare(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
+
+    // Python round uses the binary float's exact value and ties-to-even, unlike Math.round/toFixed.
+    function scoreRound(value, digits = 4) {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'boolean') return value;
+        if (typeof value !== 'number' || !Number.isFinite(value)) throw scoreFail('scoreInvalidData');
+        if (Number.isInteger(value)) return value;
+        const view = new DataView(new ArrayBuffer(8));
+        view.setFloat64(0, Math.abs(value));
+        const bits = view.getBigUint64(0), exponent = Number((bits >> 52n) & 0x7ffn);
+        let mantissa = bits & ((1n << 52n) - 1n);
+        if (exponent) mantissa |= 1n << 52n;
+        mantissa *= 5n ** BigInt(digits);
+        const shift = (exponent || 1) - 1023 - 52 + digits;
+        let rounded;
+        if (shift >= 0) rounded = mantissa << BigInt(shift);
+        else {
+            const denominator = 1n << BigInt(-shift), remainder = mantissa % denominator;
+            rounded = mantissa / denominator;
+            if (remainder * 2n > denominator || (remainder * 2n === denominator && (rounded & 1n))) rounded++;
+        }
+        return (value < 0 ? -1 : 1) * Number(rounded) / 10 ** digits;
+    }
+
+    async function scoreCrc(bytes) {
+        let crc = 0xffffffff;
+        for (let i = 0; i < bytes.length; i++) {
+            crc = (crc >>> 8) ^ SCORE_CRC_TABLE[(crc ^ bytes[i]) & 255];
+            if (i && i % 1048576 === 0) { scoreCheck(); await sleep(0); }
+        }
+        return (crc ^ 0xffffffff) >>> 0;
+    }
+
+    async function scoreZipEntries(file) {
+        scoreCheck();
+        if (file.size < 22 || file.size >= 0xffffffff) throw scoreFail('scoreInvalidZip', file.name);
+        const tailStart = Math.max(0, file.size - 65557);
+        const tail = new Uint8Array(await file.slice(tailStart).arrayBuffer());
+        const endView = new DataView(tail.buffer);
+        let end = -1;
+        for (let i = tail.length - 22; i >= 0; i--) {
+            if (endView.getUint32(i, true) === 0x06054b50 && i + 22 + endView.getUint16(i + 20, true) === tail.length) { end = i; break; }
+        }
+        if (end < 0) throw scoreFail('scoreInvalidZip', file.name);
+        const count = endView.getUint16(end + 10, true), size = endView.getUint32(end + 12, true), offset = endView.getUint32(end + 16, true);
+        if (endView.getUint16(end + 4, true) || endView.getUint16(end + 6, true) ||
+            count !== endView.getUint16(end + 8, true) || count === 0xffff || size > 32 * 1024 * 1024 ||
+            offset + size !== tailStart + end) throw scoreFail('scoreUnsupportedZip', file.name);
+        const bytes = new Uint8Array(await file.slice(offset, offset + size).arrayBuffer());
+        const view = new DataView(bytes.buffer), decoder = new TextDecoder('utf-8', { fatal: true });
+        const entries = [], names = new Set(), regions = [];
+        let cursor = 0, inflated = 0;
+        for (let index = 0; index < count; index++) {
+            scoreCheck();
+            if (cursor + 46 > size || view.getUint32(cursor, true) !== 0x02014b50) throw scoreFail('scoreInvalidZip', file.name);
+            const flags = view.getUint16(cursor + 8, true), method = view.getUint16(cursor + 10, true);
+            const crc = view.getUint32(cursor + 16, true), compressed = view.getUint32(cursor + 20, true), length = view.getUint32(cursor + 24, true);
+            const nameLength = view.getUint16(cursor + 28, true), extraLength = view.getUint16(cursor + 30, true), commentLength = view.getUint16(cursor + 32, true);
+            const disk = view.getUint16(cursor + 34, true);
+            const start = view.getUint32(cursor + 42, true), next = cursor + 46 + nameLength + extraLength + commentLength;
+            if (next > size || !nameLength || compressed === 0xffffffff || length === 0xffffffff || start === 0xffffffff ||
+                flags & 0x41 || ![0, 8].includes(method) || disk || start + 30 + compressed > offset) throw scoreFail('scoreUnsupportedZip', file.name);
+            let name;
+            try { name = decoder.decode(bytes.subarray(cursor + 46, cursor + 46 + nameLength)); }
+            catch (_) { throw scoreFail('scoreUnsupportedZip', file.name); }
+            const path = name.replace(/\/$/, '').split('/');
+            if (/^[A-Za-z]:|^[\/]|[\\\x00-\x1f\x7f]/.test(name) || path.some(part => !part || part === '.' || part === '..') || names.has(name)) throw scoreFail('scoreInvalidZip', file.name);
+            names.add(name);
+            const match = /^(.+)_(job_request|summary_confidences_\d+|full_data_\d+)\.json$/.exec(path.at(-1));
+            if (match) {
+                if (length > SCORE_JSON_LIMIT || compressed > SCORE_JSON_LIMIT || (inflated += length) > 2 * 1024 ** 3) throw scoreFail('scoreLimit', file.name);
+                const job = path.length > 1 ? path[0] : match[1].replace(/^fold_/, '');
+                entries.push({ name, job, kind: match[2].split(/_\d+$/)[0], model: Number(match[2].split('_').at(-1)),
+                    flags, method, crc, compressed, length, start, nameBytes: bytes.slice(cursor + 46, cursor + 46 + nameLength), directoryOffset: offset });
+                regions.push([start, start + 30 + compressed]);
+            }
+            cursor = next;
+        }
+        if (cursor !== size) throw scoreFail('scoreInvalidZip', file.name);
+        regions.sort((a, b) => a[0] - b[0]);
+        if (regions.some((region, index) => index && region[0] < regions[index - 1][1])) throw scoreFail('scoreInvalidZip', file.name);
+        return entries.sort((a, b) => scoreCompare(a.name, b.name));
+    }
+
+    async function scoreReadJson(file, entry) {
+        scoreCheck();
+        const header = new Uint8Array(await file.slice(entry.start, entry.start + 30).arrayBuffer());
+        const view = new DataView(header.buffer);
+        if (header.length !== 30 || view.getUint32(0, true) !== 0x04034b50 || view.getUint16(6, true) !== entry.flags ||
+            view.getUint16(8, true) !== entry.method) throw scoreFail('scoreInvalidZip', file.name);
+        const nameLength = view.getUint16(26, true), extraLength = view.getUint16(28, true);
+        const payload = entry.start + 30 + nameLength + extraLength;
+        if (nameLength !== entry.nameBytes.length || payload + entry.compressed > entry.directoryOffset) throw scoreFail('scoreInvalidZip', file.name);
+        const name = new Uint8Array(await file.slice(entry.start + 30, entry.start + 30 + nameLength).arrayBuffer());
+        if (name.some((value, index) => value !== entry.nameBytes[index]) || (!(entry.flags & 8) &&
+            (view.getUint32(14, true) !== entry.crc || view.getUint32(18, true) !== entry.compressed || view.getUint32(22, true) !== entry.length))) throw scoreFail('scoreInvalidZip', file.name);
+        let stream = file.slice(payload, payload + entry.compressed).stream();
+        if (entry.method === 8) {
+            let decompressor;
+            try { decompressor = new DecompressionStream('deflate-raw'); }
+            catch (_) { throw scoreFail('scoreUnsupportedBrowser'); }
+            stream = stream.pipeThrough(decompressor);
+        }
+        const reader = stream.getReader(), chunks = [];
+        let length = 0;
+        try {
+            while (true) {
+                scoreCheck();
+                const { done, value } = await reader.read();
+                scoreCheck();
+                if (done) break;
+                length += value.length;
+                if (length > entry.length || length > SCORE_JSON_LIMIT) throw scoreFail('scoreLimit', file.name);
+                chunks.push(value);
+            }
+        } catch (error) {
+            if (isUserStopError(error)) throw error;
+            throw scoreFail('scoreInvalidZip', file.name);
+        } finally { try { await reader.cancel(); } catch (_) {} }
+        if (length !== entry.length) throw scoreFail('scoreInvalidZip', file.name);
+        const data = new Uint8Array(length);
+        let at = 0;
+        for (const chunk of chunks) { data.set(chunk, at); at += chunk.length; }
+        if (await scoreCrc(data) !== entry.crc) throw scoreFail('scoreInvalidZip', file.name);
+        let parsed;
+        try { parsed = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(data)); }
+        catch (_) { throw scoreFail('scoreInvalidData', entry.name); }
+        scoreCheck();
+        return parsed;
+    }
+
+    async function scoreStructure(data) {
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw scoreFail('scoreInvalidData');
+        const pae = data.pae ?? [], atoms = data.atom_plddts ?? [], chains = data.token_chain_ids ?? [];
+        if (!Array.isArray(pae) || !Array.isArray(atoms) || !Array.isArray(chains) || pae.length > 10000 || atoms.length > 1000000 ||
+            (pae.length && chains.length !== pae.length)) throw scoreFail('scoreInvalidData');
+        // Compensated sums match modern Python sum() without constructing an O(n²) cross-chain array.
+        const stats = () => ({ sum: 0, correction: 0, min: Infinity, count: 0 });
+        const add = (acc, value) => {
+            if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw scoreFail('scoreInvalidData');
+            const next = acc.sum + value;
+            acc.correction += Math.abs(acc.sum) >= Math.abs(value) ? (acc.sum - next) + value : (value - next) + acc.sum;
+            acc.sum = next; acc.min = Math.min(acc.min, value); acc.count++;
+        };
+        const plddt = stats(), inter = stats();
+        for (const value of atoms) add(plddt, value);
+        for (let i = 0; i < pae.length; i++) {
+            if (!Array.isArray(pae[i]) || pae[i].length !== pae.length || typeof chains[i] !== 'string') throw scoreFail('scoreInvalidData');
+            for (let j = 0; j < pae.length; j++) {
+                const value = pae[i][j];
+                if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw scoreFail('scoreInvalidData');
+                if (i !== j && chains[i] !== chains[j]) add(inter, value);
+            }
+            if (i % 64 === 0) { scoreCheck(); await sleep(0); }
+        }
+        return { n_tokens: pae.length, n_atoms: atoms.length,
+            plddt_mean: plddt.count ? scoreRound((plddt.sum + plddt.correction) / plddt.count, 2) : '',
+            plddt_min: plddt.count ? scoreRound(plddt.min, 2) : '',
+            pae_inter_min: inter.count ? scoreRound(inter.min, 2) : '',
+            pae_inter_mean: inter.count ? scoreRound((inter.sum + inter.correction) / inter.count, 2) : '' };
+    }
+
+    async function scoreReadArchive(file) {
+        const entries = await scoreZipEntries(file), requests = new Map(), structures = new Map(), models = new Set(), rows = [], pairs = [];
+        const object = value => value && typeof value === 'object' && !Array.isArray(value);
+        for (const entry of entries.filter(item => item.kind !== 'summary_confidences')) {
+            const data = await scoreReadJson(file, entry);
+            if (entry.kind === 'job_request') {
+                if (requests.has(entry.job) || !Array.isArray(data) || data.length !== 1 || !object(data[0]) || !Array.isArray(data[0].sequences)) throw scoreFail('scoreInvalidData', entry.name);
+                const sequences = [];
+                for (const entity of data[0].sequences) {
+                    if (!object(entity)) throw scoreFail('scoreInvalidData', entry.name);
+                    for (const value of Object.values(entity)) {
+                        if (object(value) && 'sequence' in value) {
+                            if (typeof value.sequence !== 'string' || value.sequence.length > 100000) throw scoreFail('scoreInvalidData', entry.name);
+                            sequences.push(value.sequence);
+                        }
+                    }
+                }
+                if (data[0].name !== undefined && typeof data[0].name !== 'string') throw scoreFail('scoreInvalidData', entry.name);
+                requests.set(entry.job, { name: data[0].name || entry.job, sequences });
+            } else {
+                const key = JSON.stringify([entry.job, entry.model]);
+                if (!Number.isSafeInteger(entry.model) || structures.has(key)) throw scoreFail('scoreInvalidData', entry.name);
+                structures.set(key, await scoreStructure(data));
+            }
+        }
+        for (const entry of entries.filter(item => item.kind === 'summary_confidences')) {
+            scoreCheck();
+            const data = await scoreReadJson(file, entry), key = JSON.stringify([entry.job, entry.model]);
+            if (!object(data) || models.has(key) || !Number.isSafeInteger(entry.model) || typeof data.ranking_score !== 'number' || !Number.isFinite(data.ranking_score) ||
+                !Array.isArray(data.chain_ids) || !data.chain_ids.length || data.chain_ids.length > 100 ||
+                data.chain_ids.some(id => typeof id !== 'string' || !id || id.length > 32 || /[\x00-\x1f\x7f]/.test(id)) || new Set(data.chain_ids).size !== data.chain_ids.length) throw scoreFail('scoreInvalidData', entry.name);
+            models.add(key);
+            const ids = data.chain_ids, request = requests.get(entry.job), sequences = request?.sequences || [];
+            const row = { job: entry.job, job_name: request?.name || entry.job, source_zip: file.name, model: entry.model,
+                n_chains: ids.length, chain_ids: ids.join(';'), long_peptide: sequences[0] || '', long_peptide_len: (sequences[0] || '').length,
+                short_peptide: sequences[1] || '', short_peptide_len: (sequences[1] || '').length, _sequences: JSON.stringify(sequences) };
+            for (const field of SCORE_SCALARS) row[field] = scoreRound(data[field]);
+            for (const field of ['chain_iptm', 'chain_ptm']) {
+                const values = data[field] ?? [];
+                if (!Array.isArray(values) || values.length > ids.length) throw scoreFail('scoreInvalidData', entry.name);
+                ids.forEach((id, index) => { row[field + '_' + id] = scoreRound(values[index]); });
+            }
+            for (const field of ['chain_pair_iptm', 'chain_pair_pae_min']) {
+                const matrix = data[field] ?? [];
+                if (!Array.isArray(matrix) || matrix.length > ids.length || matrix.some(line => !Array.isArray(line) || line.length > ids.length)) throw scoreFail('scoreInvalidData', entry.name);
+                for (let i = 0; i < ids.length; i++) for (let j = 0; j < ids.length; j++) {
+                    if (i !== j) row['pair_' + field.replace('chain_pair_', '') + '_' + ids[i] + '_' + ids[j]] = scoreRound(matrix[i]?.[j]);
+                }
+            }
+            row.interface_iptm = ids.length > 1 ? scoreRound(data.chain_pair_iptm?.[0]?.[1]) : '';
+            Object.assign(row, structures.get(key) || {});
+            rows.push(row);
+            for (let i = 0; i < ids.length; i++) for (let j = 0; j < ids.length; j++) {
+                if (i !== j && data.chain_pair_iptm?.[i]?.[j] !== undefined) pairs.push({ job: entry.job, model: entry.model,
+                    chain_i: ids[i], chain_j: ids[j], pair_iptm: row['pair_iptm_' + ids[i] + '_' + ids[j]], pair_pae_min: row['pair_pae_min_' + ids[i] + '_' + ids[j]] });
+            }
+            if (rows.length > SCORE_ROW_LIMIT || pairs.length > 1000000) throw scoreFail('scoreLimit', file.name);
+        }
+        if (!rows.length) throw scoreFail('scoreNoModels', file.name);
+        return { rows, pairs };
+    }
+
+    function scoreFields(rows, base) {
+        return [...base, ...[...new Set(rows.flatMap(row => Object.keys(row).filter(key => /^(chain_iptm_|chain_ptm_|pair_)/.test(key))))].sort(scoreCompare), ...SCORE_STRUCTURE];
+    }
+
+    function scoreCsv(rows, fields) {
+        const cell = value => {
+            let text = value === null || value === undefined ? '' : typeof value === 'boolean' ? (value ? 'True' : 'False') : String(value);
+            // Formula-looking text is data, never executable spreadsheet content. Numeric negatives stay numeric.
+            if (typeof value === 'string' && /^(?:\s*[=+@-]|[\t\r\n])/.test(text)) text = "'" + text;
+            return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+        };
+        return '﻿' + [fields.map(cell).join(','), ...rows.map(row => fields.map(field => cell(row[field])).join(','))].join('\r\n') + '\r\n';
+    }
+
+    function scoreBest(rows) {
+        const best = new Map();
+        for (const row of rows) if (!best.has(row.job) || row.ranking_score > best.get(row.job).ranking_score) best.set(row.job, row);
+        return best;
+    }
+
+    function scoreOutputs(archives, manifest) {
+        const outputs = [], all = archives.flatMap(archive => archive.rows);
+        if (all.length > SCORE_ROW_LIMIT) throw scoreFail('scoreLimit');
+        for (const archive of archives) {
+            const stem = archive.name.replace(/\.zip$/i, '');
+            const best = [...scoreBest(archive.rows).values()].sort((a, b) => b.ranking_score - a.ranking_score);
+            outputs.push({ name: stem + '_scores_best.csv', text: scoreCsv(best, scoreFields(archive.rows, SCORE_SINGLE_FIELDS)) },
+                { name: stem + '_scores_pairs.csv', text: scoreCsv(archive.pairs, SCORE_PAIR_FIELDS) });
+        }
+        const normalize = value => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const jobs = manifest.batches.flatMap(batch => batch.jobs), best = scoreBest(all), used = new Set(), ordered = [], missing = [];
+        const signatures = new Map();
+        for (const row of all) {
+            const signature = JSON.stringify([row.job_name, row._sequences, row.n_chains]);
+            if (signatures.has(row.job) && signatures.get(row.job) !== signature) throw scoreFail('scoreAmbiguous', row.job);
+            signatures.set(row.job, signature);
+        }
+        const exact = new Map(), normalized = new Map(), copies = new Map();
+        for (const row of best.values()) {
+            const key = normalize(row.job.replace(/_\d+$/, ''));
+            if (!exact.has(row.job_name)) exact.set(row.job_name, []);
+            if (!normalized.has(key)) normalized.set(key, []);
+            exact.get(row.job_name).push(row); normalized.get(key).push(row);
+        }
+        for (const list of [...exact.values(), ...normalized.values()]) list.sort((a, b) => scoreCompare(a.job, b.job));
+        for (const job of jobs) { const key = normalize(job.header); copies.set(key, (copies.get(key) || 0) + 1); }
+        for (const job of jobs) {
+            const key = normalize(job.header);
+            let candidates = (exact.get(job.name) || []).filter(row => !used.has(row.job));
+            if (!candidates.length && key) candidates = (normalized.get(key) || []).filter(row => !used.has(row.job));
+            if (candidates.length > 1) throw scoreFail('scoreAmbiguous', job.name);
+            if (!candidates.length) {
+                missing.push({ fasta_header: job.header, norm_key: key, n_jobs_found: 0, n_fasta_copies: copies.get(key) });
+            } else {
+                const row = candidates[0]; used.add(row.job);
+                ordered.push({ ...row, fasta_header: job.header, in_fasta: 'yes' });
+            }
+        }
+        for (const row of [...best.values()].sort((a, b) => scoreCompare(a.job, b.job))) if (!used.has(row.job)) ordered.push({ ...row, fasta_header: '', in_fasta: 'no' });
+        const order = new Map(ordered.map((row, index) => [row.job, index])), metadata = new Map(ordered.map(row => [row.job, row]));
+        const merged = row => ({ ...row, fasta_header: metadata.get(row.job).fasta_header, in_fasta: metadata.get(row.job).in_fasta,
+            receptor_len: row.long_peptide_len, peptide: row.short_peptide, peptide_len: row.short_peptide_len });
+        const fields = scoreFields(all, SCORE_MERGED_FIELDS);
+        outputs.push({ name: 'all_scores.csv', text: scoreCsv(ordered.map(merged), fields) },
+            { name: 'all_scores_all_models.csv', text: scoreCsv([...all].sort((a, b) => order.get(a.job) - order.get(b.job) || a.model - b.model).map(merged), fields) },
+            { name: 'all_scores_missing.csv', text: scoreCsv(missing, SCORE_MISSING_FIELDS) });
+        const names = new Set();
+        let bytes = 0;
+        for (const output of outputs) {
+            if (/[<>:"/\\|?*\x00-\x1f\x7f]/.test(output.name) || output.name.length > 240 || names.has(output.name.toLowerCase())) throw scoreFail('scoreOutputConflict');
+            names.add(output.name.toLowerCase()); bytes += new Blob([output.text]).size;
+        }
+        if (bytes > SCORE_CSV_LIMIT) throw scoreFail('scoreLimit');
+        return { outputs, jobs: best.size, models: all.length, missing: missing.length };
+    }
+
+    async function writeScoreCsv(directory, output, verify) {
+        await verify();
+        let handle = null, writer = null, committed = false;
+        try {
+            let existing = null;
+            try { existing = await directory.getFileHandle(output.name); }
+            catch (error) { if (error.name !== 'NotFoundError') throw error; }
+            if (Boolean(existing) !== Boolean(output.before)) throw scoreFail('scoreSourceChanged');
+            handle = existing || await directory.getFileHandle(output.name, { create: true });
+            const before = await handle.getFile();
+            if (output.before && (before.size !== output.before.size || before.lastModified !== output.before.lastModified)) throw scoreFail('scoreSourceChanged');
+            writer = await handle.createWritable({ mode: 'exclusive' });
+            scoreCheck(); await writer.write(output.text); await verify(); scoreCheck();
+            const latest = await handle.getFile(), current = await directory.getFileHandle(output.name);
+            if (!await current.isSameEntry(handle) || latest.size !== before.size || latest.lastModified !== before.lastModified) throw scoreFail('scoreSourceChanged');
+            await writer.close(); committed = true;
+        } finally {
+            if (!committed) {
+                try { await writer?.abort(); } catch (_) {}
+                if (handle && !output.before) {
+                    try {
+                        const current = await directory.getFileHandle(output.name);
+                        if (await current.isSameEntry(handle) && (await current.getFile()).size === 0) await directory.removeEntry(output.name);
+                    } catch (_) { throw Object.assign(scoreFail('downloadSaveCleanup', output.name), { resultCleanup: true }); }
+                }
+            }
+        }
+    }
+
+    async function extractResultScores() {
+        if (isRunning || fastaState.busy || downloadState.busy) return;
+        const opened = fastaState.dir && fastaState.saved && fastaState.manifest?.generationComplete ? fastaState.dir : null;
+        if ((!opened && typeof window.showDirectoryPicker !== 'function') || !navigator.locks?.request) { setDownloadMessage('scoreError', { saved: 0, detail: t('downloadSaveUnsupported') }); return; }
+        downloadState.busy = true; downloadState.stop = false; downloadState.phase = 'extract';
+        resetDownloadQueue(); checkSystemStatus();
+        let saved = 0, current = '';
+        try {
+            const directory = opened || await window.showDirectoryPicker({ mode: 'readwrite' });
+            scoreCheck();
+            let snapshot;
+            try { snapshot = await readFastaManifest(directory); }
+            catch (_) { throw scoreFail('downloadSaveFolder'); }
+            const { manifest, text } = snapshot;
+            await navigator.locks.request('af3-results:' + manifest.runId, { mode: 'exclusive', ifAvailable: true }, async lock => {
+                if (!lock) throw scoreFail('downloadSaveLocked');
+                scoreCheck();
+                const results = await directory.getDirectoryHandle('results');
+                const handles = [];
+                for await (const [name, handle] of results.entries()) {
+                    scoreCheck();
+                    if (handle.kind === 'file' && /\.zip$/i.test(name)) handles.push({ name, handle });
+                    if (handles.length > 1000) throw scoreFail('scoreLimit');
+                }
+                if (!handles.length) throw scoreFail('scoreNoZips');
+                handles.sort((a, b) => scoreCompare(a.name, b.name));
+                const archives = [];
+                let modelCount = 0, pairCount = 0;
+                for (const [index, item] of handles.entries()) {
+                    current = item.name;
+                    setDownloadMessage('scoreReading', { index: index + 1, total: handles.length, name: item.name });
+                    await sleep(0); scoreCheck();
+                    const file = await item.handle.getFile(); item.file = file;
+                    const parsed = await scoreReadArchive(file);
+                    if ((modelCount += parsed.rows.length) > SCORE_ROW_LIMIT || (pairCount += parsed.pairs.length) > 1000000) throw scoreFail('scoreLimit');
+                    archives.push({ name: item.name, ...parsed });
+                }
+                const report = scoreOutputs(archives, manifest);
+                const verify = async () => {
+                    scoreCheck();
+                    const disk = await (await directory.getFileHandle('manifest.json')).getFile();
+                    if (disk.size > FASTA_MANIFEST_LIMIT || await disk.text() !== text) throw scoreFail('scoreSourceChanged');
+                    for (const item of handles) {
+                        const file = await item.handle.getFile();
+                        if (file.size !== item.file.size || file.lastModified !== item.file.lastModified) throw scoreFail('scoreSourceChanged');
+                    }
+                    scoreCheck();
+                };
+                for (const output of report.outputs) {
+                    try { output.before = await (await results.getFileHandle(output.name)).getFile(); }
+                    catch (error) { if (error.name !== 'NotFoundError') throw error; }
+                }
+                const overwrite = report.outputs.filter(output => output.before).map(output => output.name);
+                if (!confirm(t('scoreConfirm', { count: handles.length, models: report.models, folder: directory.name, files: report.outputs.length,
+                    existing: overwrite.length, names: overwrite.join('\n') || '—' }))) { setDownloadMessage('scoreCancelled', { saved }); return; }
+                for (const output of report.outputs) {
+                    current = output.name;
+                    setDownloadMessage('scoreWriting', { saved, total: report.outputs.length, name: current });
+                    await writeScoreCsv(results, output, verify); saved++;
+                }
+                setDownloadMessage('scoreDone', { zips: handles.length, jobs: report.jobs, models: report.models, missing: report.missing, saved, folder: directory.name });
+                addLog(t('scoreDone', { zips: handles.length, jobs: report.jobs, models: report.models, missing: report.missing, saved, folder: directory.name }));
+            });
+        } catch (error) {
+            const cancelled = !error.resultCleanup && (isUserStopError(error) || error.name === 'AbortError');
+            const detail = ['NotAllowedError', 'NotFoundError', 'NoModificationAllowedError', 'QuotaExceededError'].includes(error.name) ? t('scoreFileError') : error.message;
+            setDownloadMessage(cancelled ? 'scoreCancelled' : 'scoreError', { saved, detail: (current ? current + ': ' : '') + detail });
+            addLog(cancelled ? t('scoreCancelled', { saved }) : t('scoreError', { saved, detail: (current ? current + ': ' : '') + detail }), cancelled ? 'warn' : 'error');
+        } finally { downloadState.busy = false; renderDownloadSection(); checkSystemStatus(); }
+    }
+    // --- End local score extraction. ---
+
     function createDownloadSection() {
         const section = document.createElement('section');
         section.id = 'af3-download-section';
@@ -3515,6 +3980,9 @@
         const save = translated('button', 'downloadSave'); save.type = 'button'; save.id = 'af3-download-save';
         save.onclick = saveDownloadResults; section.appendChild(save);
         const saveHint = translated('p', 'downloadSaveHint'); saveHint.className = 'af3-help'; section.appendChild(saveHint);
+        const extract = translated('button', 'scoreExtract'); extract.type = 'button'; extract.id = 'af3-download-extract';
+        extract.onclick = extractResultScores; section.appendChild(extract);
+        const scoreHint = translated('p', 'scoreHint'); scoreHint.className = 'af3-help'; section.appendChild(scoreHint);
         return section;
     }
 
