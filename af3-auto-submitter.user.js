@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.2
+// @version      5.0.3
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期下载、结果 ZIP 保存及本地指标 CSV 提取汇总。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.2';
+    const SCRIPT_VERSION = '5.0.3';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -928,7 +928,7 @@
     const FASTA_FILE_LIMIT = 50 * 1024 * 1024;
     const FASTA_MANIFEST_LIMIT = 50 * 1024 * 1024;
     const FASTA_MAX_BATCHES = 10000;
-    const fastaState = { busy: false, stop: false, dir: null, manifest: null, saved: false, inputChanged: false, context: null, message: '', dialog: null, progress: null };
+    const fastaState = { error: false, busy: false, stop: false, dir: null, manifest: null, saved: false, inputChanged: false, context: null, message: '', dialog: null, progress: null };
 
     async function fastaHash(value) {
         const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : value;
@@ -1138,9 +1138,9 @@
 
     async function generateFastaBatches() {
         if (fastaState.busy || isRunning || downloadState.busy) return;
-        if (typeof window.showDirectoryPicker !== 'function') { fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
+        if (typeof window.showDirectoryPicker !== 'function') { fastaState.error = true; fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
         const file = getUiElement('af3-fasta-file')?.files[0];
-        if (!file?.size || file.size > FASTA_FILE_LIMIT) { fastaState.message = t('fastaChooseFile'); renderFastaSection(); return; }
+        if (!file?.size || file.size > FASTA_FILE_LIMIT) { fastaState.error = true; fastaState.message = t('fastaChooseFile'); renderFastaSection(); return; }
         fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.progress = null;
         fastaState.message = t('fastaRunning'); renderFastaSection(); checkSystemStatus();
         try {
@@ -1196,8 +1196,10 @@
             manifest.generationComplete = true;
             await persistFastaManifest();
             fastaState.message = t('fastaSummary', { count: records.length, batches: manifest.batches.length, lengths: records[0].chains.map(chain => chain.length).join(' + ') });
-        } catch (error) { fastaState.message = error.name === 'AbortError' || isUserStopError(error) ? t('fastaStopped') : error.message; }
-        finally { fastaState.busy = false; renderFastaSection(); checkSystemStatus(); }
+        } catch (error) {
+            fastaState.error = error.name !== 'AbortError' && !isUserStopError(error);
+            fastaState.message = fastaState.error ? error.message : t('fastaStopped');
+        } finally { fastaState.busy = false; renderFastaSection(); checkSystemStatus(); }
     }
 
     async function readFastaManifest(dir) {
@@ -1229,7 +1231,7 @@
 
     async function restoreFastaBatches() {
         if (fastaState.busy || isRunning || downloadState.busy) return;
-        if (typeof window.showDirectoryPicker !== 'function') { fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
+        if (typeof window.showDirectoryPicker !== 'function') { fastaState.error = true; fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
         fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.progress = null; renderFastaSection(); checkSystemStatus();
         try {
             const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
@@ -1254,7 +1256,8 @@
             fastaState.message = t('fastaDirectory');
         } catch (error) {
             if (error.name !== 'AbortError') fastaState.saved = false;
-            fastaState.message = error.name === 'AbortError' || isUserStopError(error) ? t('fastaStopped') : error.message;
+            fastaState.error = error.name !== 'AbortError' && !isUserStopError(error);
+            fastaState.message = fastaState.error ? error.message : t('fastaStopped');
         }
         finally { fastaState.busy = false; renderFastaSection(); checkSystemStatus(); }
     }
@@ -1414,6 +1417,7 @@
             attempt.result = 'confirmed'; fastaState.message = '';
             addLog(t('fastaLogConfirmed', { index: batch.index }));
         } catch (error) {
+            fastaState.error = !isUserStopError(error);
             fastaState.message = isUserStopError(error) ? t('fastaStopped') : error.message;
             addLog(t('fastaLogError', { detail: fastaState.message }), 'error');
             if (attempt) {
@@ -1432,7 +1436,7 @@
             fastaState.dialog = null;
             if (attempt) {
                 attempt.endedAt = new Date().toISOString();
-                try { await persistFastaManifest(); } catch (error) { fastaState.message = error.message; }
+                try { await persistFastaManifest(); } catch (error) { fastaState.error = true; fastaState.message = error.message; }
             }
             fastaState.busy = false; fastaState.context = null; renderFastaSection(); checkSystemStatus();
         }
@@ -1473,7 +1477,8 @@
         const batch = fastaState.manifest?.batches.find(item => item.status !== 'imported');
         getUiElement('af3-fasta-import').disabled ||= !batch || batch.status !== 'ready' || fastaState.inputChanged;
         const stop = getUiElement('af3-fasta-stop'); stop.hidden = !fastaState.busy; stop.disabled = fastaState.stop;
-        const status = getUiElement('af3-fasta-status'); status.textContent = fastaState.message || (fastaState.inputChanged ? t('fastaInputChanged') : fastaState.manifest?.importComplete ? t('fastaFinished') : t('fastaIdle'));
+        showMessageError(getUiElement('af3-fasta-status'), fastaState.error,
+            fastaState.message || (fastaState.inputChanged ? t('fastaInputChanged') : fastaState.manifest?.importComplete ? t('fastaFinished') : t('fastaIdle')));
         const progress = getUiElement('af3-fasta-progress');
         progress.hidden = !fastaState.busy; progress.setAttribute('aria-label', t('fastaProgress'));
         if (fastaState.progress) { progress.max = fastaState.progress.max; progress.value = fastaState.progress.value; }
@@ -1498,14 +1503,20 @@
         const field = (id, key, node) => { const label = document.createElement('label'); label.className = 'af3-field'; label.append(text('span', key), node); node.id = 'af3-fasta-' + id; section.appendChild(label); };
         const file = document.createElement('input'); file.type = 'file'; file.accept = '.fasta,.fa,.faa,text/plain'; field('file', 'fastaFile', file);
         file.onchange = () => {
-            if (!fastaState.manifest || fastaState.busy) return;
-            fastaState.inputChanged = true; fastaState.message = t('fastaInputChanged'); renderFastaSection();
+            if (fastaState.busy) return;
+            if (fastaState.error) { fastaState.error = false; fastaState.message = ''; }
+            if (fastaState.manifest) { fastaState.inputChanged = true; fastaState.message = t('fastaInputChanged'); }
+            renderFastaSection();
         };
         const tools = document.createElement('div'); tools.className = 'af3-download-tools';
         for (const [id, key, action] of [['generate', 'fastaGenerate', generateFastaBatches], ['restore', 'fastaRestore', restoreFastaBatches],
             ['import', 'fastaImport', () => importFastaBatch()], ['sync', 'fastaSync', () => importFastaBatch(true)],
             ['stop', 'fastaStop', () => { fastaState.stop = true; renderFastaSection(); }]]) {
-            const button = text('button', key); button.id = 'af3-fasta-' + id; button.type = 'button'; button.onclick = action;
+            const button = text('button', key); button.id = 'af3-fasta-' + id; button.type = 'button';
+            button.onclick = () => {
+                if (id !== 'stop') { fastaState.error = false; showMessageError(getUiElement('af3-fasta-status'), false); }
+                return action();
+            };
             if (id === 'import') button.className = 'af3-primary';
             tools.appendChild(button);
         }
@@ -1647,6 +1658,23 @@
 
     function getUiElement(id) {
         return getPanelHost()?.shadowRoot?.getElementById(id) || document.getElementById(id) || null;
+    }
+
+    function showMessageError(node, error, text = node?.textContent) {
+        if (!node) return;
+        const highlighted = node.classList.contains('af3-error-message');
+        const changed = node.textContent !== text;
+        if (highlighted !== error) {
+            node.setAttribute('role', error ? 'alert' : 'status');
+            node.setAttribute('aria-live', error ? 'assertive' : 'polite');
+        }
+        if (changed) node.textContent = text;
+        if (error && (!highlighted || changed)) {
+            node.classList.remove('af3-error-message');
+            void node.offsetWidth; // ponytail: restart CSS on a new error, not on periodic renders.
+            node.classList.add('af3-error-message');
+            if (node.getClientRects().length) node.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+        } else if (!error && highlighted) node.classList.remove('af3-error-message');
     }
 
     function getSavedPanelPosition() {
@@ -1951,6 +1979,7 @@
     }
 
     function openAccountSwitch() {
+        showMessageError(getUiElement('af3-accounts-message'), false);
         if (isRunning || downloadState.busy || fastaState.busy) {
             updateAccountSwitchControl();
             return;
@@ -1989,7 +2018,8 @@
         getUiElement('af3-account-refresh').disabled = !observedAccountEmail || accountLiveQuota === null;
         updateAccountSwitchControl();
         getUiElement('af3-accounts-count').textContent = t('accountsCount', { count: accountRecords.length });
-        getUiElement('af3-accounts-message').textContent = accountStorageError ? t('accountStorageError') : accountMessage ? t(accountMessage) : '';
+        showMessageError(getUiElement('af3-accounts-message'), accountStorageError || ['accountInvalid', 'accountReadFailed', 'accountPrivateUnavailable'].includes(accountMessage),
+            accountStorageError ? t('accountStorageError') : accountMessage ? t(accountMessage) : '');
         const signature = JSON.stringify([currentLanguage, observedAccountEmail, accountLiveQuota, accountRecords]);
         if (!force && signature === accountRenderSignature) return;
         accountRenderSignature = signature;
@@ -2074,6 +2104,7 @@
         login.onclick = openAccountSwitch;
         page.querySelector('#af3-account-form').onsubmit = event => {
             event.preventDefault();
+            showMessageError(getUiElement('af3-accounts-message'), false);
             const email = normalizeAccountEmail(getUiElement('af3-account-input').value);
             if (!email) { accountMessage = 'accountInvalid'; renderAccountManager(); return; }
             const note = getUiElement('af3-account-note').value.trim().slice(0, 200);
@@ -2083,6 +2114,7 @@
         };
         page.querySelector('#af3-account-cancel').onclick = resetAccountForm;
         page.querySelector('#af3-account-refresh').onclick = () => {
+            showMessageError(getUiElement('af3-accounts-message'), false);
             const email = normalizeAccountEmail(readAccountEmail());
             syncAccountManager(email, true);
             if (email && accountLiveQuota !== null) {
@@ -2119,6 +2151,7 @@
     }
 
     function startRunProgress(total) {
+        showMessageError(getUiElement('af3-footer-msg'), false);
         runProgress = {
             active: true,
             current: 0,
@@ -2172,7 +2205,8 @@
 
     function finishRunProgress(status, detail = '') {
         runProgress.active = false;
-        runProgress.status = status;
+        runProgress.status = status; runProgress.detail = detail;
+        checkSystemStatus();
 
         const title = status === 'stopped'
             ? t('batchStopped')
@@ -2280,7 +2314,10 @@
         const plannedJobs = currentMode === 'DRAFT' ? maxJobs : Math.min(maxJobs, rowCount);
 
         if (rowCount === 0) {
-            alert(t('noRowsAlert'));
+            showMessageError(getUiElement('af3-footer-msg'), false);
+            runProgress.status = 'error'; runProgress.detail = t('noRowsAlert');
+            checkSystemStatus();
+            alert(runProgress.detail);
             addLog(t('noRowsLog'), 'warn');
             return 0;
         }
@@ -3047,6 +3084,7 @@
     }
 
     function setDownloadMessage(key, vars = {}) {
+        showMessageError(getUiElement('af3-download-status'), false);
         downloadState.message = key;
         downloadState.messageVars = vars;
         renderDownloadSection();
@@ -3104,7 +3142,9 @@
         if (status) {
             const key = downloadState.message || 'downloadIdle';
             const vars = key === 'downloadFound' ? { count: downloadState.jobs.length, selected: downloadState.selected.size, unknown: downloadState.unknown } : downloadState.messageVars;
-            status.textContent = key === 'error' ? downloadState.messageVars.detail : t(key, vars);
+            const error = ['error', 'downloadError', 'downloadSaveError', 'scoreError', 'downloadInvalidRange',
+                'downloadNoSelection', 'downloadBatchOpen', 'downloadBatchEmpty', 'downloadContextChanged', 'downloadNativeChanged'].includes(key);
+            showMessageError(status, error, key === 'error' ? downloadState.messageVars.detail : t(key, vars));
         }
         const queueText = getUiElement('af3-download-queue');
         if (queueText) {
@@ -4196,6 +4236,13 @@
             input:disabled, select:disabled, input[readonly] { background: var(--af3-canvas); color: var(--af3-muted); }
             input[type="checkbox"] { accent-color: var(--af3-primary); width: 16px; height: 16px; margin: 3px 0 0; flex-shrink: 0; }
             :focus-visible { outline: 2px solid var(--af3-primary); outline-offset: 3px; }
+            .af3-error-message {
+                color: var(--af3-danger); background: var(--af3-danger-soft); border: 1px solid currentColor;
+                border-radius: 8px; padding: 9px; font-weight: 600; animation: af3-error-pulse .8s ease-in-out 3;
+            }
+            @keyframes af3-error-pulse { 50% { box-shadow: inset 0 0 0 2px currentColor; } }
+            @media (prefers-reduced-motion: reduce) { .af3-error-message { animation: none; } }
+
             #af3-header {
                 display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding: 16px 16px 12px;
                 background: var(--af3-surface); cursor: move; user-select: none;
@@ -4237,9 +4284,10 @@
             #af3-v20-btn { min-height: 38px; }
             #af3-run-controls { gap: 8px; flex-wrap: wrap; }
             #af3-run-controls button { flex: 1; }
-            #af3-footer-msg { color: var(--af3-muted); font-size: 12px; }
-            #af3-submission-section[data-state="blocked"] #af3-footer-msg { padding: 9px; border-radius: 8px; background: var(--af3-danger-soft); color: var(--af3-danger); }
-            .af3-help, .af3-account-help, .af3-account-card time { font-size: 12px; color: var(--af3-muted); line-height: 1.6; overflow-wrap: anywhere; }
+            #af3-footer-msg { font-size: 12px; }
+            #af3-footer-msg:not(.af3-error-message) { color: var(--af3-muted); }
+            .af3-help, .af3-account-help, .af3-account-card time { font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+            .af3-help:not(.af3-error-message), .af3-account-help, .af3-account-card time { color: var(--af3-muted); }
             #af3-fasta-progress { display: block; width: 100%; height: 10px; accent-color: var(--af3-primary); }
             .af3-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(135px, 100%), 1fr)); gap: 8px; }
             .af3-download-tools, .af3-download-actions, .af3-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
@@ -4262,7 +4310,8 @@
             #af3-account-form { display: grid; gap: 8px; margin: 0; }
             #af3-account-form > label { color: var(--af3-muted); font-size: 12px; }
             #af3-accounts-message:empty { display: none; }
-            #af3-accounts-message { padding: 10px; border: 1px solid #e9d6b1; border-radius: 9px; color: var(--af3-warning); background: var(--af3-warning-soft); font-size: 13px; }
+            #af3-accounts-message { font-size: 13px; }
+            #af3-accounts-message:not(.af3-error-message) { padding: 10px; border: 1px solid #e9d6b1; border-radius: 9px; color: var(--af3-warning); background: var(--af3-warning-soft); }
             #af3-accounts-count { padding-inline: 2px; color: var(--af3-muted); font-size: 13px; }
             #af3-accounts-list { display: grid; gap: 10px; }
             #af3-accounts-list > p { padding: 12px; border: 1px dashed #adbec8; border-radius: 10px; color: var(--af3-muted); font-size: 13px; }
@@ -4465,32 +4514,35 @@
             btn.textContent = t('submissionLocked');
             section.dataset.state = 'blocked';
             text.textContent = t('submissionLocked');
-            footer.textContent = submissionBlockReason;
+            showMessageError(footer, true, submissionBlockReason);
             return;
         }
 
         const selected = getSelectedHistoryStatuses();
         const status = !downloadState.busy && !fastaState.busy && selected.length === 1 ? selected[0] : '';
+        let help;
 
         if (status === 'saved draft') {
             currentMode = 'DRAFT';
             section.dataset.state = 'draft';
             text.textContent = t('readyDraftStatus');
-            footer.textContent = t('modeDraftFooter');
+            help = t('modeDraftFooter');
             btn.disabled = false;
         } else if (status === 'failed') {
             currentMode = 'FAILED';
             section.dataset.state = 'failed';
             text.textContent = t('readyFailedStatus');
-            footer.textContent = t('modeFailedFooter');
+            help = t('modeFailedFooter');
             btn.disabled = false;
         } else {
             currentMode = 'NONE';
             section.dataset.state = 'standby';
             text.textContent = t('standbyStatus');
-            footer.textContent = t('standbyFooter');
+            help = t('standbyFooter');
             btn.disabled = true;
         }
+        const error = runProgress.status === 'error';
+        showMessageError(footer, error, error ? runProgress.detail || t('batchError') : help);
     }
 
     // --- 主入口 ---

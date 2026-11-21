@@ -4,9 +4,11 @@
 
 ## 安装 5.0 正式版
 
-[安装或更新 5.0.2](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 5.0.3](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 **从 4.0 起只发布正式版，不再维护独立开发版渠道。** 安装文件为 `af3-auto-submitter.user.js`，正常开发、安装、测试和更新均以 `main` 的正式文件为准。
+
+**5.0.3 更新：** 按钮操作出错时，提示文字高亮并短暂闪烁三次；开启系统「减少动态效果」时只高亮。取消、正常停止和成功不闪烁。
 
 **5.0.2 修复：** 历史核对会对当前账号跟踪的预测任务读取其原生菜单 ID，修复核对后仍无法“选择当前批次”及保存 ZIP 的问题；不按名称替代唯一 ID。草稿逐条保存时沿用剩余 60 秒核对预算，不再被内部 8 秒等待提前中断。收到提交成功后点停止，会等待该草稿行刷新再结束；没有成功回执或草稿一直未刷新仍锁定。标题左侧“−”可临时收起面板避让官网，点“+”展开；不改变已保存尺寸，处理中不可收起以保留停止按钮。
 
@@ -23,7 +25,7 @@
 1. 安装 Tampermonkey，点击上方正式安装链接并确认。若仅显示源码，在油猴原脚本编辑器中完整替换并保存。
 2. 允许脚本在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。使用 Edge InPrivate 时，需要开启扩展的“允许在 InPrivate 中使用”。
 3. 普通窗口与 InPrivate 要共用账号目录，需在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 刷新官网，确认标题显示 **v5.0.2**，并核对当前账号和官网额度。网站控件与通知需使用英文。
+4. 刷新官网，确认标题显示 **v5.0.3**，并核对当前账号和官网额度。网站控件与通知需使用英文。
 5. 首次仅试 1 个任务；生成 JSON、导入草稿、预测提交、预测完成是四个不同阶段。结果不确定时不要重复点击 Confirm 或刷新后直接重试。
 
 正式更新检查地址是 `main/af3-auto-submitter.meta.js`，完整下载地址是 `main/af3-auto-submitter.user.js`。启用油猴“检查更新”即可接收后续正式版本。
@@ -273,7 +275,7 @@ node test_score_core.mjs
 git diff --check
 ```
 
-浏览器回归共 331 个场景（提交与账户 33、原有下载 139、FASTA 55、结果目录保存 57、当前批次选择 11、本地指标提取 36）。另有无依赖的指标核心检查，覆盖舍入、CSV 转义及单/多链统计。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
+浏览器回归共 332 个场景（提交与账户 34、原有下载 139、FASTA 55、结果目录保存 57、当前批次选择 11、本地指标提取 36）。另有无依赖的指标核心检查，覆盖舍入、CSV 转义及单/多链统计。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
 
 面板不显示时先核对版本、站点权限并确认只启用一份脚本。额度显示“无法识别”不等于额度为零。提交结果不确定、部分导入或锁定时，先人工核对官网记录，再决定后续操作；不要用反复启动代替确认。
 

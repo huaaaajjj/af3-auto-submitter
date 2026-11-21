@@ -582,6 +582,46 @@ async function checkAccountManager(){
     assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Strict CSP rendering caused a task action or script error');
     parent.postMessage({type:'af3-case-result',result:{passed:true,message:'Trusted Types enforced: startup, navigation, account save and panel recovery; 0 submits'}},location.origin);return;
   }
+  if(id==='action-error-feedback'){
+    await until(()=>ui('download-scan'));
+    ui('download-start').value='';ui('download-scan').click();
+    const message=ui('download-status');
+    assert(message.classList.contains('af3-error-message'),'Invalid-date error is not highlighted');
+    const danger=getComputedStyle(root().getElementById('af3-dev-panel-root')).getPropertyValue('--af3-danger').trim();
+    const probe=document.createElement('span');probe.style.color=danger;root().append(probe);
+    const errorColor=getComputedStyle(probe).color;probe.remove();
+    assert(getComputedStyle(message).color===errorColor,'Error text color was overridden by help styling');
+    assert(message.getAttribute('role')==='alert'&&message.getAttribute('aria-live')==='assertive','Error is not announced');
+    await pause(50);const animation=message.getAnimations()[0];assert(animation,'Error message did not pulse');
+    assert(animation.effect.getTiming().iterations===3,'Error pulse is not bounded');
+    let mutations=0;const observer=new MutationObserver(records=>mutations+=records.length);observer.observe(message,{childList:true,characterData:true,subtree:true});
+    const started=animation.startTime;await pause(600);observer.disconnect();
+    assert(mutations===0,'Periodic rendering rewrote the live error message');
+    assert(message.getAnimations()[0]===animation&&animation.startTime===started,'Periodic rendering restarted error animation');
+    ui('download-scan').click();await pause(50);
+    assert(message.getAnimations()[0]!==animation,'Repeated failed click did not restart feedback');
+    await pause(2500);
+    assert(!message.getAnimations().length&&message.classList.contains('af3-error-message'),'Pulse did not end with persistent highlighting');
+    ui('download-start').value='2026-11-21';ui('download-start').dispatchEvent(new Event('change'));
+    assert(!message.classList.contains('af3-error-message')&&!message.getAnimations().length,'Correcting dates kept stale error feedback');
+    window.showDirectoryPicker=async()=>{throw new DOMException('Cancelled','AbortError')};
+    ui('fasta-generate').click();
+    assert(ui('fasta-status').classList.contains('af3-error-message'),'Missing FASTA error is not highlighted');
+    const transfer=new DataTransfer();transfer.items.add(new File(['>anonymous\nACDE\n'],'anonymous.fasta'));ui('fasta-file').files=transfer.files;
+    ui('fasta-file').dispatchEvent(new Event('change'));
+    assert(!ui('fasta-status').classList.contains('af3-error-message'),'Choosing a file kept stale FASTA error feedback');
+    ui('fasta-generate').click();await until(()=>ui('fasta-stop').hidden);
+    assert(!ui('fasta-status').classList.contains('af3-error-message'),'Picker cancellation flashed as an error');
+    const rules=[...root().querySelector('style').sheet.cssRules];
+    assert(rules.some(rule=>rule.conditionText?.includes('prefers-reduced-motion: reduce')&&[...rule.cssRules].some(style=>style.selectorText==='.af3-error-message'&&style.style.animationName==='none')),'Missing reduced-motion static-highlight rule');
+    ui('accounts-tab').click();ui('account-input').value='not-an-email';ui('account-save').click();
+    assert(ui('accounts-message').classList.contains('af3-error-message'),'Invalid account error is not highlighted');
+    assert(getComputedStyle(ui('accounts-message')).color===errorColor,'Account error color was overridden');
+    ui('account-input').value='valid@example.com';ui('account-save').click();
+    assert(!ui('accounts-message').classList.contains('af3-error-message'),'Successful account save retained error highlighting');
+    assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Feedback test submitted a job or raised an error');
+    parent.postMessage({type:'af3-case-result',result:{passed:true,message:'errors highlighted, finite pulse/retry, stable polling, reduced motion, success/cancel clearing; 0 submits'}},location.origin);return;
+  }
   if(id==='account-email'){await until(()=>ui('v20-btn'),5000);await checkAccountEmail();return}
   if(['account-manager','account-login','account-login-unavailable','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab','account-migration'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
   if(id==='storage-writer')return;
@@ -674,6 +714,8 @@ async function checkAccountManager(){
     const before=state.calls;ui('v20-btn').disabled=false;ui('v20-btn').click();await pause(600);
     assert(state.calls===before,'Start event bypassed blocked submission state');
   }
+  if(['server-error','failed-error','no-toast','stale-row'].includes(id))assert(ui('footer-msg').classList.contains('af3-error-message'),'Submission failure message is not highlighted');
+  if(['delayed-success','failed-success','paused-success','stop-confirmed-refresh','sandbox-event-window','failed-sandbox-event-window','multi-success'].includes(id))assert(!ui('footer-msg').classList.contains('af3-error-message'),'Successful or stopped submission flashed as an error');
   if(id==='failed-error')assert(!state.earlySuccess,'Failed clone was called submitted before the server response');
   if(id==='paused-success')assert(state.pausedConfirmed,'Success received during pause was not processed until resume');
   parent.postMessage({type:'af3-case-result',result:{passed:true,message:'confirm clicks='+state.calls+', confirmed='+successes}},location.origin);
@@ -682,6 +724,7 @@ async function checkAccountManager(){
 
 
 SCENARIOS = [
+    'action-error-feedback',
     'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-unavailable', 'account-login-busy', 'account-quota', 'account-persistence',
     'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-migration', 'account-switch-submission', 'account-switch-confirm',
     'stop-confirmed-refresh', 'delayed-success', 'old-success', 'server-error', 'no-toast', 'sandbox-event-window',
