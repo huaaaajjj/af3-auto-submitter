@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>FASTA 草稿分批教程</title>
+<title>AF3 使用指南</title>
 <style>
 /* 操作与实测截图对照排列，窄屏按步骤顺序阅读。 */
 :root {
@@ -60,20 +60,139 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
 <body>
 <main>
   <header>
-    <p class="kicker">AF3 自动助手 v4.0.7 · 已有实测材料整理</p>
-    <h1>FASTA 草稿分批教程</h1>
-    <p class="lead">用 50 个真实蛋白测试任务，演示本地生成、草稿导入和真实预测。刷新或重开页面后，用原批次文件夹继续，不重新生成或重复上传。</p>
+    <p class="kicker">AF3 自动助手 v5.0.3 · 安装与完整使用指南</p>
+    <h1>AF3 自动提交助手使用指南</h1>
+    <p class="lead">从安装、准备 FASTA、生成本地批次、导入并核对草稿，到确认提交预测、查找结果、保存 ZIP 和提取 CSV。先按日常流程使用；后面的 50 任务章节是单独的历史实测记录。</p>
     <nav aria-label="教程章节">
-      <a href="#start">从头开始</a>
-      <a href="#resume">继续上一批任务</a>
+      <a href="#daily">日常使用</a>
+      <a href="#downloads">结果下载与分析</a>
+      <a href="#start">50 个蛋白实测</a>
+      <a href="#resume">实测恢复说明</a>
     </nav>
-    <p>示例文件：<a href="../../example_50_proteins.fasta"><code>example_50_proteins.fasta</code></a>。单链 17 个、双链 17 个、三链 16 个，共 99 条不同序列。序列来自 UniProt 已审阅的酿酒酵母蛋白条目，标题按链顺序保留登录号。多链组合只用于测试，不代表已知天然复合物。</p>
-    <p class="note"><strong>实测进度：已暂停。</strong>本地生成 50 个任务，分成 30 + 20 两批。第一批 30 个草稿已确认导入，其中 15 个真实预测已成功完成（单链、双链、三链各 5 个），另 15 个仍为草稿。第二批 20 个未上传。下文为暂停前最后核实的记录，不是 50 个全部完成的结果。</p>
-    <p class="lead">已有截图来自同一份 50 任务文件的 Edge 无痕窗口实测，已裁剪脱敏。ego lite 已装好脚本，但缺少的恢复、换账号及后续预测截图暂不补拍。首次使用建议先用一条记录试跑。</p>
+    <p class="note"><strong>操作安全：</strong>草稿导入只保存草稿；只有“启动”后的官网提交确认才开始预测并消耗额度。遇到超时、部分保存或锁定时，先核对官网历史，不要盲目重复导入或提交。</p>
+    <p class="note">以下新增界面截图来自不同批次的操作记录，画面里的 30、60、590 等数字只属于截图当时的清单，不是推荐批量数，也不代表后文 50 任务样例的结果。50 任务实测仍单独记为：已确认导入 30，确认完成预测 15，另 15 个草稿未提交，第二批 20 个未上传。</p>
   </header>
 
+  <section aria-labelledby="daily">
+    <h2 id="daily">日常使用：从 FASTA 到预测</h2>
+    <p class="lead">推荐按「准备 → 本地生成 → 导入草稿 → 历史核对 → 明确提交 → 核对完成」顺序。每一步的状态含义不同，不要跳过核对。</p>
+    <ol class="steps" role="list">
+      <li>
+        <div class="copy">
+          <h3>安装脚本并确认账号</h3>
+          <p>使用 Edge 或 Chrome 安装 Tampermonkey，再安装仓库正式版 <code>af3-auto-submitter.user.js</code>。允许扩展在 <code>alphafoldserver.com</code> 运行并刷新页面；标题应显示 <strong>v5.0.3</strong>，顶部当前账号需与本次任务所属账号一致。</p>
+          <p>使用 InPrivate/无痕窗口时，另行允许 Tampermonkey 在无痕模式运行。若要与普通窗口共享账号目录，按 <a href="../../README.md">README 的升级说明</a> 设置扩展存储；登录 Cookie 仍由浏览器管理。</p>
+        </div>
+        <div class="media"><p class="note">面板未出现时先检查脚本是否启用、站点权限及当前地址，再刷新官网。只启用一份正式版。</p></div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>准备 FASTA：标题是任务，序列行是链</h3>
+          <p>用 UTF-8 纯文本保存。每个 <code>&gt;名称</code> 开始一个任务；其后每个非空序列行各是一条蛋白链，下一个标题开始新任务。</p>
+          <pre aria-label="脚本支持的双链 FASTA 格式">&gt;complex_one
+ACDEFGHIKL
+MNPQRSTVWY</pre>
+          <p><strong>单链请保持在一行，不要按常见 FASTA 格式折行</strong>，否则折开的每一行会被识别为不同链。脚本只接受蛋白氨基酸字符；每链最多 2700 个残基、每个任务所有链合计最多 3000 个。错误会阻止生成，不静默跳过记录。</p>
+        </div>
+        <div class="media"><p class="note">每批按任务数最多 30 个，不按链数计算。首次先用小文件或一个任务检查命名和链数。</p></div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>生成并保存在本地</h3>
+          <p>在「FASTA 分批导入」选择输入文件，点<strong>「生成并选择保存目录」</strong>，再选择输出父文件夹并授权。脚本新建 <code>af3_…/</code> 子目录，写入 <code>manifest.json</code> 以及每批配对的 <code>part001.fasta</code>、<code>part001.json</code> 等文件。</p>
+          <p>生成只处理本地文件，不会上传官网、建立草稿或消耗预测额度。保留整个批次目录；不要单独改名、编辑或删除其中的清单和配对文件。</p>
+        </div>
+        <div class="media">
+          <figure><img src="images/generated.png" alt="FASTA 面板显示生成批次、打开已有批次、导入草稿和核对历史操作"><figcaption>FASTA 面板操作入口示例；图中计数来自另一批次，不是建议输入规模。</figcaption></figure>
+        </div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>明确确认后导入下一批为草稿</h3>
+          <p>先在官网关闭弹窗和菜单、清空 <code>Search History</code>，并且只选择 <code>Saved draft</code>。确认顶部账号正确后点<strong>「导入下一批为草稿」</strong>。确认框会列出批次号和任务数；核对无误才点确认。</p>
+          <p>脚本使用官网原生 <code>Upload JSON</code> 校验后保存草稿；不会自动点击预测提交按钮。导入期间保持页面打开，不操作官网的其他菜单或弹窗。</p>
+        </div>
+        <div class="media">
+          <figure><img src="images/first-confirm.png" alt="确认将第一批任务上传并保存为草稿的弹窗"><figcaption>示例确认框显示 30 个任务；实际数量以自己的批次与弹窗为准。</figcaption></figure>
+        </div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>核对官网历史，不用重复导入来补记录</h3>
+          <p>等待草稿在官网列表中出现。回到面板点<strong>「核对官网历史 / 更新记录」</strong>，按提示清空搜索并选择匹配状态；检查提示中的已确认数/任务数，以及本地清单的「已导入」计数。</p>
+          <p>只有完整匹配当前账号的任务才算核对成功。若看到 <code>Timeout</code>、部分匹配或“需核对”，先查官网当前历史、面板日志及账号；页面筛选不正确时按提示调整后再次核对。<strong>保存结果不确定时不要再上传同一批。</strong></p>
+        </div>
+        <div class="media">
+          <figure><img src="images/first-verified.png" alt="历史核对确认 30 个跟踪任务全部匹配"><figcaption>完全匹配的示例；实际任务数必须与你确认上传的批次一致。</figcaption></figure>
+          <figure><img src="images/needs-check.png" alt="发生 Timeout 后提示核对官网历史，不自动重导"><figcaption>超时表示结果尚需核实，不等于可以安全重传。</figcaption></figure>
+        </div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>检查目标草稿，再启动真实预测</h3>
+          <p>仅选择 <code>Saved draft</code>，清空 <code>Search History</code> 或用唯一前缀过滤，确保官网列表正好是计划处理的草稿；不要把不相关旧草稿混入。核对顶部账号和官网剩余额度。</p>
+          <p>输入「本次数量」后点<strong>「启动」</strong>。运行前摘要会再次显示模式、当前列表行数和处理上限；仔细确认后才继续。官网行复选框不限定脚本提交范围，数量是处理上限。每次提交会消耗官网额度。</p>
+        </div>
+        <div class="media">
+          <figure><img src="images/saved-draft-filter.png" alt="官网仅选择 Saved draft 并清空搜索条件"><figcaption>启动前过滤到目标状态并复核搜索条件。</figcaption></figure>
+        </div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>等待提交回执，再核对预测完成</h3>
+          <p>提交成功回执代表官网接受了预测请求，<strong>不代表预测已经完成</strong>。任务仍需在官网运行；完成后回到原账号，在历史中选择 <code>Completed</code>，点击「核对官网历史 / 更新记录」并确认完成状态和本地清单。</p>
+          <p>暂停只影响后续操作，不能撤回已经发送的请求。遇到失败、超时或启动锁定时先检查官网历史与额度，不要刷新后马上重复点击。v5.0.3 会将新的错误提示短暂闪烁三次；系统开启减少动态效果时只高亮。</p>
+        </div>
+        <div class="media"><p class="note">汇总中的“已提交”“已完成”“失败”代表不同状态；以官网任务行和「核对官网历史」的结果为准。</p></div>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="downloads">
+    <h2 id="downloads">结果下载与 CSV 分析</h2>
+    <ol class="steps" role="list">
+      <li>
+        <div class="copy">
+          <h3>按日期查找并使用官网原生下载</h3>
+          <p>官网仅选择 <code>Completed</code>，按需填写 <code>Search History</code>；在面板「下载任务」输入起止日期后点「查找任务」。日期按官网显示的 <code>Modified</code> 计算，起止日期都包含。</p>
+          <p>核对匹配任务后，可按天选择或全选；「应用到官网勾选」只替换官网复选框，不会下载。之后手动点击官网原生 <code>Download</code>。合并 ZIP 每次最多 50 个任务；分开模式下每下载一个，再点「下一任务」。</p>
+        </div>
+        <div class="media"><p class="note">页面搜索、筛选、排序、日期或账号变化后重新查找并核对；应用勾选会替换官网原有选择。</p></div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>把所选任务 ZIP 保存进原批次</h3>
+          <p>先打开原批次文件夹并核对历史以绑定任务 ID；按日期查找后可点「选择当前批次」，仅选择账号、ID 和名称都与当前清单匹配的结果。点<strong>「保存所选 ZIP 到 results…」</strong>并确认目标。</p>
+          <p>刷新页面后需要重新打开含 <code>manifest.json</code> 的 <code>af3_…/</code> 批次目录。脚本把独立 ZIP 放进其 <code>results/</code> 子目录；同名文件跳过，不覆盖。需要安全读取的官网链接不可用时，请使用官网原生下载。</p>
+        </div>
+        <div class="media"><figure><img src="images/batch-restored.png" alt="打开批次目录后恢复的本地清单状态"><figcaption>恢复后查看本地清单进度；截图数字是该批次的历史状态示例。</figcaption></figure></div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>从 results ZIP 本地提取 CSV</h3>
+          <p>点「提取 results 数据为 CSV…」，自动沿用已打开的批次目录；否则选择含 <code>manifest.json</code> 的批次文件夹。无需重新查找或下载，解析 <code>results/*.zip</code> 后生成每包最佳模型、链对及整批汇总/缺失表。</p>
+          <p>处理在浏览器本地完成，不上传 ZIP。覆盖 CSV 前会显示目标文件并再次确认；原始 ZIP 和 manifest 不修改。部分文件写入成功后停止会保留已完成 CSV，请按面板数量核对。</p>
+        </div>
+        <div class="media"><p class="note">如 ZIP 缺失、格式不支持或校验失败，先检查原文件；脚本不会把无效压缩包记为成功。</p></div>
+      </li>
+      <li>
+        <div class="copy">
+          <h3>刷新后恢复，按清单继续</h3>
+          <p>选择「打开已有批次文件夹」，直接选原 <code>af3_…/</code> 目录，不是上一级父目录或 <code>results/</code>。恢复后检查当前账号、生成/导入/提交/完成计数，再核对官网历史。</p>
+          <p>不要再次生成相同输入来续跑；对于“待核对”批次先核实官网记录。目录清单是本地跟踪记录，不能代替官网预测状态，也不会把官网任务搬到另一个账号。</p>
+        </div>
+        <div class="media">
+          <figure><img src="images/batch-folder.png" alt="选择已有批次目录时打开的文件夹选择器"><figcaption>通过浏览器文件夹选择器授权原批次目录。</figcaption></figure>
+          <figure><img src="images/next-confirm.png" alt="继续导入清单中的下一批草稿前确认批次和数量"><figcaption>确认显示的批次和数量后再上传；取消不会导入。</figcaption></figure>
+          <figure><img src="images/next-verified.png" alt="核对下一批历史记录全部匹配后更新本地清单"><figcaption>下一批完全匹配后才更新本地计数；数字仅为截图当时状态。</figcaption></figure>
+        </div>
+      </li>
+    </ol>
+    <p class="note">本页说明常用路径；日期扫描、匹配规则、文件格式和资源限制见 <a href="../../README.md">README 的完整技术说明</a>。换账号、真实预测及任何账户额度操作都应遵守官网规则；不绕过账号或额度限制。</p>
+  </section>
+
   <section aria-labelledby="start">
-    <h2 id="start">从头开始</h2>
+    <h2 id="start">50 个真实蛋白示例：操作记录</h2>
     <ol class="steps" role="list">
       <li>
         <div class="copy">
@@ -151,8 +270,8 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
   </section>
 
   <section aria-labelledby="resume">
-    <h2 id="resume">继续上一批任务</h2>
-    <p class="note">以下是后续操作说明。剩余 15 个预测和换账号导入第二批尚未完成演示；缺图稍后补，当前不把计划步骤写成成功结果。</p>
+    <h2 id="resume">50 任务实测：未执行的后续步骤</h2>
+    <p class="note">这是前文 50 蛋白样例的实测暂停记录，不是通用流程：已导入 30，其中 15 个预测确认完成、15 个仍为草稿；第二批 20 个未上传。下面所列后续步骤未在该样例中执行。如何恢复目录和核对状态，请按本页上方「日常使用」中的步骤操作；界面截图来自其他批次，计数不能套用到此样例。</p>
     <ol class="steps" role="list">
       <li>
         <div class="copy">
@@ -160,7 +279,7 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
           <p>刷新、重新登录或换浏览器后，点<strong>「打开已有批次文件夹」</strong>，选择本次文件对应的 <code>test2/af3_…/</code> 子目录。目录应含 <code>manifest.json</code> 和 <code>example_50_proteins_part001</code>、<code>part002</code> 的 FASTA/JSON 配对文件。</p>
           <p>不要选父目录 <code>test2/</code> 或早先 590 任务的目录，不用重新生成或选择原 FASTA。文件夹恢复不会迁移官网任务。</p>
         </div>
-        <div class="media"><p class="note"><strong>待补截图：</strong>ego lite 中选择并恢复本次 50 任务的批次目录。</p></div>
+        <div class="media"><p class="note"><strong>本样例未执行此恢复步骤。</strong>通用目录选择方法见上方「刷新后恢复，按清单继续」；其他批次截图不作为本样例恢复成功的证据。</p></div>
       </li>
       <li>
         <div class="copy">
@@ -168,7 +287,7 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
           <p>第一批的 15 个已完成预测和另 15 个草稿仍留在原账号。恢复后先核对账号、清单和官网历史，不能把已完成任务当作待提交任务。</p>
           <p>继续时仅选 <code>Saved draft</code>，筛选并核对未提交的任务；数量不超过实际目标数和当前可用额度。先前报错或结果不明的，先人工核对，再决定是否刷新与继续。</p>
         </div>
-        <div class="media"><p class="note"><strong>待补截图：</strong>剩余草稿、重新核对后的摘要及继续结果。暂停后未执行。</p></div>
+        <div class="media"><p class="note"><strong>本样例未继续提交。</strong>没有后续预测结果可供截图；请按上方「检查目标草稿，再启动真实预测」操作，并以官网当前状态为准。</p></div>
       </li>
       <li>
         <div class="copy">
@@ -176,11 +295,11 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
           <p><strong>计划演示，尚未执行。</strong>仅在官网允许的账号使用方式和额度范围内操作，不绕过限制。登录后恢复同一文件夹，核对账号及批次。第 2 批为「待导入」时，切到仅选 <code>Saved draft</code>，检查弹窗应为<strong>第 2 批，20 个任务</strong>。</p>
           <p>第一批不会随文件夹转移，结果仍需回原账号核对。不重传第一批，不重新生成同名批次，也不跳过「需核对历史」的批次。</p>
         </div>
-        <div class="media"><p class="note"><strong>待补截图：</strong>换账号后恢复清单、第二批 20 个任务的确认和实际核对结果。目前第二批未上传。</p></div>
+        <div class="media"><p class="note"><strong>本样例第二批未上传。</strong>上方有另一批次的确认与核对界面示例，不代表本样例第二批已导入，也不证明跨账号操作结果。</p></div>
       </li>
     </ol>
   </section>
-  <footer>本页仅整理已有材料，不操作浏览器或发送预测请求。截图已裁剪脱敏；未完成的演示和待补图均已标明。<a href="../../README.md">返回 README</a></footer>
+  <footer>通用说明中的截图来自不同批次，已标明截图数字仅为界面示例；50 蛋白实测中的未执行步骤明确注明。完整限制见 <a href="../../README.md">README</a>。</footer>
 </main>
 </body>
 </html>
