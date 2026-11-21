@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.0
+// @version      5.0.1
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期下载、结果 ZIP 保存及本地指标 CSV 提取汇总。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter

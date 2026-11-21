@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 正式版 5.0.0：新增本地“提取 results 数据为 CSV…”；无需 Python 或官网扫描，直接从 ZIP 计算最佳模型、链对、PAE / pLDDT 和批次汇总，替换已有 CSV 前确认，原 ZIP 和 manifest 不修改。结果保存自动沿用当前页面已打开的有效批次目录，不再重复选择；未打开批次时才选含 manifest.json 的文件夹，重新校验并确认目标后逐任务保存 ZIP；校验账号与绑定 ID，已有文件跳过、不覆盖，原始输入与清单不变。保留详细日志、同名旧任务消歧与每页 100 个扫描。FASTA 标题作为任务名、每行序列一条蛋白链，每 30 个任务生成分批输入和官网 JSON，保存到所选本地文件夹后，明确确认才导入草稿。manifest 记录导入尝试、逐任务确认及预测完成状态；保留日期折叠、勾选提速和顶部账号。从 4.0 起统一使用 main 正式版，不再发布独立开发版。</p>
+            <p class="version-note">本 fork 正式版 5.0.1：“选择当前批次”紧邻“全选”，按已打开清单的账号、任务 ID 和名称选择面板结果，不触发下载；保存入口改名“保存所选 ZIP 到 results…”，仍需单独确认。保留本地“提取 results 数据为 CSV…”；无需 Python 或官网扫描，直接从 ZIP 计算最佳模型、链对、PAE / pLDDT 和批次汇总，替换已有 CSV 前确认，原 ZIP 和 manifest 不修改。结果保存自动沿用当前页面已打开的有效批次目录，不再重复选择；未打开批次时才选含 manifest.json 的文件夹，重新校验并确认目标后逐任务保存 ZIP；校验账号与绑定 ID，已有文件跳过、不覆盖，原始输入与清单不变。保留详细日志、同名旧任务消歧与每页 100 个扫描。FASTA 标题作为任务名、每行序列一条蛋白链，每 30 个任务生成分批输入和官网 JSON，保存到所选本地文件夹后，明确确认才导入草稿。manifest 记录导入尝试、逐任务确认及预测完成状态；保留日期折叠、勾选提速和顶部账号。从 4.0 起统一使用 main 正式版，不再发布独立开发版。</p>
             <p class="version-note">升级前请备份油猴脚本及脚本数据；在原已安装条目内更新并核对账号，不要先卸载旧脚本。新建条目不能保证继承原 GM 账号记录。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 5.0.0 正式版</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 5.0.1 正式版</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/main" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看正式源码</a>
             </div>
             <p style="font-size: 0.9rem; margin-top: 10px; color: #888;">需要 Tampermonkey；请先备份并在原脚本条目内更新；禁用其他 AlphaFold 提交脚本，只启用一份</p>
@@ -295,8 +295,9 @@
         </section>
 
         <section>
-            <h2>✨ 5.0.0 正式版更新重点</h2>
+            <h2>✨ 5.0.1 正式版更新重点</h2>
             <ul class="release-list">
+                <li>5.0.1 新增“选择当前批次”，放在“全选”旁。只选择当前日期结果中与已打开清单的账号、任务 ID 和名称匹配的任务，不改变官网复选框、不写文件、不下载。文件保存另用“保存所选 ZIP 到 results…”并确认。</li>
                 <li>5.0.0 新增本地 ZIP 指标提取：读取 results 下的合并包或逐任务 ZIP，生成每包最佳模型/链对 CSV 和整批最佳模型/全模型/缺失表。沿用已打开批次，完整解析及校验后确认覆盖清单；不调用 Python、不联网、不修改原 ZIP、FASTA 或 manifest。</li>
                 <li>4.0.9 结果保存沿用当前页面已打开的有效批次目录，未打开批次或刷新后才需选择。仍只读校验磁盘清单、任务与账号，确认目标后才逐个保存 ZIP；清单或权限失效会停止，不自动换目录。保留已有文件跳过、停止与部分完成计数。</li>
                 <li>保留详细日志：历史核对/导入记录账号、筛选、每页数量、读取的名称与行数，逐批记录已确认数、同名消歧数和未确认数；按日期查找记录起止条件与匹配结果；停止时记录原因。日志保留最近 120 条。</li>
@@ -410,8 +411,8 @@
 
             <h3>4. 保存到原批次文件夹的 results</h3>
             <ol>
-                <li>在原账号仅选 <code>Completed</code>，查找后只勾选同一批次的已完成任务。清单尚未绑定 ID 时，先打开原批次并“核对官网历史 / 更新记录”；不要重新导入。</li>
-                <li>点<strong>保存到批次 results…</strong>。当前页面已打开有效批次文件夹时直接沿用，不再选目录；否则选择直接包含 <code>manifest.json</code> 的 <code>af3_…</code> 子目录。不是父目录或 results，不必先应用官网勾选。保存前仍重新校验磁盘清单；账号、名称或唯一 ID 不匹配时拒绝输出。</li>
+                <li>在原账号仅选 <code>Completed</code>，查找后只勾选同一批次的已完成任务。可先打开原批次，再点“全选”旁的<strong>选择当前批次</strong>，按账号、已绑定 ID 和名称替换面板勾选；它不会下载或操作官网复选框。缺少 ID 时先“核对官网历史 / 更新记录”，不要重新导入。</li>
+                <li>点<strong>保存所选 ZIP 到 results…</strong>。当前页面已打开有效批次文件夹时直接沿用，不再选目录；否则选择直接包含 <code>manifest.json</code> 的 <code>af3_…</code> 子目录。不是父目录或 results，不必先应用官网勾选。保存前仍重新校验磁盘清单；账号、名称或唯一 ID 不匹配时拒绝输出。</li>
                 <li>确认任务数与 <code>批次文件夹名/results</code> 后，逐个保存独立 ZIP。文件名含任务名和稳定 ID 短码；已有同名文件跳过、不验证内容，也不覆盖。</li>
                 <li>以面板实际保存与跳过数量为准。停止会中断传输，已提交文件保留；错误响应或未完成 ZIP 不计成功。目录权限、空间不足或清理失败按提示处理。</li>
             </ol>
@@ -453,6 +454,7 @@ python -I -X utf8 test_submission.py
 python -I -X utf8 test_download.py
 python -I -X utf8 test_fasta.py
 python -I -X utf8 test_results.py
+python -I -X utf8 test_select_batch.py
 python -I -X utf8 test_score_extraction.py
 node test_score_core.mjs
 git diff --check</code></pre>
@@ -463,7 +465,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 5.0.0 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 5.0.1 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -473,7 +475,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter 5.0.0 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter 5.0.1 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

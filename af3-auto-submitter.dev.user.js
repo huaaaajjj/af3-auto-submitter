@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.0
+// @version      5.0.1
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期下载、结果 ZIP 保存及本地指标 CSV 提取汇总。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.0';
+    const SCRIPT_VERSION = '5.0.1';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -586,7 +586,10 @@
     const downloadEnglish = {
         submitTitle: 'Submit jobs', downloadTitle: 'Download jobs', downloadStart: 'From', downloadEnd: 'Through',
         downloadNote: 'Includes both Modified dates. Confirmed newest-first history stops after older dates; other orders scan all pages.',
-        downloadScan: 'Find jobs', downloadAll: 'Select all', downloadClear: 'Clear selection',
+        downloadScan: 'Find jobs', downloadAll: 'Select all', downloadBatch: 'Select current batch', downloadClear: 'Clear selection',
+        downloadBatchStopped: 'Batch selection stopped.',
+        downloadBatchOpen: 'Open the batch folder in FASTA batches first. Your selection has not changed.',
+        downloadBatchEmpty: 'No jobs in these results match the opened batch by account, name and job ID. Check the dates or use “Check history / update records” to fill in missing IDs.',
         downloadIdle: 'Choose dates, find jobs, then apply your reviewed selection to the website.',
         downloadScanning: 'Scanning page {page}… {count} matches',
         downloadFound: '{count} matches; {selected} selected. Unreadable dates skipped on scanned pages: {unknown}.',
@@ -604,7 +607,7 @@
         downloadReadyApply: 'Ready: review and apply your selection', downloadReadyWeb: 'Ready: {count} currently selected on website; use its Download button manually',
         downloadReadyFind: 'Ready: find jobs by date', downloadReadySelect: 'Ready: select jobs',
         downloadRunningScan: 'Running: finding jobs', downloadRunningApply: 'Running: selecting jobs on website',
-        downloadSubmissionBusy: 'Standby: submission is running',
+        downloadSubmissionBusy: 'Standby: submission is running', downloadRunningBatch: 'Running: selecting the current batch',
         downloadApplied: '{count} jobs selected on the website. Click the website’s original Download button to download.',
         downloadAppliedLimit: '{count} jobs selected on the website. Its bulk Download supports up to 50 at a time; reduce the website selection before clicking Download.',
         downloadLimit: 'Website bulk Download supports up to 50 jobs. Reduce the website selection or download jobs individually from their menus.',
@@ -630,7 +633,7 @@
         downloadMissing: 'A selected job changed or could not be found. Selection stopped.',
         downloadIncomplete: 'Scan stopped or incomplete. Find jobs again before applying the selection.',
         downloadDay: '{day} · {count} jobs', downloadUnknown: 'Unknown date',
-        downloadSave: 'Save to batch results…', downloadRunningSave: 'Running: saving result ZIPs',
+        downloadSave: 'Save selected ZIPs to results…', downloadRunningSave: 'Running: saving result ZIPs',
         downloadSaveHint: 'Uses the currently opened batch folder when available; otherwise choose the folder containing manifest.json. Saves separate ZIPs in results; existing filenames are skipped without verifying their contents. Only jobs already bound to this batch and account are accepted. Original batch files are not changed.',
         downloadSaveConfirm: 'Save {count} selected jobs as separate ZIPs to {folder}/results? Only this batch’s matching job IDs and account are accepted. Existing files will not be overwritten; manifest.json and input files stay unchanged.',
         downloadSaveProgress: 'Saved {saved}/{total}; skipped {skipped} existing files. Saving {name} to {folder}/results…',
@@ -669,7 +672,10 @@
         zh: {
             submitTitle: '提交任务', downloadTitle: '下载任务', downloadStart: '开始日期', downloadEnd: '结束日期',
             downloadNote: '按官网 Modified 日期，包含起止当天。确认日期倒序后越过开始日即停止；排序不确定时扫描所有分页。',
-            downloadScan: '查找任务', downloadAll: '全选', downloadClear: '清空选择',
+            downloadScan: '查找任务', downloadAll: '全选', downloadBatch: '选择当前批次', downloadClear: '清空选择',
+            downloadBatchStopped: '已停止选择当前批次。',
+            downloadBatchOpen: '请先在 FASTA 区打开批次文件夹；当前勾选未改变。',
+            downloadBatchEmpty: '当前查找结果中没有与已打开批次的账号、名称和任务 ID 匹配的任务。请检查日期，或先“核对官网历史 / 更新记录”补齐任务 ID。',
             downloadIdle: '先选择日期并查找任务，核对后将勾选应用到官网。',
             downloadScanning: '正在扫描第 {page} 页…已找到 {count} 个',
             downloadFound: '匹配 {count} 个，已选 {selected} 个；已扫描页面中日期无法识别、未纳入 {unknown} 个。',
@@ -687,7 +693,7 @@
             downloadReadyApply: '就绪：核对选择后应用到官网勾选', downloadReadyWeb: '就绪：官网当前已选 {count} 个，请手动点击官网 Download',
             downloadReadyFind: '就绪：按日期查找任务', downloadReadySelect: '就绪：请勾选任务',
             downloadRunningScan: '运行中：正在查找任务', downloadRunningApply: '运行中：正在网页中勾选',
-            downloadSubmissionBusy: '待机中：正在提交任务',
+            downloadSubmissionBusy: '待机中：正在提交任务', downloadRunningBatch: '运行中：正在选择当前批次',
             downloadApplied: '已在官网勾选 {count} 个任务，请手动点击官网原生 Download 按钮下载。',
             downloadAppliedLimit: '已在官网勾选 {count} 个任务；官网批量下载每次最多 50 个，请减少官网勾选后手动点击 Download。',
             downloadLimit: '官网批量下载每次最多 50 个任务，请减少官网勾选，或使用各任务行菜单中的 Download。',
@@ -713,7 +719,7 @@
             downloadMissing: '所选任务已变化或未找到，已停止应用。',
             downloadIncomplete: '查找已停止或未完成，请重新查找后再应用勾选。',
             downloadDay: '{day} · {count} 个', downloadUnknown: '日期无法识别',
-            downloadSave: '保存到批次 results…', downloadRunningSave: '运行中：正在保存结果 ZIP',
+            downloadSave: '保存所选 ZIP 到 results…', downloadRunningSave: '运行中：正在保存结果 ZIP',
             downloadSaveHint: '如果当前页面已打开有效批次文件夹，将直接沿用；否则选择含 manifest.json 的批次文件夹。在 results 中逐个保存 ZIP；已有同名文件跳过，不校验其内容。仅接受已绑定到本批次和当前账号的任务，不修改原始批次文件。',
             downloadSaveConfirm: '将所选 {count} 个任务分别保存为 ZIP 到 {folder}/results？只接受本批次与当前账号匹配的任务 ID。已有文件不覆盖，manifest.json 和输入文件不修改。',
             downloadSaveProgress: '已保存 {saved}/{total}，跳过已有文件 {skipped} 个；正在将 {name} 保存到 {folder}/results…',
@@ -3006,7 +3012,7 @@
 
     function downloadReadiness() {
         if (fastaState.busy) return { key: 'fastaBusy', color: 'var(--af3-warning)' };
-        if (downloadState.busy) return { key: downloadState.phase === 'extract' ? 'scoreRunning' : downloadState.phase === 'scan' ? 'downloadRunningScan' : downloadState.phase === 'save' ? 'downloadRunningSave' : 'downloadRunningApply', color: 'var(--af3-warning)' };
+        if (downloadState.busy) return { key: downloadState.phase === 'batch' ? 'downloadRunningBatch' : downloadState.phase === 'extract' ? 'scoreRunning' : downloadState.phase === 'scan' ? 'downloadRunningScan' : downloadState.phase === 'save' ? 'downloadRunningSave' : 'downloadRunningApply', color: 'var(--af3-warning)' };
         if (isRunning) return { key: 'downloadSubmissionBusy', color: 'var(--af3-warning)' };
         let context;
         try { context = getDownloadContext(); }
@@ -3048,9 +3054,9 @@
                 return;
             }
         }
-        for (const id of ['start', 'end', 'scan', 'all', 'clear', 'format']) {
+        for (const id of ['start', 'end', 'scan', 'all', 'batch', 'clear', 'format']) {
             const control = getUiElement(`af3-download-${id}`);
-            if (control) control.disabled = busy || (['all', 'clear'].includes(id) && (!downloadState.complete || !downloadState.jobs.length));
+            if (control) control.disabled = busy || (['all', 'batch', 'clear'].includes(id) && (!downloadState.complete || !downloadState.jobs.length));
         }
         for (const id of ['apply', 'save']) {
             const button = getUiElement(`af3-download-${id}`);
@@ -3364,6 +3370,46 @@
         }
     }
 
+    function boundDownloadJobs(manifest, account) {
+        const bound = new Map();
+        for (const batch of manifest.batches) {
+            if (normalizeAccountEmail(batch.account) !== account) continue;
+            for (const job of batch.jobs) {
+                if (!job.jobId || typeof job.jobId !== 'string' || /[\\/\s?#\x00-\x1f\x7f]/.test(job.jobId) || job.importStatus !== 'confirmed') continue;
+                const key = 'id:' + job.jobId;
+                if (bound.has(key)) throw new Error(t('downloadSaveMismatch'));
+                bound.set(key, job);
+            }
+        }
+        return bound;
+    }
+
+    async function selectCurrentDownloadBatch() {
+        if (isRunning || downloadState.busy || fastaState.busy || !downloadState.complete || !downloadState.jobs.length) return;
+        if (!fastaState.dir || !fastaState.saved || !fastaState.manifest?.generationComplete) { setDownloadMessage('downloadBatchOpen'); return; }
+        const directory = fastaState.dir, runId = fastaState.manifest.runId;
+        downloadState.context = downloadState.scanContext;
+        downloadState.stop = false; downloadState.selectionChanged = false;
+        downloadState.busy = true; downloadState.phase = 'batch';
+        checkSystemStatus(); renderDownloadSection();
+        try {
+            checkDownloadActive();
+            const account = JSON.parse(downloadState.context).account;
+            if (!account) throw new Error(t('fastaContextAccountMissing'));
+            const { manifest } = await readFastaManifest(directory);
+            checkDownloadActive();
+            if (manifest.runId !== runId) throw new Error(t('fastaChanged'));
+            const bound = boundDownloadJobs(manifest, account);
+            const selected = downloadState.jobs.filter(job => job.id && bound.get(job.key)?.name === job.name);
+            resetDownloadQueue();
+            downloadState.selected = new Set(selected.map(job => job.key));
+            setDownloadMessage(selected.length ? 'downloadFound' : 'downloadBatchEmpty');
+        } catch (error) {
+            if (isUserStopError(error)) setDownloadMessage('downloadBatchStopped');
+            else setDownloadMessage('error', { detail: error.message });
+        } finally { downloadState.busy = false; renderDownloadSection(); checkSystemStatus(); }
+    }
+
     async function saveDownloadResults() {
         if (isRunning || downloadState.busy || fastaState.busy) return;
         if (!downloadState.complete || !downloadState.selected.size) { setDownloadMessage('downloadNoSelection'); return; }
@@ -3394,16 +3440,7 @@
             catch (_) { throw new Error(t('downloadSaveFolder')); }
             checkDownloadActive();
             const { manifest, text } = snapshot;
-            const bound = new Map();
-            for (const batch of manifest.batches) {
-                if (normalizeAccountEmail(batch.account) !== account) continue;
-                for (const job of batch.jobs) {
-                    if (!job.jobId || typeof job.jobId !== 'string' || /[\\/\s?#\x00-\x1f\x7f]/.test(job.jobId) || job.importStatus !== 'confirmed') continue;
-                    const key = 'id:' + job.jobId;
-                    if (bound.has(key)) throw new Error(t('downloadSaveMismatch'));
-                    bound.set(key, job);
-                }
-            }
+            const bound = boundDownloadJobs(manifest, account);
             if (records.length !== progress.total || records.some(job => !job.id || bound.get(job.key)?.name !== job.name)) throw new Error(t('downloadSaveMismatch'));
             if (!confirm(t('downloadSaveConfirm', { count: records.length, folder: directory.name }))) {
                 setDownloadMessage('downloadSaveCancelled', progress); return;
@@ -3941,19 +3978,24 @@
         }
         section.appendChild(dates);
         const actions = document.createElement('div'); actions.className = 'af3-download-tools';
+        const selectionActions = document.createElement('div'); selectionActions.className = 'af3-batch-selection';
         const applyActions = document.createElement('div'); applyActions.className = 'af3-download-actions';
         for (const [id, key, action] of [
             ['scan', 'downloadScan', scanDownloadJobs],
             ['all', 'downloadAll', () => { if (downloadState.busy || isRunning || fastaState.busy || !downloadState.complete || !downloadState.jobs.length) return; resetDownloadQueue(); downloadState.selected = new Set(downloadState.jobs.map(job => job.key)); setDownloadMessage('downloadFound'); }],
+            ['batch', 'downloadBatch', selectCurrentDownloadBatch],
             ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning || fastaState.busy || !downloadState.complete || !downloadState.jobs.length) return; resetDownloadQueue(); downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
             ['apply', 'downloadApply', () => applySelectionToWebsite()],
             ['next', 'downloadNext', () => applySelectionToWebsite(true)],
             ['stop', 'stopButton', () => { downloadState.stop = true; downloadState.controller?.abort(); updateDownloadControls(); }],
         ]) {
             const button = translated('button', key); button.type = 'button'; button.id = `af3-download-${id}`;
-            button.className = id === 'apply' ? 'af3-primary' : id === 'stop' ? 'af3-danger' : id === 'all' || id === 'clear' ? 'af3-quiet' : '';
+            button.className = id === 'apply' ? 'af3-primary' : id === 'stop' ? 'af3-danger' : ['all', 'batch', 'clear'].includes(id) ? 'af3-quiet' : '';
             button.onclick = action;
-            (id === 'apply' || id === 'next' ? applyActions : actions).appendChild(button);
+            if (id === 'all' || id === 'batch') {
+                if (!selectionActions.parentNode) actions.appendChild(selectionActions);
+                selectionActions.appendChild(button);
+            } else (id === 'apply' || id === 'next' ? applyActions : actions).appendChild(button);
         }
         section.appendChild(actions);
         const status = document.createElement('p'); status.id = 'af3-download-status'; status.className = 'af3-help';
@@ -4179,6 +4221,7 @@
             #af3-fasta-progress { display: block; width: 100%; height: 10px; accent-color: var(--af3-primary); }
             .af3-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(135px, 100%), 1fr)); gap: 8px; }
             .af3-download-tools, .af3-download-actions, .af3-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+            .af3-batch-selection { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; }
             #af3-download-scan { margin-right: auto; }
             #af3-download-apply { width: 100%; }
             #af3-download-next { flex: 1; }

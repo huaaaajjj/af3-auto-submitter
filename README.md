@@ -4,9 +4,11 @@
 
 ## 安装 5.0 正式版
 
-[安装或更新 5.0.0](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 5.0.1](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 **从 4.0 起只发布正式版，不再维护独立开发版渠道。** 安装文件为 `af3-auto-submitter.user.js`，正常开发、安装、测试和更新均以 `main` 的正式文件为准。
+
+**5.0.1 更新：** “选择当前批次”位于“全选”旁，读取已打开的批次清单，按当前账号、任务 ID 和名称筛选日期查找结果，只改变面板勾选，不下载或改变官网复选框。原文件保存按钮改名“保存所选 ZIP 到 results…”，下载仍需独立确认；没有匹配时清空面板勾选并提示原因。
 
 **5.0.0 更新：** 新增“提取 results 数据为 CSV…”：浏览器本地读取 `results/*.zip`，按既有提取脚本的指标计算每包最佳模型/链对 CSV、整批最佳模型/全模型/缺失表，保留原 ZIP 和清单。自动沿用已打开批次，替换已有 CSV 前明确确认。无需 Python、官网扫描或网络请求；manifest 格式仍为 1，旧账号与面板设置继续沿用。
 
@@ -19,7 +21,7 @@
 1. 安装 Tampermonkey，点击上方正式安装链接并确认。若仅显示源码，在油猴原脚本编辑器中完整替换并保存。
 2. 允许脚本在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。使用 Edge InPrivate 时，需要开启扩展的“允许在 InPrivate 中使用”。
 3. 普通窗口与 InPrivate 要共用账号目录，需在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 刷新官网，确认标题显示 **v5.0.0**，并核对当前账号和官网额度。网站控件与通知需使用英文。
+4. 刷新官网，确认标题显示 **v5.0.1**，并核对当前账号和官网额度。网站控件与通知需使用英文。
 5. 首次仅试 1 个任务；生成 JSON、导入草稿、预测提交、预测完成是四个不同阶段。结果不确定时不要重复点击 Confirm 或刷新后直接重试。
 
 正式更新检查地址是 `main/af3-auto-submitter.meta.js`，完整下载地址是 `main/af3-auto-submitter.user.js`。启用油猴“检查更新”即可接收后续正式版本。
@@ -181,8 +183,8 @@ MNPQRSTVWY
 ### 保存到原批次文件夹的 results（4.0.9）
 
 1. 在原批次所属账号下，仅选 `Completed`。如果清单尚未绑定任务 ID，先用 FASTA 区的“打开已有批次文件夹”和“核对官网历史 / 更新记录”建立绑定；不要为下载重新生成或重新导入任务。
-2. 按日期“查找任务”，勾选**属于同一个本地批次**的已完成任务。不必先“应用到官网勾选”；目录保存使用面板的选择，不改变官网复选框。
-3. 点 **“保存到批次 results…”**。**如果当前页面已通过“打开已有批次文件夹”打开有效批次，将直接沿用该目录，不再弹出目录选择器；否则才选择直接包含 `manifest.json` 的 `af3_…` 文件夹**，不是父目录，也不是 `results`。重新读取并校验磁盘清单后，仍需确认任务数与 `批次文件夹名/results` 目标。任一所选任务的账号、名称或已绑定 ID 不匹配，就拒绝保存，不创建输出目录；目录失效或权限不足时停止，不自动切换到其他目录。
+2. 按日期“查找任务”，勾选**属于同一个本地批次**的已完成任务。可以先在 FASTA 区打开原批次，再点“全选”旁的 **“选择当前批次”**：仅从当前日期查找结果中选择与本批次账号、已绑定 ID 和名称匹配的任务，并替换面板勾选；不按同名猜认、不写文件、不弹目录选择器、不下载。缺少 ID 时先“核对官网历史 / 更新记录”；没有匹配时清空选择并提示，未打开目录或清单读取失败时保留原勾选。不必先“应用到官网勾选”；目录保存使用面板的选择，不改变官网复选框。
+3. 点 **“保存所选 ZIP 到 results…”**。**如果当前页面已通过“打开已有批次文件夹”打开有效批次，将直接沿用该目录，不再弹出目录选择器；否则才选择直接包含 `manifest.json` 的 `af3_…` 文件夹**，不是父目录，也不是 `results`。重新读取并校验磁盘清单后，仍需确认任务数与 `批次文件夹名/results` 目标。任一所选任务的账号、名称或已绑定 ID 不匹配，就拒绝保存，不创建输出目录；目录失效或权限不足时停止，不自动切换到其他目录。
 4. 确认后创建或复用 `results/`，逐个读取该任务自己的官方 `Download` 链接，保存独立 ZIP。文件名包含清理后的任务名和稳定任务 ID 的哈希短码。已有同名文件一律跳过，**不覆盖，也不校验已有文件内容**；如需重新下载，请先自行检查和移走旧文件。
 5. 查看下方实际保存与跳过数量。只有写入流成功关闭、文件提交后才计入已保存；发生网络、权限、磁盘、身份变化或清单变化时停止。点“停止”中断传输，已成功保存文件保留，新建的空占位文件会尝试清理；清理失败会提示需手动处理的文件名。
 
@@ -263,12 +265,13 @@ python -I -X utf8 test_submission.py
 python -I -X utf8 test_download.py
 python -I -X utf8 test_fasta.py
 python -I -X utf8 test_results.py
+python -I -X utf8 test_select_batch.py
 python -I -X utf8 test_score_extraction.py
 node test_score_core.mjs
 git diff --check
 ```
 
-浏览器回归共 312 个场景（提交与账户 32、原有下载 139、FASTA 48、结果目录保存 57、本地指标提取 36）。另有无依赖的指标核心检查，覆盖舍入、CSV 转义及单/多链统计。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
+浏览器回归共 323 个场景（提交与账户 32、原有下载 139、FASTA 48、结果目录保存 57、当前批次选择 11、本地指标提取 36）。另有无依赖的指标核心检查，覆盖舍入、CSV 转义及单/多链统计。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
 
 面板不显示时先核对版本、站点权限并确认只启用一份脚本。额度显示“无法识别”不等于额度为零。提交结果不确定、部分导入或锁定时，先人工核对官网记录，再决定后续操作；不要用反复启动代替确认。
 
@@ -278,7 +281,7 @@ git diff --check
 - `af3-auto-submitter.meta.js`：与正式文件一致的更新元数据头。
 - `af3-auto-submitter.js`、`af3-auto-submitter.dev.user.js`：字节一致的旧地址兼容副本；修改正式文件后同步，不单独开发。
 - `test_release.py`：版本、更新地址、grants、元数据和兼容副本一致性检查。
-- `test_submission.py`、`test_download.py`、`test_fasta.py`、`test_results.py`、`test_score_extraction.py`：账号无关的完整浏览器回归；原有下载测试仍禁止传输，只有结果目录专用夹具显式启用模拟 ZIP 响应。`test_score_core.mjs` 检查舍入、匹配、单/多链与 CSV 边界。
+- `test_submission.py`、`test_download.py`、`test_fasta.py`、`test_results.py`、`test_select_batch.py`、`test_score_extraction.py`：账号无关的完整浏览器回归；原有下载测试仍禁止传输，只有结果目录专用夹具显式启用模拟 ZIP 响应。`test_score_core.mjs` 检查舍入、匹配、单/多链与 CSV 边界。
 - `index.html`：中文正式安装说明。
 - `init.png`、`saved_draft.png`、`failed.png`：历史参考截图，不代表当前界面或版本。
 
