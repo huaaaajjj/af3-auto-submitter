@@ -98,6 +98,26 @@ function renderHistory(){
   const status=document.createElement('td');status.className='mat-column-status';status.textContent=job.status;const checkbox=document.createElement('input');checkbox.type='checkbox';status.append(checkbox);
   const name=document.createElement('td');name.className='mat-column-name';name.textContent=job.name;const date=document.createElement('td');date.className='mat-column-date';date.textContent=job.modified||'2026-11-16 12:00';
   row.append(status,name,date);row.onclick=()=>{state.rowOpens++;if(id==='fasta-presubmit-record')showPrediction(job)};body.append(row);
+  if(id.startsWith('fasta-menu-')){
+   const cell=document.createElement('td');cell.className='mat-column-options';
+   const trigger=document.createElement('button');trigger.className='fold-actions';trigger.setAttribute('aria-haspopup','menu');trigger.setAttribute('aria-expanded','false');
+   const icon=document.createElement('mat-icon');icon.textContent='more_vert';trigger.append(icon);cell.append(trigger);row.append(cell);
+   trigger.onclick=event=>{
+    event.stopPropagation();
+    if(trigger.getAttribute('aria-expanded')==='true'){
+     document.getElementById(trigger.getAttribute('aria-controls'))?.remove();trigger.setAttribute('aria-expanded','false');trigger.removeAttribute('aria-controls');state.menuCloses=(state.menuCloses||0)+1;return;
+    }
+    state.menuReads=(state.menuReads||0)+1;
+    const panel=document.createElement('div');panel.id='history-menu-'+state.menuReads;panel.setAttribute('role','menu');
+    const link=document.createElement('a');link.textContent='Open results';link.href=(id==='fasta-menu-foreign'?'https://other.invalid':'')+'/fold/'+job.id;
+    link.onclick=e=>{e.preventDefault();state.rowOpens++};panel.append(link);
+    if(id==='fasta-menu-conflict'){const other=link.cloneNode(true);other.href='/fold/different-id';panel.append(other)}
+    document.getElementById('overlay').append(panel);trigger.setAttribute('aria-expanded','true');trigger.setAttribute('aria-controls',panel.id);
+    if(id==='fasta-menu-stop')ui('fasta-stop').click();
+    if(id==='fasta-menu-account')window.WIZ_global_data.oPEP7c='other@example.com';
+    if(id==='fasta-menu-row-change')name.textContent='changed_name';
+   };
+  }
  }
  const paginator=document.querySelector('mat-paginator');
  paginator.querySelector('[aria-label="First page"]').disabled=state.page===0;
@@ -204,6 +224,12 @@ document.getElementById('native-upload').onclick=()=>{
   attempt.saveClicks++;assert(attempt.saveClicks===1,'Draft save was retried');assert(attempt.changes===1&&!confirm.disabled,'Draft save before successful validation');
   assert(Array.from(jobsNode.children).every(row=>row.classList.contains('ok')),'Draft save bypassed native validation');
   const journal=manifest(state.activeDir).batches.find(batch=>batch.jsonFile===attempt.file.name);assert(journal?.status==='uncertain'&&journal.attempts.at(-1)?.saveClickedAt,'Draft save sent before durable uncertainty journal');state.saves.push(attempt);
+  if(id==='fasta-import-streaming'){
+   cancelDialog(dialog);
+   const spinner=document.createElement('mat-spinner');document.querySelector('gdm-af-history').append(spinner);
+   attempt.jobs.forEach((job,index)=>setTimeout(()=>{addHistory([job],'Saved draft',attempt.account);state.nativeSaved++;if(index===attempt.jobs.length-1)spinner.remove()},350*(index+1)));
+   return;
+  }
   setTimeout(()=>{
    const jobs=attempt.behavior==='partial'?attempt.jobs.slice(0,7):attempt.jobs;
    addHistory(jobs,'Saved draft',attempt.account);state.nativeSaved+=jobs.length;
@@ -254,7 +280,27 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
 (async()=>{
  const script=document.createElement('script');script.src='/script.js';await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Userscript load failed'));document.head.append(script)});
  await until(()=>ui('fasta-section'),'FASTA panel');assert(!ui('fasta-mode')&&!ui('fasta-tail'),'Protein layout and tail controls must be removed');
- if(id==='fasta-boundaries'){
+ if(id.startsWith('fasta-menu-')){
+  const dir=await generate(fasta(2)),m=manifest(dir),batch=m.batches[0];state.omitIds=true;
+  const save=new Date(Date.now()-60000).toISOString();batch.account=owner;
+  batch.attempts=[{account:owner,startedAt:save,saveClickedAt:save,endedAt:save,result:'unconfirmed'}];
+  for(const job of batch.jobs){job.submittedAt=new Date(Date.now()-30000).toISOString();job.predictionStatus='submitted'}
+  dir.files.set('manifest.json',JSON.stringify(m));addHistory(batch.jobs,'Completed');filters(['Completed']);await restore(dir);
+  const before=dir.files.get('manifest.json');await clickFasta('sync');const after=manifest(dir);
+  if(id==='fasta-menu-identity'){
+   assert(after.summary.completed===2&&after.batches[0].jobs.every(job=>job.jobId?.startsWith('fixture-')),'History marked complete without binding menu-only job IDs');
+   assert(state.menuReads===2&&state.menuCloses===2,'Did not read and close exactly the tracked row menus');
+  }else{
+   assert(!after.batches[0].jobs.some(job=>job.jobId),'Unsafe menu identity was persisted');
+   assert(dir.files.get('manifest.json')===before,'Failed identity resolution changed the manifest');
+   if(['fasta-menu-stop','fasta-menu-account','fasta-menu-row-change'].includes(id))assert(state.menuCloses===1,'Owned menu was not closed after interruption');
+  }
+  assert(state.rowOpens===0&&!state.uploads.length&&!state.saves.length,'History identity lookup opened a prediction or uploaded files');
+ }else if(id==='fasta-import-streaming'){
+  const dir=await generate(fasta(30));await clickFasta('import');
+  assert(manifest(dir).importComplete&&manifest(dir).summary.imported===30,'Streaming draft refresh exceeded the inner 8-second page wait: '+ui('fasta-status').textContent);
+  assert(state.uploads.length===1&&state.saves.length===1&&state.nativeSaved===30,'Streaming verification retried the upload or draft save');
+ }else if(id==='fasta-boundaries'){
   for(const count of [1,30,31,60,61]){const text=fasta(count);const dir=await generate(text);const m=await checkFiles(dir,text,count);assert(m.batches.map(batch=>batch.jobs.length).join(',')===Array.from({length:Math.ceil(count/30)},(_,i)=>Math.min(30,count-i*30)).join(','),'Boundary batch sizes wrong')}
   assert(state.uploads.length===0&&state.saves.length===0&&state.confirms.length===0,'Local generation uploaded data');
  }else if(id==='fasta-lines-names'){
@@ -644,6 +690,7 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
 
 
 SCENARIOS = [
+    'fasta-menu-identity', 'fasta-menu-stop', 'fasta-menu-account', 'fasta-menu-row-change', 'fasta-menu-foreign', 'fasta-menu-conflict', 'fasta-import-streaming',
     'fasta-boundaries', 'fasta-lines-names', 'fasta-legacy-restore', 'fasta-multichain-import', 'fasta-invalid', 'fasta-local-errors',
     'fasta-restore', 'fasta-import-happy', 'fasta-import-tampered', 'fasta-journal-error',
     'fasta-partial', 'fasta-unclosed', 'fasta-warning', 'fasta-validation-timeout',

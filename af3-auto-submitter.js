@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.1
+// @version      5.0.2
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期下载、结果 ZIP 保存及本地指标 CSV 提取汇总。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.1';
+    const SCRIPT_VERSION = '5.0.2';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -586,6 +586,7 @@
     const downloadEnglish = {
         submitTitle: 'Submit jobs', downloadTitle: 'Download jobs', downloadStart: 'From', downloadEnd: 'Through',
         downloadNote: 'Includes both Modified dates. Confirmed newest-first history stops after older dates; other orders scan all pages.',
+        panelCollapse: 'Collapse panel', panelExpand: 'Expand panel',
         downloadScan: 'Find jobs', downloadAll: 'Select all', downloadBatch: 'Select current batch', downloadClear: 'Clear selection',
         downloadBatchStopped: 'Batch selection stopped.',
         downloadBatchOpen: 'Open the batch folder in FASTA batches first. Your selection has not changed.',
@@ -672,6 +673,7 @@
         zh: {
             submitTitle: '提交任务', downloadTitle: '下载任务', downloadStart: '开始日期', downloadEnd: '结束日期',
             downloadNote: '按官网 Modified 日期，包含起止当天。确认日期倒序后越过开始日即停止；排序不确定时扫描所有分页。',
+            panelCollapse: '收起面板', panelExpand: '展开面板',
             downloadScan: '查找任务', downloadAll: '全选', downloadBatch: '选择当前批次', downloadClear: '清空选择',
             downloadBatchStopped: '已停止选择当前批次。',
             downloadBatchOpen: '请先在 FASTA 区打开批次文件夹；当前勾选未改变。',
@@ -1046,7 +1048,7 @@
             sort: loading ? previous?.sort || [] : Array.from(root.querySelectorAll('th[aria-sort]'), node => [downloadText(node), node.getAttribute('aria-sort')]) });
     }
 
-    async function fastaHistoryPage(before = null) {
+    async function fastaHistoryPage(before = null, deadline = null) {
         let signature = '', since = 0;
         return fastaWait(() => {
             const history = getDownloadHistory(true);
@@ -1055,12 +1057,12 @@
             if (before !== null && before === page.signature) return false;
             if (signature !== page.signature) { signature = page.signature; since = Date.now(); return false; }
             return Date.now() - since >= 150 && page;
-        }, 8000);
+        }, deadline === null ? 8000 : Math.max(1, deadline - Date.now()));
     }
 
-    async function readFastaHistory() {
-        let page = await fastaHistoryPage();
-        const move = async button => { fastaCheck(); if (!downloadButtonEnabled(button)) throw new Error(t('downloadPageError')); button.click(); return fastaHistoryPage(page.signature); };
+    async function readFastaHistory(deadline = null) {
+        let page = await fastaHistoryPage(null, deadline);
+        const move = async button => { fastaCheck(); if (!downloadButtonEnabled(button)) throw new Error(t('downloadPageError')); button.click(); return fastaHistoryPage(page.signature, deadline); };
         if (downloadButtonEnabled(page.first)) page = await move(page.first);
         const rewind = new Set();
         while (downloadButtonEnabled(page.previous)) {
@@ -1068,6 +1070,8 @@
             rewind.add(page.signature); page = await move(page.previous);
         }
         const found = new Map(), visited = new Set();
+        const account = JSON.parse(fastaState.context).account;
+        const trackedNames = new Set(fastaState.manifest.batches.filter(batch => batch.account === account).flatMap(batch => batch.jobs.map(job => job.name)));
         let scanned = 0, total = null;
         while (true) {
             fastaCheck();
@@ -1084,13 +1088,17 @@
             fastaState.message = total === null ? t('fastaCheckingPage', { page: visited.size, count: scanned }) :
                 t('fastaCheckingTotal', { page: visited.size, count: scanned, total, percent: Math.floor(scanned / total * 100) });
             renderFastaSection();
-            for (const job of page.jobs) {
+            for (let job of page.jobs) {
                 const cell = job.row.querySelector('.mat-column-status, .cdk-column-status');
                 const statusText = ((cell?.textContent || '') + ' ' + Array.from(cell?.querySelectorAll('[aria-label], [mattooltip]') || [], n => n.getAttribute('aria-label') || n.getAttribute('mattooltip')).join(' ')).toLowerCase();
                 const selected = JSON.parse(fastaState.context).selected;
                 const status = /check_circle|completed|succeeded/.test(statusText) ? 'completed' : /\berror\b|failed/.test(statusText) ? 'failed' :
                     (/progress_activity|in progress|pending/.test(statusText) || cell?.querySelector('mat-spinner, mat-progress-spinner')) ? 'in_progress' : /edit_document|saved draft/.test(statusText) ? 'draft' :
                     selected.length === 1 ? ({ 'saved draft': 'draft', 'completed': 'completed', 'failed': 'failed', 'in progress': 'in_progress' })[selected[0]] : 'unknown';
+                if (!job.id && trackedNames.has(job.name) && ['completed', 'failed', 'in_progress'].includes(status)) {
+                    job = await resolveDownloadJob(job, fastaCheck);
+                    if (!job.id) throw new Error(t('fastaIdentity'));
+                }
                 const entry = { name: job.name, jobId: job.id ? job.key.slice(3) : null, modified: job.modified, status };
                 if (!found.has(job.name)) found.set(job.name, []);
                 found.get(job.name).push(entry);
@@ -1396,7 +1404,8 @@
             const deadline = Date.now() + FASTA_IMPORT_TIMEOUT;
             do {
                 await sleep(300); fastaCheck();
-                const found = await readFastaHistory();
+                // The website streams saved drafts into history; use the remaining import budget, not an inner 8-second cutoff.
+                const found = await readFastaHistory(deadline);
                 await reconcileFastaHistory(found, account);
                 if (batch.status === 'imported' && !nativeError) break;
                 if (nativeError) throw new Error(nativeError);
@@ -2364,13 +2373,14 @@
         // A loading table may be empty before its remaining drafts refill the page.
         const history = document.querySelector('gdm-af-history') || document;
         while (downloadHistoryLoading(history) || getRows().some(row => getDraftIdentity(row) === identity)) {
-            if (Date.now() >= deadline || shouldStop) {
+            if (Date.now() >= deadline) {
                 submissionBlockReason = t('draftListUnchanged');
-                if (shouldStop) throw makeStoppedError();
                 throw new Error(submissionBlockReason);
             }
             await sleep(100);
         }
+        // A confirmed request still needs its row refresh after Stop; never unlock an unchanged draft.
+        checkStop();
     }
 
     // --- 通用查找工具 ---
@@ -2669,13 +2679,13 @@
         if (downloadState.context !== getDownloadContext()) throw new Error(t('downloadContextChanged'));
     }
 
-    async function downloadDelay(ms) {
+    async function downloadDelay(ms, checkActive = checkDownloadActive) {
         const until = Date.now() + ms;
         do {
-            checkDownloadActive();
+            checkActive();
             await sleep(Math.min(60, Math.max(0, until - Date.now())));
         } while (Date.now() < until);
-        checkDownloadActive();
+        checkActive();
     }
 
     function readDownloadIdentity(root) {
@@ -2722,7 +2732,7 @@
         return { jobs, first, previous, next, range, signature: JSON.stringify([range, jobs.map(job => [job.key, job.modified])]) };
     }
 
-    async function readDownloadMenuIdentity(row, resultJob = null) {
+    async function readDownloadMenuIdentity(row, resultJob = null, checkActive = checkDownloadActive) {
         const triggers = row.querySelectorAll('td.mat-column-options button.fold-actions[aria-haspopup="menu"]');
         if (!triggers.length) return null;
         if (triggers.length !== 1) throw new Error(t('downloadMenuIdentity'));
@@ -2745,12 +2755,12 @@
             !Array.from(document.querySelectorAll('button[aria-controls]')).some(button => button !== trigger &&
                 button.getAttribute('aria-expanded') === 'true' && button.getAttribute('aria-controls') === panelId);
         try {
-            checkDownloadActive();
+            checkActive();
             trigger.click();
             const deadline = Date.now() + 2500;
             while (Date.now() < deadline) {
                 const id = capturePanel();
-                checkDownloadActive();
+                checkActive();
                 if (!downloadVisible(row) || !trigger.isConnected || (panelId && id !== panelId) ||
                     (pendingPanel && (!pendingPanel.isConnected || (panel && pendingPanel !== panel))) ||
                     (panel && (!associated() || panel.getAttribute('role') !== 'menu' || visibleMenus().some(menu => menu !== panel))) ||
@@ -2770,7 +2780,7 @@
                         return url.href;
                     }
                 }
-                await downloadDelay(30);
+                await downloadDelay(30, checkActive);
             }
             throw new Error(t('downloadMenuIdentity'));
         } finally {
@@ -2794,8 +2804,8 @@
         }
     }
 
-    async function resolveDownloadJob(job) {
-        checkDownloadActive();
+    async function resolveDownloadJob(job, checkActive = checkDownloadActive) {
+        checkActive();
         if (!job?.row) throw new Error(t('downloadMissing'));
         const page = readDownloadPage(), jobs = page.jobs;
         let fresh = jobs.find(item => item.row === job.row);
@@ -2808,7 +2818,7 @@
             const matches = [];
             for (const candidate of jobs.filter(item => item.name === job.name && item.modified === job.modified)) {
                 if (!downloadVisible(candidate.row)) throw new Error(t('downloadMissing'));
-                const resolved = await resolveDownloadJob(candidate);
+                const resolved = await resolveDownloadJob(candidate, checkActive);
                 if (resolved.key === job.key) matches.push(resolved);
             }
             const current = readDownloadPage();
@@ -2818,8 +2828,8 @@
         }
         if (!fresh || fresh.name !== job.name || fresh.modified !== job.modified) throw new Error(t('downloadMissing'));
         const row = fresh.row;
-        const id = readDownloadIdentity(row) || await readDownloadMenuIdentity(row);
-        checkDownloadActive();
+        const id = readDownloadIdentity(row) || await readDownloadMenuIdentity(row, null, checkActive);
+        checkActive();
         fresh = readDownloadPage().jobs.find(item => item.row === row);
         if (!fresh || fresh.name !== job.name || fresh.modified !== job.modified || (fresh.id && fresh.key !== `id:${id}`)) throw new Error(t('downloadMissing'));
         return id ? { ...fresh, key: `id:${id}`, id: true } : fresh;
@@ -3044,6 +3054,14 @@
 
     function updateDownloadControls() {
         const busy = downloadState.busy || isRunning || fastaState.busy;
+        const toggle = getUiElement('af3-panel-toggle');
+        if (toggle) {
+            const collapsed = getPanelHost().hasAttribute('data-collapsed');
+            toggle.disabled = busy; toggle.textContent = collapsed ? '+' : '−';
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+            toggle.setAttribute('aria-label', t(collapsed ? 'panelExpand' : 'panelCollapse'));
+            toggle.title = toggle.getAttribute('aria-label');
+        }
         updateAccountSwitchControl();
         if (!busy && downloadState.queue) {
             try {
@@ -4139,6 +4157,10 @@
                 --af3-mono: 'Cascadia Code', Consolas, monospace;
                 color-scheme: light;
             }
+            :host([data-collapsed]) { height: auto !important; }
+            :host([data-collapsed]) #af3-dev-panel-root { height: auto; }
+            :host([data-collapsed]) .af3-navigation, :host([data-collapsed]) .af3-workspace, :host([data-collapsed]) #af3-resize-handle { display: none; }
+            #af3-panel-toggle { flex-shrink: 0; padding: 4px; }
             *, *::before, *::after { box-sizing: border-box; }
             [hidden] { display: none !important; }
             #af3-dev-panel-root {
@@ -4269,12 +4291,19 @@
         shadow.appendChild(styles);
         const container = document.createElement('div'); container.id = PANEL_ROOT_ID;
         const header = document.createElement('div'); header.id = 'af3-header';
-        const wordmark = document.createElement('span'); wordmark.className = 'af3-wordmark'; wordmark.textContent = 'AF₃'; wordmark.setAttribute('aria-hidden', 'true');
         const headerCopy = document.createElement('div'); headerCopy.className = 'af3-header-copy';
         const headerLine = document.createElement('div'); headerLine.className = 'af3-header-line';
         const headerTitle = document.createElement('div'); headerTitle.id = 'af3-header-title'; headerTitle.textContent = t('headerTitle');
         const version = document.createElement('span'); version.className = 'af3-version'; version.textContent = `v${SCRIPT_VERSION}`;
-        headerCopy.append(headerLine, version); header.append(wordmark, headerCopy);
+        headerCopy.append(headerLine, version); header.append(headerCopy);
+        const panelToggle = document.createElement('button'); panelToggle.id = 'af3-panel-toggle'; panelToggle.className = 'af3-wordmark'; panelToggle.type = 'button';
+        panelToggle.setAttribute('aria-controls', 'af3-workspace');
+        panelToggle.onmousedown = event => event.stopPropagation();
+        panelToggle.onclick = () => {
+            if (isRunning || fastaState.busy || downloadState.busy) return;
+            host.toggleAttribute('data-collapsed'); updateDownloadControls();
+        };
+        header.prepend(panelToggle);
 
         const languageRow = document.createElement('div');
         languageRow.className = 'af3-navigation';
@@ -4396,7 +4425,7 @@
         tasksPage.setAttribute('role', 'tabpanel'); tasksPage.setAttribute('aria-labelledby', 'af3-tasks-tab');
         submission.append(submissionTitle, statusRow, quota, controls, runControls, footer);
         tasksPage.append(submission, createFastaSection(), createDownloadSection(), logPanel);
-        const workspace = document.createElement('div'); workspace.className = 'af3-workspace';
+        const workspace = document.createElement('div'); workspace.id = 'af3-workspace'; workspace.className = 'af3-workspace';
         workspace.append(tasksPage, createAccountPage()); container.appendChild(workspace);
         shadow.appendChild(container);
         const resizeHandle = document.createElement('span');

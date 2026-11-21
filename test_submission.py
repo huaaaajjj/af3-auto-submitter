@@ -221,6 +221,8 @@ function showPreview(name){
       setTimeout(()=>ui('stop-btn').click(),100);
     }else if(id==='stale-row'){
       setTimeout(()=>{toast('Job successfully launched.');document.getElementById('overlay').replaceChildren()},300);
+    }else if(id==='stop-confirmed-refresh'){
+      setTimeout(()=>{toast('Job successfully launched.');setTimeout(()=>ui('stop-btn').click(),25);setTimeout(()=>updateAfterSubmission(name),450)},300);
     }else if(id==='paused-success'){
       setTimeout(()=>ui('pause-btn').click(),100);
       setTimeout(()=>{toast('Job successfully launched.');updateAfterSubmission(name)},300);
@@ -274,6 +276,14 @@ async function checkPanelUi(){
   await until(()=>/12\s*个/.test(quota()),2500);
   assert(state.calls===0&&state.opened.length===0,'Quota observation submitted or opened a job');
   const initial=rect();
+  const collapse=ui('panel-toggle');assert(collapse,'Panel collapse control is missing');
+  const sizeBeforeCollapse=localStorage.getItem('af3-dev-panel-size');
+  collapse.click();await pause(1100);
+  assert(collapse.getAttribute('aria-expanded')==='false'&&collapse.getAttribute('aria-label'),'Collapsed control lacks accessible state');
+  assert(rect().height<initial.height-80&&root().querySelector('.af3-workspace').getClientRects().length===0,'Collapsed panel still covers website controls');
+  assert(localStorage.getItem('af3-dev-panel-size')===sizeBeforeCollapse,'Collapse overwrote saved panel dimensions');
+  collapse.click();await pause(80);
+  assert(collapse.getAttribute('aria-expanded')==='true'&&Math.abs(rect().height-initial.height)<2,'Expand did not restore panel geometry');
   let observedDown=0,observedMove=0,observedUp=0;
   handle.addEventListener('pointerdown',()=>observedDown++);
   handle.addEventListener('pointermove',()=>observedMove++);
@@ -596,6 +606,7 @@ async function checkAccountManager(){
   await until(()=>ui('v20-btn')&&!ui('v20-btn').disabled,5000);
   if(id==='account-login-busy'){
     ui('v20-btn').click();
+    ui('panel-toggle').dispatchEvent(new MouseEvent('click',{bubbles:true}));assert(!document.getElementById('af3-dev-panel').hasAttribute('data-collapsed'),'Busy panel hid stop controls');
     assertAccountSwitchBlocked();
     ui('stop-btn').click();
     await until(()=>state.summaries.length>0);
@@ -649,7 +660,7 @@ async function checkAccountManager(){
     assert(state.calls===0,'Account switch during a batch still clicked Confirm');
     assert(ui('v20-btn').disabled,'Account change did not lock Start');
     assert(ui('footer-msg').textContent.includes('账号已变化'),'Account change did not explain why processing stopped');
-  }else if(['delayed-success','failed-success','paused-success','sandbox-event-window','failed-sandbox-event-window'].includes(id)){
+  }else if(['delayed-success','failed-success','paused-success','stop-confirmed-refresh','sandbox-event-window','failed-sandbox-event-window'].includes(id)){
     assert(state.calls===1,'Confirm clicked '+state.calls+' times; expected exactly once');
     assert(successes===1,'Expected one confirmed launch: '+state.summaries.at(-1));
     assert(!ui('v20-btn').disabled,'Confirmed run cannot start a later batch');
@@ -673,7 +684,7 @@ async function checkAccountManager(){
 SCENARIOS = [
     'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-unavailable', 'account-login-busy', 'account-quota', 'account-persistence',
     'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-migration', 'account-switch-submission', 'account-switch-confirm',
-    'delayed-success', 'old-success', 'server-error', 'no-toast', 'sandbox-event-window',
+    'stop-confirmed-refresh', 'delayed-success', 'old-success', 'server-error', 'no-toast', 'sandbox-event-window',
     'failed-success', 'failed-error', 'failed-sandbox-event-window', 'stop-in-flight', 'stale-row',
     'multi-success', 'paused-success',
     'draft-batch-30', 'draft-batch-exhausted', 'draft-batch-cancel', 'draft-batch-loading', 'failed-batch-limit',
