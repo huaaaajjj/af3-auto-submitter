@@ -60,7 +60,7 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
 <body>
 <main>
   <header>
-    <p class="kicker">AF3 自动助手 v5.0.3 · 安装与完整使用指南</p>
+    <p class="kicker">AF3 自动助手 v5.0.5 · 安装与完整使用指南</p>
     <h1>AF3 自动提交助手使用指南</h1>
     <p class="lead">从安装、准备 FASTA、生成本地批次、导入并核对草稿，到确认提交预测、查找结果、保存 ZIP 和提取 CSV。先按日常流程使用；后面的 50 任务章节是单独的历史实测记录。</p>
     <nav aria-label="教程章节">
@@ -80,7 +80,7 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
       <li>
         <div class="copy">
           <h3>安装脚本并确认账号</h3>
-          <p>使用 Edge 或 Chrome 安装 Tampermonkey，再安装仓库正式版 <code>af3-auto-submitter.user.js</code>。允许扩展在 <code>alphafoldserver.com</code> 运行并刷新页面；标题应显示 <strong>v5.0.3</strong>，顶部当前账号需与本次任务所属账号一致。</p>
+          <p>使用 Edge 或 Chrome 安装 Tampermonkey，再安装仓库正式版 <code>af3-auto-submitter.user.js</code>。允许扩展在 <code>alphafoldserver.com</code> 运行并刷新页面；标题应显示 <strong>v5.0.5</strong>，顶部当前账号需与本次任务所属账号一致。</p>
           <p>使用 InPrivate/无痕窗口时，另行允许 Tampermonkey 在无痕模式运行。若要与普通窗口共享账号目录，按 <a href="https://github.com/huaaaajjj/af3-auto-submitter/blob/main/README.md">README 的升级说明</a> 设置扩展存储；登录 Cookie 仍由浏览器管理。</p>
         </div>
         <div class="media"><p class="note">面板未出现时先检查脚本是否启用、站点权限及当前地址，再刷新官网。只启用一份正式版。</p></div>
@@ -155,25 +155,26 @@ MNPQRSTVWY</pre>
         <div class="copy">
           <h3>按日期查找并使用官网原生下载</h3>
           <p>官网仅选择 <code>Completed</code>，按需填写 <code>Search History</code>；在面板「下载任务」输入起止日期后点「查找任务」。日期按官网显示的 <code>Modified</code> 计算，起止日期都包含。</p>
-          <p>核对匹配任务后，可按天选择或全选；「应用到官网勾选」只替换官网复选框，不会下载。之后手动点击官网原生 <code>Download</code>。合并 ZIP 每次最多 50 个任务；分开模式下每下载一个，再点「下一任务」。</p>
+          <p>打开原批次目录后，日期标题会显示核实后的分批编号和匹配数；同一天有多批会分别标注，未匹配的日期不附加批次说明。核对匹配任务后，可按天选择或全选；「应用到官网勾选」只替换官网复选框，不会下载。之后手动点击官网原生 <code>Download</code>。合并 ZIP 每次最多 50 个任务；分开模式下每下载一个，再点「下一任务」。</p>
         </div>
         <div class="media"><p class="note">页面搜索、筛选、排序、日期或账号变化后重新查找并核对；应用勾选会替换官网原有选择。</p></div>
       </li>
       <li>
         <div class="copy">
-          <h3>把所选任务 ZIP 保存进原批次</h3>
-          <p>先打开原批次文件夹并核对历史以绑定任务 ID；按日期查找后可点「选择当前批次」，仅选择账号、ID 和名称都与当前清单匹配的结果。点<strong>「保存所选 ZIP 到 results…」</strong>并确认目标。</p>
-          <p>刷新页面后需要重新打开含 <code>manifest.json</code> 的 <code>af3_…/</code> 批次目录。脚本把独立 ZIP 放进其 <code>results/</code> 子目录；同名文件跳过，不覆盖。需要安全读取的官网链接不可用时，请使用官网原生下载。</p>
+          <h3>把官网 ZIP 集中放进文件夹</h3>
+          <p>使用官网原生 Download 下载合并 ZIP 或逐任务 ZIP，建议集中放入 <code>results/</code>。脚本已移除“保存所选 ZIP”按钮，不再代替官网下载，也不修改浏览器默认目录。</p>
+          <p>可使用独立 ZIP 文件夹，不必先打开原批次，不需要官网查找或勾选；如果希望按清单统计缺失，可打开原批次后选择它的 results。</p>
         </div>
-        <div class="media"><figure><img src="images/batch-restored.png" alt="打开批次目录后恢复的本地清单状态"><figcaption>恢复后查看本地清单进度；截图数字是该批次的历史状态示例。</figcaption></figure></div>
+        <div class="media"><p class="note">保留原 ZIP，不必解压，也不要运行下载目录里的脚本。</p></div>
       </li>
       <li>
         <div class="copy">
-          <h3>从 results ZIP 本地提取 CSV</h3>
-          <p>点「提取 results 数据为 CSV…」，自动沿用已打开的批次目录；否则选择含 <code>manifest.json</code> 的批次文件夹。无需重新查找或下载，解析 <code>results/*.zip</code> 后生成每包最佳模型、链对及整批汇总/缺失表。</p>
-          <p>处理在浏览器本地完成，不上传 ZIP。覆盖 CSV 前会显示目标文件并再次确认；原始 ZIP 和 manifest 不修改。部分文件写入成功后停止会保留已完成 CSV，请按面板数量核对。</p>
+          <h3>选目录，确认结构，再提取</h3>
+          <p>点<strong>“选择 ZIP 文件夹 / 提取 CSV…”</strong>，每次都会出现目录选择器。已授权的 results 优先作为默认位置，浏览器也会记住上次选择；首次仍需你授权目录。</p>
+          <p>先扫描目录和子目录，列出 ZIP 路径、大小和数量，请你确认后才读取指标内容。取消此预览不解析 ZIP、不写 CSV。没有 manifest 也能提取，其他已打开清单不会影响独立目录。</p>
+          <p>全部解析成功后再次确认覆盖已有 CSV。每个 ZIP 的最佳模型/链对报告放在 ZIP 旁，三张汇总表放在所选目录根。源 ZIP、清单和输入文件不修改。</p>
         </div>
-        <div class="media"><p class="note">如 ZIP 缺失、格式不支持或校验失败，先检查原文件；脚本不会把无效压缩包记为成功。</p></div>
+        <div class="media"><p class="note">无清单时不判断缺失任务；部分写入后停止只保留已提交 CSV，按面板数量核对。</p></div>
       </li>
       <li>
         <div class="copy">

@@ -342,7 +342,7 @@ if(id==='download-empty-history'||id==='download-empty-loading-history'){
 const reviewChecks=()=>Array.from(ui('download-results').querySelectorAll('input[type="checkbox"][data-job-key]'));
 const selectedReview=()=>reviewChecks().filter(element=>element.checked);
 function assertNoScriptDownload(){assert(state.downloads.length===manualRecords&&state.bulkDownloads.length===manualActions&&(menuIdentity||state.menus.length===0),'A script control triggered native download/menu action')}
-function assertRemovedControls(){for(const name of ['download-run','download-web-controls','download-web-run','download-web-stop','download-location'])assert(!ui(name),'Removed script download control remains: '+name)}
+function assertRemovedControls(){for(const name of ['download-save','download-run','download-web-controls','download-web-run','download-web-stop','download-location'])assert(!ui(name),'Removed script download control remains: '+name);assert(!root().textContent.includes('Saves separate ZIPs')&&!root().textContent.includes('已有同名文件跳过，不校验其内容'),'Removed ZIP-save help remains')}
 function assertReviewUnavailable(){
  const message=ui('download-status').textContent;
  for(const name of ['download-all','download-clear']){

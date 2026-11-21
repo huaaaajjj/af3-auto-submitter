@@ -57,6 +57,10 @@ assert(multi.outputs[0].text.includes('chain_iptm_C') && multi.outputs[0].text.i
 assert.throws(() => c.scoreOutputs([{name:'bad.zip',rows:[row('same',.8),row('same',.9,{_sequences:'["ACDE","FGH","DIFFERENT"]'})],pairs:[]}], manifest), /scoreAmbiguous/);
 assert.throws(() => c.scoreOutputs([{name:'a.zip',rows:[row('x',.8,{job_name:'wanted'}),row('y',.9,{job_name:'wanted'})],pairs:[]}], manifest), /scoreAmbiguous/);
 assert.throws(() => c.scoreOutputs([{name:'ONE.zip',rows:[first],pairs:[]},{name:'one.ZIP',rows:[first],pairs:[]}], manifest), /scoreOutputConflict/);
+const standalone = c.scoreOutputs([{name:'standalone.zip',rows:[row('independent',.8)],pairs:[]}]);
+assert.equal(standalone.missing, null, 'Absent manifest must not imply zero missing jobs');
+assert(standalone.outputs.find(output=>output.name==='all_scores.csv').text.includes('independent'), 'Standalone scores were discarded');
+assert.equal(standalone.outputs.find(output=>output.name==='all_scores_missing.csv').text.trim().split(String.fromCharCode(13,10)).length, 1);
 const noMissing = c.scoreOutputs([{name:'one.zip',rows:[row('wanted',.8)],pairs:[]}],{batches:[{jobs:[{name:'wanted',header:'wanted'}]}]});
 assert.equal(noMissing.outputs.at(-1).text,'﻿fasta_header,norm_key,n_jobs_found,n_fasta_copies\r\n', 'Empty missing table must replace stale findings');
 context.downloadState.stop = true;

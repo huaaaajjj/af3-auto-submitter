@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 正式版 5.0.3：“选择当前批次”紧邻“全选”，按已打开清单的账号、任务 ID 和名称选择面板结果，不触发下载；保存入口改名“保存所选 ZIP 到 results…”，仍需单独确认。保留本地“提取 results 数据为 CSV…”；无需 Python 或官网扫描，直接从 ZIP 计算最佳模型、链对、PAE / pLDDT 和批次汇总，替换已有 CSV 前确认，原 ZIP 和 manifest 不修改。结果保存自动沿用当前页面已打开的有效批次目录，不再重复选择；未打开批次时才选含 manifest.json 的文件夹，重新校验并确认目标后逐任务保存 ZIP；校验账号与绑定 ID，已有文件跳过、不覆盖，原始输入与清单不变。保留详细日志、同名旧任务消歧与每页 100 个扫描。FASTA 标题作为任务名、每行序列一条蛋白链，每 30 个任务生成分批输入和官网 JSON，保存到所选本地文件夹后，明确确认才导入草稿。manifest 记录导入尝试、逐任务确认及预测完成状态；保留日期折叠、勾选提速和顶部账号。从 4.0 起统一使用 main 正式版，不再发布独立开发版。</p>
+            <p class="version-note">本 fork 正式版 5.0.5：FASTA 本地分批、草稿导入与历史核对、明确确认后提交预测、按日期勾选官网下载。移除脚本 ZIP 保存按钮；请把官网 ZIP 集中放入一个文件夹（推荐 results），点击“选择 ZIP 文件夹 / 提取 CSV…”。每次选择目录，先确认结构和 ZIP 路径，再解析指标及确认 CSV 覆盖；独立 ZIP 文件夹无需 manifest。已核实的日期结果仍显示批次编号。</p>
             <p class="version-note">升级前请备份油猴脚本及脚本数据；在原已安装条目内更新并核对账号，不要先卸载旧脚本。新建条目不能保证继承原 GM 账号记录。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 5.0.3 正式版</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 5.0.5 正式版</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/main" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看正式源码</a>
                 <a href="https://huaaaajjj.github.io/af3-auto-submitter/docs/tutorial/" class="install-btn secondary-btn">图文使用指南</a>
             </div>
@@ -258,7 +258,7 @@
             <div class="features-grid">
                 <div class="feature-card">
                     <h3>📅 按日期应用勾选</h3>
-                    <p>按 Modified 日期查找 Completed 任务，确认倒序后越过开始日即结束，排序不确定时扫描所有分页。按天或逐项核对后应用到官网复选框；合并模式一次勾选全部，分开模式逐个勾选并提供“下一任务”。下载可继续手动使用官网原生控件；也可选择含 manifest.json 的原批次文件夹，确认后将匹配的独立 ZIP 保存到其 results 子目录。</p>
+                    <p>按 Modified 日期查找 Completed 任务，确认倒序后越过开始日即结束，排序不确定时扫描所有分页。按天或逐项核对后应用到官网复选框；合并模式一次勾选全部，分开模式逐个勾选并提供“下一任务”。下载由你点击官网原生 Download；下载后集中放进 results 等文件夹，可独立选择目录提取 CSV。</p>
                 </div>
                 <div class="feature-card">
                     <h3>🖐️ 可移动、可调尺寸</h3>
@@ -296,13 +296,12 @@
         </section>
 
         <section>
-            <h2>✨ 5.0.3 正式版更新重点</h2>
+            <h2>✨ 5.0.5 正式版更新重点</h2>
             <ul class="release-list">
+                <li>5.0.5 移除脚本 ZIP 保存按钮及说明；本地提取每次选择文件夹，先确认结构和 ZIP 清单再读取指标，写入前确认覆盖。推荐 results，独立 ZIP 目录无需清单；原 ZIP、输入和 manifest 不变。</li>
+                <li>5.0.4 日期标题标注已核实的分批编号和匹配数，同日多批分别列出；未匹配时只显示日期和任务数。无匹配提示区分账号、导入确认、缺少 ID 和已绑定 ID 不匹配，不按名称猜认。</li>
                 <li>5.0.3 按钮操作出错时高亮提示文字并闪烁三次；系统开启「减少动态效果」时仅高亮。</li>
-                <li>5.0.2 修复历史核对漏读原生菜单任务 ID，恢复当前批次选择及 ZIP 保存；草稿逐条入库使用完整核对预算，成功提交后的停止会等待草稿刷新再结束，异常仍锁定。标题左侧“− / +”临时收起、展开面板，运行中保留停止控件。</li>
-                <li>5.0.1 新增“选择当前批次”，放在“全选”旁。只选择当前日期结果中与已打开清单的账号、任务 ID 和名称匹配的任务，不改变官网复选框、不写文件、不下载。文件保存另用“保存所选 ZIP 到 results…”并确认。</li>
-                <li>5.0.0 新增本地 ZIP 指标提取：读取 results 下的合并包或逐任务 ZIP，生成每包最佳模型/链对 CSV 和整批最佳模型/全模型/缺失表。沿用已打开批次，完整解析及校验后确认覆盖清单；不调用 Python、不联网、不修改原 ZIP、FASTA 或 manifest。</li>
-                <li>4.0.9 结果保存沿用当前页面已打开的有效批次目录，未打开批次或刷新后才需选择。仍只读校验磁盘清单、任务与账号，确认目标后才逐个保存 ZIP；清单或权限失效会停止，不自动换目录。保留已有文件跳过、停止与部分完成计数。</li>
+                <li>5.0.2 修复历史核对漏读原生菜单任务 ID，恢复当前批次选择；草稿逐条入库使用完整核对预算，成功提交后的停止会等待草稿刷新再结束，异常仍锁定。标题左侧“− / +”临时收起、展开面板，运行中保留停止控件。</li>
                 <li>保留详细日志：历史核对/导入记录账号、筛选、每页数量、读取的名称与行数，逐批记录已确认数、同名消歧数和未确认数；按日期查找记录起止条件与匹配结果；停止时记录原因。日志保留最近 120 条。</li>
                 <li>保留同名旧任务的历史核对消歧：同名多条记录时，按已绑定任务 ID 或本次运行保存/提交后产生的唯一记录确定本批任务；本次已发送保存且脚本确认提交过同名任务时，Completed 等历史可确认导入并统计完成，无法唯一确定时仍停止。保留每页 100 个扫描，确认列表刷新后开始扫描，结束后保留 100；切换失败或页面条件变化时安全停止。保留官网翻页占位行和空草稿列表识别修复。脚本与更新元数据同步升版，可通过 Tampermonkey 检查更新升级。</li>
                 <li>保留官网历史核对进度条，显示已扫描页数、记录数和稳定总数下的百分比；总数未知时显示不定进度。账号未识别、搜索未清空及页面条件变化时分别提示具体停止原因，核对结束保留结果。</li>
@@ -330,7 +329,7 @@
                 <li>面板上方是提交任务，下方是下载任务，均不折叠；匹配任务按日期默认折叠，点击日期展开或收起；日期前的复选框仍可按天勾选，折叠不改变选择。</li>
                 <li>仅选中 Saved draft 才显示草稿提交就绪，仅选中 Failed 才显示失败重跑就绪；混选或未选标签时待机并禁用启动，点击启动和确认后均重新核对标签。</li>
                 <li>按日期查找任务：起止日期均包含当天，同一天可单独筛选；可按天或逐项核对，再应用到官网勾选。</li>
-                <li>保留合并 ZIP / 分开下载两种方式：合并时一次应用全部勾选；分开时每次只选一个任务，并提供“下一任务”。这两种勾选方式的下载均由用户点击官网原生 Download；结果目录保存是另外明确确认的操作。</li>
+                <li>保留合并 ZIP / 分开下载两种方式：合并时一次应用全部勾选；分开时每次只选一个任务，并提供“下一任务”。这两种勾选方式的下载均由用户点击官网原生 Download；脚本不再提供单独的 ZIP 保存操作。</li>
                 <li>应用选择会替换官网已有勾选；官网合并 ZIP 最多 50 个任务，超过时需自行调整，不自动拆批。</li>
                 <li>两个区域分别显示状态：仅选中 Saved draft 时上方显示草稿提交就绪，仅选中 Completed 时下方显示下载就绪；混选或未选标签时均待机。查找或应用下载选择时，运行状态只显示在下方。</li>
                 <li>默认中文界面，并提供 6 种语言选择。</li>
@@ -347,7 +346,7 @@
             <h2>📖 使用指南</h2>
             
             <h3>1. 观察面板状态</h3>
-            <p>脚本加载后，请留意屏幕右侧黑色面板上的“红绿灯”状态。脚本会告诉您当前能做什么：</p>
+            <p>脚本加载后，请留意屏幕右侧浅色面板上的“红绿灯”状态。脚本会告诉您当前能做什么：</p>
 
             <div class="status-demo">
                 <!-- 红灯：待机 -->
@@ -391,7 +390,7 @@
                 <li><strong>选择状态：</strong> 根据你的需求，在 History 中仅选中 <code>Saved draft</code> 或 <code>Failed</code>；混选或未选标签时无法启动。</li>
                 <li><strong>调整每页显示：</strong> 建议在页面底部将 <code>Rows per page</code> 设置为 <strong>100</strong>，以减少翻页烦恼。</li>
                 <li><strong>选择语言：</strong> 如果需要，可以在面板顶部切换界面语言；默认是中文。</li>
-                <li><strong>设置数量：</strong> 在黑色面板输入框中，输入想要连续处理的任务数量（例如 10）。</li>
+                <li><strong>设置数量：</strong> 在浅色面板输入框中，输入想要连续处理的任务数量（例如 10）。</li>
                 <li><strong>一键启动：</strong> 确认面板底部提示文字无误后，点击 <strong>启动</strong>。</li>
                 <li><strong>确认摘要：</strong> 启动前会弹出安全摘要，请确认模式和数量正确。</li>
                 <li><strong>保持前台：</strong> 脚本运行期间，请勿关闭页面或最小化浏览器，这可能会导致模拟点击失效。</li>
@@ -402,34 +401,25 @@
             <ol>
                 <li>在官网 History 中<strong>仅选中 Completed</strong>，按需填写 <code>Search History</code>。未搜索的官网默认 Modified 倒序列表或明确的 Modified 降序，在越过开始日后提前结束；排序不确定时遍历所有分页，保留官网已有的复选框选中状态。</li>
                 <li>在面板下方常驻的“下载任务”区域，选择开始、结束日期，再点<strong>查找任务</strong>。按官网 <code>Modified</code> 显示日期筛选，包含起止当天；填写同一天即可选择一天。</li>
-                <li>结果按日期默认折叠，点击日期查看当天明细；日期前复选框按天勾选，展开后可逐项核对，也可点<strong>全选</strong>或<strong>清空选择</strong>。折叠不改变勾选或逐个下载队列。没有行内 ID 时会逐行打开原生三点菜单、读取 <code>Open results</code> 中的 ID，再关闭自己的菜单；不激活菜单项。同名同时间的不同 ID 任务分别保留。日期无法识别的任务不纳入结果，身份冲突或菜单无法安全读取时停止；查找失败或为空时保留原始提示。</li>
+                <li>结果按日期默认折叠，点击日期查看当天明细；已打开批次目录时，标题显示核实后的“第几批”和匹配数，同日多批分别标注，未匹配时不附加说明；日期前复选框按天勾选，展开后可逐项核对，也可点<strong>全选</strong>或<strong>清空选择</strong>。折叠不改变勾选或逐个下载队列。没有行内 ID 时会逐行打开原生三点菜单、读取 <code>Open results</code> 中的 ID，再关闭自己的菜单；不激活菜单项。同名同时间的不同 ID 任务分别保留。日期无法识别的任务不纳入结果，身份冲突或菜单无法安全读取时停止；查找失败或为空时保留原始提示。</li>
                 <li>选择<strong>合并一个 ZIP（官网最多 50 个）</strong>或<strong>分开下载（逐个勾选）</strong>，再点<strong>应用到官网勾选</strong>并确认替换提示。合并模式勾选全部已核对任务，分开模式每次只勾选一个任务，均<strong>只应用勾选，不发起下载</strong>。</li>
                 <li>合并模式：手动点击官网原生批量 <code>Download</code>。分开模式：核对面板显示的当前任务名称、Modified 时间与序号，手动点击官网原生 <code>Download</code>，完成后点<strong>下一任务</strong>切换勾选，再手动下载。到最后一个任务时“下一任务”禁用。也可直接使用官网任务行的 <code>Download</code>。</li>
                 <li>下方下载区域显示<strong>待机 / 就绪 / 运行中</strong>，仅选中 Completed 时显示下载就绪；上方提交区域独立显示状态。点<strong>停止</strong>会停止查找或应用选择；应用中停止或出错可能留下部分勾选，不会自动恢复旧选择，请先核对官网复选框。</li>
                 <li>手动下载后，请在浏览器下载列表核对文件保存情况。浏览器询问时，按需允许官网的多个文件下载。</li>
             </ol>
-            <p><strong>“应用到官网勾选”和“下一任务”会替换官网原有选择。</strong>合并模式可以应用超过 50 个任务，但官网合并 ZIP 每次最多 <strong>50 个任务</strong>；应用时会提示此限制，请自行减少官网勾选后再下载。这两个勾选操作不点击行下载或批量下载，也不自动拆批或在本地打包；需要直接保存到批次 results 时，使用下面的独立操作。“下一任务”仅切换勾选，不检测文件是否下载成功。</p>
+            <p><strong>“应用到官网勾选”和“下一任务”会替换官网原有选择。</strong>合并模式可以应用超过 50 个任务，但官网合并 ZIP 每次最多 <strong>50 个任务</strong>；应用时会提示此限制，请自行减少官网勾选后再下载。这两个勾选操作不点击行下载或批量下载，也不自动拆批或在本地打包；请自行把官网下载文件集中放入 results 等目录。“下一任务”仅切换勾选，不检测文件是否下载成功。</p>
             <p>下载方式保存在当前浏览器本地。分开模式的队列只在当前页面有效；刷新、重新查找、修改日期、面板勾选、全选、清空、下载方式或官网筛选、搜索、排序、每页数量、复选框，都会使队列失效。面板选择或官网勾选变化后请核对并重新应用；日期或官网列表条件变化后请重新查找。停止或出错不会推进队列；停止后可重新应用，出错后需重新查找。</p>
             <p>查找和应用选择期间保持页面打开，不要修改官网搜索、筛选、排序或每页数量；需要调整时先停止，再重新查找。应用完成后，可在官网调整勾选并手动下载。</p>
 
-            <h3>4. 保存到原批次文件夹的 results</h3>
+            <h3>4. 选择本地 ZIP 文件夹并提取 CSV</h3>
             <ol>
-                <li>在原账号仅选 <code>Completed</code>，查找后只勾选同一批次的已完成任务。可先打开原批次，再点“全选”旁的<strong>选择当前批次</strong>，按账号、已绑定 ID 和名称替换面板勾选；它不会下载或操作官网复选框。缺少 ID 时先“核对官网历史 / 更新记录”，不要重新导入。</li>
-                <li>点<strong>保存所选 ZIP 到 results…</strong>。当前页面已打开有效批次文件夹时直接沿用，不再选目录；否则选择直接包含 <code>manifest.json</code> 的 <code>af3_…</code> 子目录。不是父目录或 results，不必先应用官网勾选。保存前仍重新校验磁盘清单；账号、名称或唯一 ID 不匹配时拒绝输出。</li>
-                <li>确认任务数与 <code>批次文件夹名/results</code> 后，逐个保存独立 ZIP。文件名含任务名和稳定 ID 短码；已有同名文件跳过、不验证内容，也不覆盖。</li>
-                <li>以面板实际保存与跳过数量为准。停止会中断传输，已提交文件保留；错误响应或未完成 ZIP 不计成功。目录权限、空间不足或清理失败按提示处理。</li>
+                <li>先用官网 Download 下载结果，集中放进一个文件夹（推荐 <code>results/</code>），无需解压。脚本不修改浏览器下载位置。</li>
+                <li>点<strong>选择 ZIP 文件夹 / 提取 CSV…</strong>，每次都由你选择目录。已授权的 results 可作为默认位置；否则浏览器记住上次位置，首次需自行选择。独立 ZIP 文件夹不要求 manifest、登录账号或官网扫描。</li>
+                <li>递归扫描目录结构和 ZIP 路径，确认后才读取 ZIP 内容。取消预览不会解析或写文件。超过 60 个路径时明示未展示的数量，仍扫描全部受支持条目。</li>
+                <li>本地计算最佳模型、全部模型、链对、pLDDT 和跨链 PAE。每包报告放在对应 ZIP 旁；all_scores.csv、all_scores_all_models.csv、all_scores_missing.csv 放在所选目录根。有关联清单才按清单顺序统计缺失；无清单不虚构“无缺失”。</li>
+                <li>解析成功后另行确认 CSV 覆盖路径。停止或失败保留已提交 CSV，不计未完成文件；原 ZIP、输入和 manifest 不改。</li>
             </ol>
-            <p>保存只读 manifest，不修改原 FASTA、分批 JSON 或浏览器全局下载目录。刷新后需重新选择；先打开已有批次再保存可直接沿用。仅支持安全可读的同源官方链接与普通单卷、非 ZIP64 ZIP，不本地合并或猜接口；不支持时使用原生 Download。请只用一个浏览器操作同一目录；尚未恢复真实账号端到端验证。完整限制见 <a href="README.md">README</a>。</p>
-
-            <h3>5. 本地提取 results 数据为 CSV</h3>
-            <ol>
-                <li>点下载区<strong>提取 results 数据为 CSV…</strong>。自动沿用当前页面已打开的有效批次；否则选择包含 <code>manifest.json</code> 的批次文件夹。无需先查找或勾选官网任务。</li>
-                <li>读取 <code>results/*.zip</code> 中的 job request、summary confidences 与 full data。支持目录式合并包及平铺逐任务 ZIP，计算 ipTM/pTM、ranking、逐链/链对、pLDDT 和跨链 PAE；仅在本机运行，不上传数据。</li>
-                <li>解析成功后核对确认框的目标和将覆盖的 CSV 文件名。输出每包的 <code>_scores_best.csv</code> / <code>_scores_pairs.csv</code>，以及 <code>all_scores.csv</code>、<code>all_scores_all_models.csv</code>、<code>all_scores_missing.csv</code>。</li>
-                <li>最佳模型按 ranking_score 选择，整批表按清单原任务顺序排列。没有本地结果的任务写缺失表；没有缺失时仅写表头。结果只描述本地 ZIP，不更改官网/清单预测状态。</li>
-                <li>可点停止；已提交 CSV 保留，未提交的当前写入中止，不用部分成功冒充全部完成。多个 CSV 不提供跨文件原子提交。原 ZIP、manifest 和输入文件保持不变。</li>
-            </ol>
-            <p>CSV 使用 UTF-8 BOM。数字 <code>0</code> 与 <code>0.0</code> 的显示可不同，数值计算沿用原提取逻辑；公式形文本会做表格注入防护。仅支持单卷非 ZIP64 的 stored/deflate ZIP，需要支持 deflate-raw 的新版 Edge/Chrome。格式/CRC/JSON 无效或匹配冲突时停止；资源上限及字段含义见 <a href="README.md">README</a>。</p>
+            <p>普通单卷、非 ZIP64 的 stored/deflate ZIP 需要新版 Edge/Chrome。格式、CRC、JSON、匹配冲突或资源超限会停止，未完整解析前不写报告。详细限制见 <a href="README.md">README</a>。</p>
 
             <!-- 上游界面参考截图 -->
             <div class="screenshot-gallery">
@@ -456,7 +446,6 @@ python -I -X utf8 test_release.py
 python -I -X utf8 test_submission.py
 python -I -X utf8 test_download.py
 python -I -X utf8 test_fasta.py
-python -I -X utf8 test_results.py
 python -I -X utf8 test_select_batch.py
 python -I -X utf8 test_score_extraction.py
 node test_score_core.mjs
@@ -468,7 +457,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 5.0.3 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 5.0.5 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -478,7 +467,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter 5.0.3 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter 5.0.5 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

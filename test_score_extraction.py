@@ -100,12 +100,18 @@ CASE = history.split('const reviewChecks=', 1)[0] + r'''
 window.WIZ_global_data={oPEP7c:'fixture@example.com'};
 localStorage.setItem('af3-dev-panel-language','en');
 const zipFixtures=__FIXTURES__;
-const fs={pickers:0,confirms:[],commits:[],aborts:0,removed:[],writers:[],mtime:100};
+const fs={pickers:0,options:[],confirms:[],commits:[],aborts:0,removed:[],writers:[],mtime:100,contentReads:0,scanApproved:false};
 const absent=()=>new DOMException('Missing','NotFoundError');
 class Directory {
  constructor(name){this.kind='directory';this.name=name;this.files=new Map();this.dirs=new Map()}
- put(name,data){this.files.set(name,new File([data],name,{lastModified:++fs.mtime}))}
- async *entries(){for(const name of this.files.keys())yield [name,await this.getFileHandle(name)]}
+ put(name,data){
+  const file=new File([data],name,{lastModified:++fs.mtime});
+  if(name.endsWith('.zip')){const slice=file.slice.bind(file);file.slice=(...args)=>{assert(fs.scanApproved,'Read archive content before scan confirmation');fs.contentReads++;return slice(...args)}}
+  this.files.set(name,file);
+ }
+ async *entries(){for(const name of this.files.keys())yield [name,await this.getFileHandle(name)];for(const entry of this.dirs)yield entry}
+ async isSameEntry(other){return other===this}
+ async resolve(other){if(other===this)return [];for(const [name,dir] of this.dirs){const path=await dir.resolve(other);if(path)return [name,...path]}return null}
  async getDirectoryHandle(name,options={}){if(!this.dirs.has(name)){if(!options.create)throw absent();this.dirs.set(name,new Directory(name))}return this.dirs.get(name)}
  async getFileHandle(name,options={}){
   if(!this.files.has(name)){if(!options.create)throw absent();this.put(name,'')}
@@ -119,6 +125,8 @@ class Directory {
    return {async write(data){
     if(csv&&id==='score-partial'&&fs.commits.length===1)throw new DOMException('Disk full','QuotaExceededError');
     staged=data;
+    if(csv&&id==='score-cleanup-failure')throw Error('Synthetic write failure');
+    if(csv&&id==='score-stop-cleanup-failure')ui('download-stop').click();
     if(csv&&id==='score-stop-write')ui('download-stop').click();
     if(csv&&id==='score-manifest-change')batch.put('manifest.json',manifestText+' ');
    },async close(){
@@ -127,7 +135,7 @@ class Directory {
    },async abort(){fs.aborts++}};
   }};
  }
- async removeEntry(name){if(!this.files.has(name))throw absent();this.files.delete(name);fs.removed.push(name)}
+ async removeEntry(name){if(id.includes('cleanup-failure'))throw new DOMException('Denied','NotAllowedError');if(!this.files.has(name))throw absent();this.files.delete(name);fs.removed.push(name)}
 }
 const batch=new Directory('af3_20261120000000_0123abcd'),results=new Directory('results');
 batch.dirs.set('results',results);
@@ -150,16 +158,26 @@ if(id==='score-empty')results.files.clear();
 if(id==='score-corrupt')results.put('folds_one.zip',new Uint8Array([80,75,3,4,0]));
 if(id==='score-missing-results')batch.dirs.delete('results');
 if(id==='score-bad-manifest')batch.put('manifest.json','{broken');
-if(['score-existing','score-cancel','score-write-denied','score-close-denied','score-stop-write','score-output-change'].includes(id))results.put('all_scores.csv','old CSV sentinel');
+const reused=['score-reuse','score-reuse-no-picker','score-unrelated-open','score-local-manifest','score-local-manifest-invalid'].includes(id);
+const standalone=['score-standalone','score-nested','score-unrelated-open','score-scan-cancel','score-picker-default','score-duplicate-basenames','score-reentry'].includes(id);
+const output=reused||standalone?results:batch;
+if(id==='score-nested'||id==='score-duplicate-basenames'){
+ const nested=new Directory('nested');nested.put(id==='score-nested'?'extra.zip':'folds_one.zip',bytes('two'));results.dirs.set('nested',nested);
+}
+if(['score-existing','score-cancel','score-write-denied','score-close-denied','score-stop-write','score-output-change'].includes(id))output.put('all_scores.csv','old CSV sentinel');
 window.showDirectoryPicker=async options=>{
- fs.pickers++;assert(options.mode==='readwrite','Wrong folder permission request');
+ fs.pickers++;fs.options.push(options);assert(options.mode==='readwrite','Wrong folder permission request');
+ if(!fs.restoring&&id==='score-picker-stop')ui('download-stop').click();
+ if(!fs.restoring&&id==='score-reentry')ui('download-extract').dispatchEvent(new MouseEvent('click',{bubbles:true}));
  if(id==='score-picker-cancel')throw new DOMException('Cancelled','AbortError');
  if(id==='score-picker-denied')throw new DOMException('Denied','NotAllowedError');
- return batch;
+ return fs.restoring?batch:reused||standalone?results:batch;
 };
 window.confirm=message=>{
  fs.confirms.push(message);
- if(id==='score-output-change')results.put('all_scores.csv','new external CSV');
+ const scan=message.startsWith('Chosen folder:');
+ if(scan){assert(fs.contentReads===0,'Preview ran after archive parsing');if(id==='score-preview-change')results.put('folds_one.zip',bytes('two'));fs.scanApproved=id!=='score-scan-cancel';return fs.scanApproved}
+ if(id==='score-output-change')output.put('all_scores.csv','new external CSV');
  return id!=='score-cancel';
 };
 const uiStatus=()=>ui('download-status')?.textContent||'';
@@ -175,7 +193,7 @@ function csv(text){
  if(field||row.length){row.push(field);rows.push(row)}return rows;
 }
 async function table(name){
- const file=results.files.get(name);assert(file,'Missing '+name+'; '+uiStatus());
+ const file=(name.startsWith('all_scores')?output:results).files.get(name);assert(file,'Missing '+name+'; '+uiStatus());
  const bom=new Uint8Array(await file.slice(0,3).arrayBuffer());
  assert(bom.join(',')==='239,187,191','Missing CSV BOM: '+name);
  return csv(await file.text());
@@ -184,53 +202,83 @@ async function table(name){
  const script=document.createElement('script');script.src='/script.js';document.head.append(script);
  await waitFor(()=>ui('download-extract'),'Missing extraction button');
  assert(!ui('download-extract').disabled,'Local extraction must work without a website scan');
- const reused=id==='score-reuse'||id==='score-reuse-no-picker';
+ assert(!ui('download-save')&&!document.getElementById('af3-dev-panel').shadowRoot.textContent.includes('Saves separate ZIPs'),'Removed ZIP-save button/help is still present');
+
  if(reused){
   const hash=async text=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),v=>v.toString(16).padStart(2,'0')).join('');
   manifest.batches[0].jsonSha256=await hash(inputJson);manifest.batches[0].fastaSha256=await hash(inputFasta);
-  batch.put('manifest.json',JSON.stringify(manifest));ui('fasta-restore').click();
+  batch.put('manifest.json',JSON.stringify(manifest));fs.restoring=true;ui('fasta-restore').click();
   await waitFor(()=>ui('fasta-stop').hidden,'Restore did not finish');
   assert(ui('fasta-status').textContent.includes('Choose the batch folder'),'Restore failed: '+ui('fasta-status').textContent);
+  fs.restoring=false;
   if(id==='score-reuse-no-picker')window.showDirectoryPicker=undefined;
+  if(id==='score-unrelated-open')batch.dirs.delete('results');
+  if(id==='score-local-manifest'||id==='score-local-manifest-invalid'){
+   const local=structuredClone(manifest);local.source.records=2;
+   local.batches[0].jobs=[local.batches[0].jobs[1],local.batches[0].jobs[0]].map((job,index)=>({...job,record:index+1}));
+   results.put('manifest.json',id==='score-local-manifest-invalid'?'{broken':JSON.stringify(local));
+  }
+
  }
  if(id==='score-no-picker')window.showDirectoryPicker=undefined;
  if(id==='score-no-decompressor')window.DecompressionStream=undefined;
  const inputBefore=new Map(batch.files),zipBefore=new Map([...results.files].filter(([name])=>name.endsWith('.zip')));
  manifestText=await batch.files.get('manifest.json').text();
- if(id==='score-lock')await new Promise(ready=>navigator.locks.request('af3-results:'+manifest.runId,async()=>{ready();await new Promise(resolve=>fs.unlock=resolve)}));
+ if(id==='score-lock')await new Promise(ready=>navigator.locks.request('af3-score-extraction',async()=>{ready();await new Promise(resolve=>fs.unlock=resolve)}));
  ui('download-extract').click();
  await waitFor(()=>ui('download-stop').hidden,'Extraction did not finish',60000);fs.unlock?.();
  const status=uiStatus();
- const success=['score-extract','score-existing','score-reuse','score-reuse-no-picker','score-stored','score-flat','score-missing-full','score-null-iptm'].includes(id);
- if(success){
-  assert(fs.commits.length===7,'Expected 7 CSV commits, got '+fs.commits+'; '+status);
+ const success=['score-extract','score-existing','score-reuse','score-stored','score-flat','score-missing-full','score-null-iptm','score-standalone','score-nested','score-unrelated-open','score-picker-default','score-duplicate-basenames','score-reentry'].includes(id);
+ if(id==='score-local-manifest'){
+  const best=await table('all_scores.csv'),missing=await table('all_scores_missing.csv'),ix=key=>best[0].indexOf(key);
+  assert(fs.commits.length===7&&best.length===3&&missing.length===1&&status.includes('missing manifest jobs: 0'),'Chosen folder own manifest was overridden by the opened parent: '+status);
+  assert(best[1][ix('job')]==='protein_b'&&best[1][ix('in_fasta')]==='yes'&&best[2][ix('job')]==='protein_a','Own manifest order/membership was not preserved');
+ }else if(success){
+  assert(fs.commits.length===(['score-nested','score-duplicate-basenames'].includes(id)?9:7),'Expected 7 CSV commits, got '+fs.commits+'; '+status);
   const best=await table('all_scores.csv'),all=await table('all_scores_all_models.csv'),missing=await table('all_scores_missing.csv');
-  assert(best.length===3&&all.length===9&&missing.length===2,'Wrong best/all/missing counts');
+  assert(best.length===3&&all.length===(['score-nested','score-duplicate-basenames'].includes(id)?13:9)&&missing.length===(standalone?1:2),'Wrong best/all/missing counts');
   const ix=key=>best[0].indexOf(key);
-  assert(best[1][ix('job')]==='protein_a'&&best[1][ix('fasta_header')]==='protein_A'&&best[1][ix('ranking_score')]==='0.95'&&best[1][ix('model')]==='0'&&best[1][ix('source_zip')]==='protein_B__1234.zip','Wrong global best selection or manifest order');
+  assert(best[1][ix('job')]==='protein_a'&&best[1][ix('fasta_header')]===(standalone?'':'protein_A')&&best[1][ix('ranking_score')]==='0.95'&&best[1][ix('model')]==='0'&&best[1][ix('source_zip')]===(id==='score-duplicate-basenames'?'nested/folds_one.zip':id==='score-nested'?'nested/extra.zip':reused||standalone?'protein_B__1234.zip':'results/protein_B__1234.zip'),'Wrong global best selection or manifest order');
+  if(standalone)assert(best[1][ix('in_fasta')]===''&&status.includes('missing manifest jobs: —'),'Standalone output invented manifest membership or missing counts');
   assert(best[2][ix('job')]==='protein_b'&&best[2][ix('ranking_score')]==='0.9','Wrong second global best');
   assert(best[1][ix('peptide')]==='GAVLIPFYW'&&best[1][ix('n_chains')]==='2'&&Number(best[1][ix('pae_inter_mean')])===4.5,'Missing sequence/PAE metrics');
   const one=await table('folds_one_scores_best.csv'),pairs=await table('folds_one_scores_pairs.csv');
   assert(one[1][one[0].indexOf('job')]==='protein_b'&&one[2][one[0].indexOf('model')]==='1'&&pairs.length===9,'Wrong per-ZIP best or directed pair rows');
   if(id==='score-missing-full')assert(one[1][one[0].indexOf('n_tokens')]==='','Missing full-data file fabricated structural metrics');
   if(id==='score-null-iptm')assert(one[1][one[0].indexOf('iptm')]==='','Null ipTM was converted to a score');
-  assert(fs.confirms.length===1,'CSV generation did not ask exactly once');
-  if(id==='score-existing')assert(fs.confirms[0].includes('all_scores.csv')&&fs.confirms[0].includes('overwrite'),'Replacement confirmation omitted the existing filename');
-  assert(status.includes('2 ZIPs')&&status.includes('2 jobs')&&status.includes('8 models'),'Wrong extraction summary: '+status);
+  assert(fs.confirms.length===2&&fs.confirms[0].includes('.zip'),'Missing folder-preview confirmation before extraction');
+  if(id==='score-existing')assert(fs.confirms[1].includes('all_scores.csv')&&fs.confirms[1].includes('overwrite'),'Replacement confirmation omitted the existing filename');
+  assert(status.includes(['score-nested','score-duplicate-basenames'].includes(id)?'3 ZIPs':'2 ZIPs')&&status.includes('2 jobs')&&status.includes(['score-nested','score-duplicate-basenames'].includes(id)?'12 models':'8 models'),'Wrong extraction summary: '+status);
  }else{
   const partial=id==='score-partial'||id==='score-stop-close';
   if(id!=='score-output-change')assert(fs.commits.length===(partial?1:0),'False partial/success count '+fs.commits+'; '+status);
-  if(id==='score-output-change')assert(await results.files.get('all_scores.csv').text()==='new external CSV','Overwrote a concurrently changed output');
-  if(['score-cancel','score-write-denied','score-close-denied','score-stop-write'].includes(id))assert(await results.files.get('all_scores.csv').text()==='old CSV sentinel','Failed write overwrote old CSV');
+  if(id==='score-output-change')assert(await output.files.get('all_scores.csv').text()==='new external CSV','Overwrote a concurrently changed output');
+  if(['score-cancel','score-write-denied','score-close-denied','score-stop-write'].includes(id))assert(await output.files.get('all_scores.csv').text()==='old CSV sentinel','Failed write overwrote old CSV');
   assert(!status.includes('Saved 7 CSV'),'Failure reported full success');
   if(partial)assert(status.includes('Saved 1 CSV'),'Partial close count missing');
-  if(id.startsWith('score-stop')||id==='score-cancel'||id==='score-picker-cancel')assert(/cancel|stop/i.test(status),'Cancellation not reported');
-  const csvNames=[...results.files.keys()].filter(name=>name.endsWith('.csv'));
-  assert(csvNames.every(name=>name==='all_scores.csv'||fs.commits.includes(name)),'Uncommitted placeholders remain');
+  if(id==='score-stop-cleanup-failure')assert(status.includes('Could not remove'),'Cleanup failure was masked as a cancellation');
+  if((id.startsWith('score-stop')&&id!=='score-stop-cleanup-failure')||id==='score-cancel'||id==='score-picker-cancel'||id==='score-scan-cancel'||id==='score-picker-stop')assert(/cancel|stop/i.test(status),'Cancellation not reported');
+  const csvNames=[...batch.files.keys(),...results.files.keys()].filter(name=>name.endsWith('.csv'));
+  assert(csvNames.every(name=>name==='all_scores.csv'||fs.commits.includes(name)||id.includes('cleanup-failure')),'Uncommitted placeholders remain');
  }
- for(const [name,file] of inputBefore)if(!(name==='manifest.json'&&id==='score-manifest-change'))assert(batch.files.get(name)===file,'Input changed: '+name);
- for(const [name,file] of zipBefore)assert(results.files.get(name)===file,'ZIP changed: '+name);
- assert(fs.pickers===(id==='score-no-picker'?0:1),'Folder picker not reused/fallen back correctly: '+fs.pickers);
+ for(const [name,file] of inputBefore)if(!name.endsWith('.csv')&&!(name==='manifest.json'&&id==='score-manifest-change'))assert(batch.files.get(name)===file,'Input changed: '+name);
+ for(const [name,file] of zipBefore)if(id!=='score-preview-change')assert(results.files.get(name)===file,'ZIP changed: '+name);
+ assert(fs.pickers===(id==='score-no-picker'?0:reused&&id!=='score-reuse-no-picker'?2:1),'Extraction did not always open its own picker: '+fs.pickers);
+ if(id==='score-reuse')assert(fs.options[1].startIn===results,'Authorized results was not the suggested folder');
+ if(id==='score-scan-cancel')assert(fs.contentReads===0&&fs.commits.length===0&&fs.confirms.length===1,'Scan cancellation parsed ZIPs or wrote CSVs');
+ if(id==='score-nested')assert(fs.confirms[0].includes('nested/')&&fs.confirms[0].includes('nested/extra.zip')&&results.dirs.get('nested').files.has('extra_scores_best.csv'),'Nested tree preview or beside-ZIP CSV output missing');
+ if(id==='score-duplicate-basenames')assert(results.files.has('folds_one_scores_best.csv')&&results.dirs.get('nested').files.has('folds_one_scores_best.csv'),'Same ZIP basenames in different folders collided');
+ if(id==='score-preview-change')assert(fs.contentReads===0&&fs.commits.length===0&&status.includes('changed'),'Changed preview inputs were parsed or written');
+ if(id==='score-picker-default'){
+  const beforeCount=fs.pickers;fs.contentReads=0;fs.scanApproved=false;
+  window.confirm=message=>{fs.confirms.push(message);return false};
+  ui('download-extract').click();await waitFor(()=>ui('download-stop').hidden,'Second chooser did not finish');
+  assert(fs.pickers===beforeCount+1&&fs.options.at(-1).startIn===results,'Second invocation skipped chooser or lost the last chosen directory');
+  assert(fs.contentReads===0,'Second preview cancellation read ZIP contents');
+ }
+ if(id==='score-local-manifest-invalid')assert(fs.commits.length===0&&fs.contentReads===0&&status.includes('associated manifest.json is invalid'),'Invalid own manifest silently fell back to parent');
+ if(id.includes('cleanup-failure'))assert(status.includes('Could not remove')&&status.includes('folds_one_scores_best.csv'),'Failed cleanup did not report the exact placeholder');
+ if(id==='score-picker-stop')assert(fs.contentReads===0&&fs.confirms.length===0,'Stop during folder choice proceeded to preview or content reads');
  assert(fs.writers.every(mode=>mode==='exclusive'),'Non-exclusive CSV writer');
  assert(state.transportCalls.length===0&&state.downloads.length===0&&state.bulkDownloads.length===0&&state.submits===0&&state.clones===0&&state.deletes===0&&state.nativeCheckboxClicks===0,'Extraction performed a website action');
  assert(state.errors.length===0,state.errors.join('; '));
@@ -239,7 +287,7 @@ async function table(name){
 </script>'''
 CASE = CASE.replace('__FIXTURES__', json.dumps(FIXTURES))
 SCENARIOS = [
-    'score-extract', 'score-stored', 'score-flat', 'score-reuse', 'score-reuse-no-picker', 'score-existing', 'score-cancel',
+    'score-local-manifest', 'score-local-manifest-invalid', 'score-cleanup-failure', 'score-stop-cleanup-failure', 'score-picker-stop', 'score-reentry', 'score-preview-change', 'score-duplicate-basenames', 'score-standalone', 'score-nested', 'score-unrelated-open', 'score-scan-cancel', 'score-picker-default', 'score-extract', 'score-stored', 'score-flat', 'score-reuse', 'score-reuse-no-picker', 'score-existing', 'score-cancel',
     'score-picker-cancel', 'score-picker-denied', 'score-no-picker', 'score-no-decompressor',
     'score-missing-results', 'score-bad-manifest', 'score-empty', 'score-corrupt', 'score-crc',
     'score-encrypted', 'score-zip64', 'score-local-name', 'score-traversal', 'score-duplicate', 'score-bzip',

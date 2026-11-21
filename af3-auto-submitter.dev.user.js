@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.3
-// @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期下载、结果 ZIP 保存及本地指标 CSV 提取汇总。
+// @version      5.0.5
+// @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期勾选官网下载、选择本地 ZIP 文件夹提取指标 CSV。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
 // @supportURL   https://github.com/huaaaajjj/af3-auto-submitter/issues
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.3';
+    const SCRIPT_VERSION = '5.0.5';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -590,7 +590,11 @@
         downloadScan: 'Find jobs', downloadAll: 'Select all', downloadBatch: 'Select current batch', downloadClear: 'Clear selection',
         downloadBatchStopped: 'Batch selection stopped.',
         downloadBatchOpen: 'Open the batch folder in FASTA batches first. Your selection has not changed.',
-        downloadBatchEmpty: 'No jobs in these results match the opened batch by account, name and job ID. Check the dates or use “Check history / update records” to fill in missing IDs.',
+        downloadBatchEmpty: 'No jobs match the {bound} saved job IDs for the current account in this folder. Check the dates, website search and opened folder; matching names alone are not sufficient.',
+        downloadBatchNoAccount: 'This folder has no batches for the current account. Open the correct folder or switch to its account; website completion does not add tasks to another local manifest.',
+        downloadBatchMissingIds: '{missing} confirmed jobs have no saved job ID; {bound} jobs have IDs, but none match these results. On the original account, clear Search History, select Completed and use “Check history / update records”. If it fails, inspect that error; do not re-import.',
+        downloadBatchUnconfirmed: 'This account has batches in the folder, but no confirmed imports. Verify the original import records; do not re-upload tasks just to create a binding.',
+        downloadDayBatch: 'Batch {index} ({count})',
         downloadIdle: 'Choose dates, find jobs, then apply your reviewed selection to the website.',
         downloadScanning: 'Scanning page {page}… {count} matches',
         downloadFound: '{count} matches; {selected} selected. Unreadable dates skipped on scanned pages: {unknown}.',
@@ -634,27 +638,23 @@
         downloadMissing: 'A selected job changed or could not be found. Selection stopped.',
         downloadIncomplete: 'Scan stopped or incomplete. Find jobs again before applying the selection.',
         downloadDay: '{day} · {count} jobs', downloadUnknown: 'Unknown date',
-        downloadSave: 'Save selected ZIPs to results…', downloadRunningSave: 'Running: saving result ZIPs',
-        downloadSaveHint: 'Uses the currently opened batch folder when available; otherwise choose the folder containing manifest.json. Saves separate ZIPs in results; existing filenames are skipped without verifying their contents. Only jobs already bound to this batch and account are accepted. Original batch files are not changed.',
-        downloadSaveConfirm: 'Save {count} selected jobs as separate ZIPs to {folder}/results? Only this batch’s matching job IDs and account are accepted. Existing files will not be overwritten; manifest.json and input files stay unchanged.',
-        downloadSaveProgress: 'Saved {saved}/{total}; skipped {skipped} existing files. Saving {name} to {folder}/results…',
-        downloadSaveDone: 'Saved {saved}/{total} to {folder}/results. Skipped {skipped} existing files (contents not verified).',
-        downloadSaveCancelled: 'Folder save cancelled. Saved {saved}/{total}; skipped {skipped} existing files.',
-        downloadSaveError: 'Folder save stopped. Saved {saved}/{total}; skipped {skipped} existing files. {detail}',
-        downloadSaveUnsupported: 'Writable folders or Web Locks are unavailable. Use supported Edge/Chrome, or download manually on the website.',
-        downloadSaveFolder: 'Choose a supported batch folder containing a valid manifest.json, not its parent folder or results.',
-        downloadSaveMismatch: 'A selected job is not bound to this folder and signed-in account by name and unique job ID. Open the original batch folder and check history / update records, then select only this batch’s completed jobs.',
-        downloadSaveLink: 'Cannot safely read a single same-origin ZIP Download link from this job’s own result menu. Use the website Download manually; no API URL was guessed.',
-        downloadSaveResponse: 'The website did not return a complete supported ZIP. Check sign-in and try the website Download manually.',
-        downloadSaveTransfer: 'ZIP transfer failed, was interrupted or timed out. Already saved files are retained.',
-        downloadSaveWrite: 'Could not commit a result file. Check folder permission, free space and other writers. Already saved files are retained.',
-        downloadSaveCleanup: 'Could not remove the new incomplete file {name}. Remove that file manually before retrying; existing files are never overwritten.',
-        downloadSaveLocked: 'Another page is saving results for this batch. Stop that save before retrying.',
-        scoreExtract: 'Extract results to CSV…', scoreRunning: 'Running: extracting local ZIP scores',
-        scoreHint: 'Reads every ZIP in the batch results folder locally (no website scan or download). Reuses the opened batch or asks for its folder. Exports per-ZIP best/pair CSVs and batch best/all-model/missing tables; asks before replacing generated CSVs. ZIPs and manifest stay unchanged.',
-        scoreReading: 'Reading ZIP {index}/{total}: {name}…', scoreWriting: 'Saved {saved}/{total} CSV files; writing {name}…',
-        scoreConfirm: 'Read {count} ZIPs, {models} model rows. Save {files} CSV files to {folder}/results? Existing generated CSVs to overwrite: {existing}.\n{names}\nSource ZIPs, input files and manifest.json will not change.',
-        scoreDone: 'Saved {saved} CSV files to {folder}/results: {zips} ZIPs, {jobs} jobs, {models} models; {missing} manifest jobs without local results.',
+        scoreFolderUnsupported: "Folder selection or Web Locks are unavailable. Use a current Edge/Chrome with local-folder permission.",
+        scoreManifestInvalid: "The associated manifest.json is invalid. Choose a standalone ZIP folder or restore a valid original manifest; no CSV was written.",
+        downloadBatchConflict: "Duplicate task IDs in this batch manifest. Reopen the correct original folder and verify its records.",
+        scoreCleanup: 'Could not remove the new incomplete file {name}. Remove that file manually before retrying; existing files are never overwritten.',
+        scoreLocked: "Another page is extracting local ZIPs. Stop that extraction before retrying.",
+        scoreExtract: "Choose ZIP folder / extract CSV…",
+        scoreRunning: "Running: extracting local ZIP scores",
+        scoreHint: "Download ZIPs with the website and put them in one folder (results recommended). Always choose that folder here; preview its tree and confirm before reading ZIP contents. Per-ZIP CSVs stay beside each ZIP; merged tables go in the chosen folder. No manifest or website scan required. Existing CSV replacements need confirmation.",
+        scoreScanning: "Scanning folder structure: {folder}…",
+        scoreScanConfirm: "Chosen folder: {folder}\n{folders} folders; {count} ZIPs; {ignored} other files ignored.\n{tree}\n{association}\nRead these ZIPs and extract scores? Cancelling reads no ZIP contents and writes no CSVs.",
+        scoreWithManifest: "Associated manifest: preserve original job order and report missing jobs.",
+        scoreWithoutManifest: "No associated manifest: summarize ZIPs only; missing-job counts are not evaluated.",
+        scoreMorePaths: "… {count} more paths (included in the scan)",
+        scoreReading: "Reading ZIP {index}/{total}: {name}…",
+        scoreWriting: "Saved {saved}/{total} CSV files; writing {name}…",
+        scoreConfirm: "Read {count} ZIPs, {models} model rows. Save {files} CSV files? Merged tables: {folder}; per-ZIP reports: beside each ZIP. {association}\nExisting CSVs to overwrite: {existing}.\n{names}\nSource ZIPs, inputs and manifest.json will not change.",
+        scoreDone: "Saved {saved} CSV files in {folder} and its ZIP subfolders: {zips} ZIPs, {jobs} jobs, {models} models; missing manifest jobs: {missing} (— = no manifest).",
         scoreCancelled: 'Extraction cancelled/stopped. Saved {saved} CSV files; earlier committed files are retained.',
         scoreError: 'Extraction stopped. Saved {saved} CSV files. {detail}',
         scoreInvalidZip: 'Invalid, truncated or CRC-mismatched ZIP: {name}. No scores from this archive were accepted.',
@@ -662,7 +662,7 @@
         scoreUnsupportedBrowser: 'This browser cannot decompress deflate-raw ZIP entries. Use a current Edge/Chrome.',
         scoreInvalidData: 'Invalid AlphaFold score JSON or dimensions: {name}. No report was written for an incomplete parse.',
         scoreLimit: 'Score extraction exceeded supported archive/JSON/CSV/row limits: {name}. Split the results into smaller batches.',
-        scoreNoZips: 'No ZIP files found in results. Select the batch folder containing manifest.json and a results subfolder.',
+        scoreNoZips: "No ZIP files found in the chosen folder or its subfolders. Put the downloaded ZIPs in a folder such as results, then choose it.",
         scoreNoModels: 'No summary_confidences model scores found in ZIP: {name}.',
         scoreAmbiguous: 'Conflicting result identities/sequences or ambiguous manifest match: {name}. No CSVs were written.',
         scoreOutputConflict: 'Derived CSV filenames conflict or are not safe filenames. No CSVs were written.',
@@ -677,7 +677,11 @@
             downloadScan: '查找任务', downloadAll: '全选', downloadBatch: '选择当前批次', downloadClear: '清空选择',
             downloadBatchStopped: '已停止选择当前批次。',
             downloadBatchOpen: '请先在 FASTA 区打开批次文件夹；当前勾选未改变。',
-            downloadBatchEmpty: '当前查找结果中没有与已打开批次的账号、名称和任务 ID 匹配的任务。请检查日期，或先“核对官网历史 / 更新记录”补齐任务 ID。',
+            downloadBatchEmpty: '此文件夹中当前账号已绑定 {bound} 个任务 ID，但与当前结果的 ID、名称均无匹配。请检查日期、官网搜索及打开的文件夹；同名不能证明是同一任务。',
+            downloadBatchNoAccount: '此文件夹没有属于当前账号的批次。请打开正确的批次文件夹或切换到其所属账号；官网已完成的任务不会自动加入其他本地清单。',
+            downloadBatchMissingIds: '当前账号有 {missing} 个已确认导入任务缺少已保存的任务 ID，另有 {bound} 个已绑定 ID，但均未匹配本次结果。请在原账号清空 Search History、仅选 Completed，再点“核对官网历史 / 更新记录”；如核对报错，先查看该错误，不要重新导入。',
+            downloadBatchUnconfirmed: '此文件夹有当前账号的批次，但尚无已确认导入记录。请核对原始导入记录；不要为了补绑定而重新上传。',
+            downloadDayBatch: '第 {index} 批（{count} 个）',
             downloadIdle: '先选择日期并查找任务，核对后将勾选应用到官网。',
             downloadScanning: '正在扫描第 {page} 页…已找到 {count} 个',
             downloadFound: '匹配 {count} 个，已选 {selected} 个；已扫描页面中日期无法识别、未纳入 {unknown} 个。',
@@ -721,27 +725,23 @@
             downloadMissing: '所选任务已变化或未找到，已停止应用。',
             downloadIncomplete: '查找已停止或未完成，请重新查找后再应用勾选。',
             downloadDay: '{day} · {count} 个', downloadUnknown: '日期无法识别',
-            downloadSave: '保存所选 ZIP 到 results…', downloadRunningSave: '运行中：正在保存结果 ZIP',
-            downloadSaveHint: '如果当前页面已打开有效批次文件夹，将直接沿用；否则选择含 manifest.json 的批次文件夹。在 results 中逐个保存 ZIP；已有同名文件跳过，不校验其内容。仅接受已绑定到本批次和当前账号的任务，不修改原始批次文件。',
-            downloadSaveConfirm: '将所选 {count} 个任务分别保存为 ZIP 到 {folder}/results？只接受本批次与当前账号匹配的任务 ID。已有文件不覆盖，manifest.json 和输入文件不修改。',
-            downloadSaveProgress: '已保存 {saved}/{total}，跳过已有文件 {skipped} 个；正在将 {name} 保存到 {folder}/results…',
-            downloadSaveDone: '已保存 {saved}/{total} 到 {folder}/results；跳过已有文件 {skipped} 个（未校验内容）。',
-            downloadSaveCancelled: '已取消目录保存。已保存 {saved}/{total}，跳过已有文件 {skipped} 个。',
-            downloadSaveError: '目录保存已停止。已保存 {saved}/{total}，跳过已有文件 {skipped} 个。{detail}',
-            downloadSaveUnsupported: '当前浏览器不支持可写目录或 Web Locks。请使用支持的 Edge/Chrome，或在官网手动下载。',
-            downloadSaveFolder: '请选择含有效 manifest.json 的受支持批次文件夹，不要选父目录或 results。',
-            downloadSaveMismatch: '所选任务未通过名称、唯一任务 ID 和当前账号绑定到此文件夹。请打开原批次文件夹并“核对官网历史 / 更新记录”，再仅选择本批次已完成任务。',
-            downloadSaveLink: '未能从该任务自己的结果菜单中安全读取唯一、同源的 ZIP Download 链接。请在官网手动下载；脚本不会猜测接口地址。',
-            downloadSaveResponse: '官网未返回完整、受支持的 ZIP。请检查登录状态，尝试官网手动下载。',
-            downloadSaveTransfer: 'ZIP 传输失败、中断或超时；已保存的文件保留。',
-            downloadSaveWrite: '结果文件未能提交保存。请检查目录权限、剩余空间和其他写入程序；已保存的文件保留。',
-            downloadSaveCleanup: '未能清理本次新建的未完成文件 {name}，请手动删除该文件后重试；脚本不会覆盖已有文件。',
-            downloadSaveLocked: '另一页面正在保存本批次结果，请先停止那次保存再重试。',
-            scoreExtract: '提取 results 数据为 CSV…', scoreRunning: '运行中：正在提取本地 ZIP 指标',
-            scoreHint: '本地读取批次 results 中的全部 ZIP，无需查找官网任务或下载。优先沿用已打开批次，否则选择文件夹；输出每包最佳模型/链对 CSV 和整批最佳/全模型/缺失表。替换已有 CSV 前确认，不改 ZIP、输入文件或清单。',
-            scoreReading: '正在读取 ZIP {index}/{total}：{name}…', scoreWriting: '已保存 CSV {saved}/{total}；正在写入 {name}…',
-            scoreConfirm: '已读取 {count} 个 ZIP、{models} 条模型记录。将 {files} 个 CSV 保存到 {folder}/results？将覆盖的已有生成 CSV：{existing} 个。\n{names}\n原 ZIP、输入文件和 manifest.json 不修改。',
-            scoreDone: '已保存 {saved} 个 CSV 到 {folder}/results：{zips} 个 ZIP，{jobs} 个任务，{models} 个模型；清单中 {missing} 个任务没有本地结果。',
+            scoreFolderUnsupported: "当前浏览器不支持目录选择或 Web Locks，请使用新版 Edge/Chrome 并允许本地文件夹读写。",
+            scoreManifestInvalid: "关联的 manifest.json 无效，请选择独立 ZIP 文件夹或恢复有效原清单；未写入 CSV。",
+            downloadBatchConflict: "此批次清单存在重复任务 ID，请重新打开正确的原目录并核对记录。",
+            scoreCleanup: '未能清理本次新建的未完成文件 {name}，请手动删除该文件后重试；脚本不会覆盖已有文件。',
+            scoreLocked: "另一页面正在提取本地 ZIP，请先停止那次提取再重试。",
+            scoreExtract: "选择 ZIP 文件夹 / 提取 CSV…",
+            scoreRunning: "运行中：正在提取本地 ZIP 指标",
+            scoreHint: "先用官网下载 ZIP，集中放到一个文件夹（推荐 results）。每次点击都由你选择文件夹，先预览目录结构并确认，再读取 ZIP 提取；不必打开批次或查找官网任务。每包 CSV 放在对应 ZIP 旁，汇总表放在所选目录；替换已有 CSV 前再次确认，原 ZIP 和输入文件不变。",
+            scoreScanning: "正在扫描文件夹结构：{folder}…",
+            scoreScanConfirm: "所选文件夹：{folder}\n共 {folders} 个目录、{count} 个 ZIP；忽略其他文件 {ignored} 个。\n{tree}\n{association}\n确认读取这些 ZIP 并提取指标？取消不会读取 ZIP 内容，也不会写入 CSV。",
+            scoreWithManifest: "已关联清单：按原任务顺序汇总并统计缺失任务。",
+            scoreWithoutManifest: "未关联清单：只汇总 ZIP，不判断缺失任务。",
+            scoreMorePaths: "… 另有 {count} 个路径（仍纳入扫描）",
+            scoreReading: "正在读取 ZIP {index}/{total}：{name}…",
+            scoreWriting: "已保存 CSV {saved}/{total}；正在写入 {name}…",
+            scoreConfirm: "已读取 {count} 个 ZIP、{models} 条模型记录，将写入 {files} 个 CSV。汇总表：{folder}；每包报告：对应 ZIP 旁。{association}\n将覆盖的已有 CSV：{existing} 个。\n{names}\n原 ZIP、输入文件和 manifest.json 不修改。",
+            scoreDone: "已在 {folder} 及 ZIP 所在子目录保存 {saved} 个 CSV：{zips} 个 ZIP，{jobs} 个任务，{models} 个模型；清单缺失任务数：{missing}（— 表示未关联清单）。",
             scoreCancelled: '提取已取消/停止。已保存 {saved} 个 CSV，之前已提交的文件保留。',
             scoreError: '提取已停止。已保存 {saved} 个 CSV。{detail}',
             scoreInvalidZip: 'ZIP 无效、截断或 CRC 不匹配：{name}；未接受此包的指标。',
@@ -749,7 +749,7 @@
             scoreUnsupportedBrowser: '当前浏览器无法解压 deflate-raw ZIP 条目，请使用新版 Edge/Chrome。',
             scoreInvalidData: 'AlphaFold 指标 JSON 或矩阵维度无效：{name}；未为未完整解析的数据写报告。',
             scoreLimit: '提取超过支持的 ZIP/JSON/CSV/行数上限：{name}。请将结果拆成较小批次。',
-            scoreNoZips: 'results 中未找到 ZIP；请选择包含 manifest.json 和 results 子目录的批次文件夹。',
+            scoreNoZips: "所选目录及子目录中未找到 ZIP，请将官网下载的 ZIP 集中放入一个文件夹（推荐 results）后选择它。",
             scoreNoModels: 'ZIP 中未找到 summary_confidences 模型指标：{name}。',
             scoreAmbiguous: '结果身份/序列冲突或与清单匹配有歧义：{name}；未写入 CSV。',
             scoreOutputConflict: '生成的 CSV 文件名冲突或不安全，未写入 CSV。',
@@ -1195,6 +1195,7 @@
             }
             manifest.generationComplete = true;
             await persistFastaManifest();
+            await scoreDefaultDirectory(fastaState.dir);
             fastaState.message = t('fastaSummary', { count: records.length, batches: manifest.batches.length, lengths: records[0].chains.map(chain => chain.length).join(' + ') });
         } catch (error) {
             fastaState.error = error.name !== 'AbortError' && !isUserStopError(error);
@@ -1252,6 +1253,7 @@
                 }
                 await persistFastaManifest();
             } catch (error) { Object.assign(fastaState, previous); throw error; }
+            await scoreDefaultDirectory(dir);
             getUiElement('af3-fasta-file').value = '';
             fastaState.message = t('fastaDirectory');
         } catch (error) {
@@ -1552,7 +1554,7 @@
         busy: false, stop: false, complete: false, jobs: [], selected: new Set(),
         unknown: 0, context: null, scanContext: null, message: '', messageVars: {}, phase: '',
         watchNative: false, nativeMutation: false, selectionChanged: false,
-        format: getSavedDownloadFormat(), queue: null, controller: null,
+        format: getSavedDownloadFormat(), queue: null, scoreDirectory: null,
     };
     let logExpanded = false;
     let currentLanguage = getSavedLanguage();
@@ -2769,7 +2771,7 @@
         return { jobs, first, previous, next, range, signature: JSON.stringify([range, jobs.map(job => [job.key, job.modified])]) };
     }
 
-    async function readDownloadMenuIdentity(row, resultJob = null, checkActive = checkDownloadActive) {
+    async function readDownloadMenuIdentity(row, checkActive = checkDownloadActive) {
         const triggers = row.querySelectorAll('td.mat-column-options button.fold-actions[aria-haspopup="menu"]');
         if (!triggers.length) return null;
         if (triggers.length !== 1) throw new Error(t('downloadMenuIdentity'));
@@ -2804,18 +2806,7 @@
                     visibleMenus().length > 1) throw new Error(t('downloadMenuIdentity'));
                 if (panel && downloadVisible(panel)) {
                     const jobId = readDownloadIdentity(panel);
-                    if (jobId) {
-                        if (!resultJob) return jobId;
-                        if (`id:${jobId}` !== resultJob.key) throw new Error(t('downloadMissing'));
-                        const links = Array.from(panel.querySelectorAll('a[href]')).filter(link =>
-                            downloadVisible(link) && downloadText(link) === 'Download' && link.getAttribute('aria-disabled') !== 'true');
-                        if (links.length !== 1) throw new Error(t('downloadSaveLink'));
-                        let url;
-                        try { url = new URL(links[0].getAttribute('href'), document.baseURI); }
-                        catch (_) { throw new Error(t('downloadSaveLink')); }
-                        if (!/^https?:$/.test(url.protocol) || url.origin !== location.origin || url.username || url.password || url.hash) throw new Error(t('downloadSaveLink'));
-                        return url.href;
-                    }
+                    if (jobId) return jobId;
                 }
                 await downloadDelay(30, checkActive);
             }
@@ -2865,7 +2856,7 @@
         }
         if (!fresh || fresh.name !== job.name || fresh.modified !== job.modified) throw new Error(t('downloadMissing'));
         const row = fresh.row;
-        const id = readDownloadIdentity(row) || await readDownloadMenuIdentity(row, null, checkActive);
+        const id = readDownloadIdentity(row) || await readDownloadMenuIdentity(row, checkActive);
         checkActive();
         fresh = readDownloadPage().jobs.find(item => item.row === row);
         if (!fresh || fresh.name !== job.name || fresh.modified !== job.modified || (fresh.id && fresh.key !== `id:${id}`)) throw new Error(t('downloadMissing'));
@@ -3059,7 +3050,7 @@
 
     function downloadReadiness() {
         if (fastaState.busy) return { key: 'fastaBusy', color: 'var(--af3-warning)' };
-        if (downloadState.busy) return { key: downloadState.phase === 'batch' ? 'downloadRunningBatch' : downloadState.phase === 'extract' ? 'scoreRunning' : downloadState.phase === 'scan' ? 'downloadRunningScan' : downloadState.phase === 'save' ? 'downloadRunningSave' : 'downloadRunningApply', color: 'var(--af3-warning)' };
+        if (downloadState.busy) return { key: downloadState.phase === 'batch' ? 'downloadRunningBatch' : downloadState.phase === 'extract' ? 'scoreRunning' : downloadState.phase === 'scan' ? 'downloadRunningScan' : 'downloadRunningApply', color: 'var(--af3-warning)' };
         if (isRunning) return { key: 'downloadSubmissionBusy', color: 'var(--af3-warning)' };
         let context;
         try { context = getDownloadContext(); }
@@ -3114,7 +3105,7 @@
             const control = getUiElement(`af3-download-${id}`);
             if (control) control.disabled = busy || (['all', 'batch', 'clear'].includes(id) && (!downloadState.complete || !downloadState.jobs.length));
         }
-        for (const id of ['apply', 'save']) {
+        for (const id of ['apply']) {
             const button = getUiElement(`af3-download-${id}`);
             if (button) button.disabled = busy || !downloadState.complete || downloadState.selected.size === 0;
         }
@@ -3142,8 +3133,9 @@
         if (status) {
             const key = downloadState.message || 'downloadIdle';
             const vars = key === 'downloadFound' ? { count: downloadState.jobs.length, selected: downloadState.selected.size, unknown: downloadState.unknown } : downloadState.messageVars;
-            const error = ['error', 'downloadError', 'downloadSaveError', 'scoreError', 'downloadInvalidRange',
-                'downloadNoSelection', 'downloadBatchOpen', 'downloadBatchEmpty', 'downloadContextChanged', 'downloadNativeChanged'].includes(key);
+            const error = ['error', 'downloadError', 'scoreError', 'downloadInvalidRange',
+                'downloadNoSelection', 'downloadBatchOpen', 'downloadBatchEmpty', 'downloadBatchNoAccount', 'downloadBatchMissingIds',
+                'downloadBatchUnconfirmed', 'downloadContextChanged', 'downloadNativeChanged'].includes(key);
             showMessageError(status, error, key === 'error' ? downloadState.messageVars.detail : t(key, vars));
         }
         const queueText = getUiElement('af3-download-queue');
@@ -3154,7 +3146,14 @@
                 (queue.index === queue.records.length - 1 ? ' ' + t('downloadQueueLast') : '') : '';
         }
         const list = getUiElement('af3-download-results');
-        if (list && (downloadState.renderedJobs !== downloadState.jobs || downloadState.renderedList !== list || downloadState.renderedLanguage !== currentLanguage)) {
+        const opened = fastaState.saved ? fastaState.manifest : null;
+        const manifest = opened && downloadState.batchOpened === opened && downloadState.batchOpenedRevision === opened.revision
+            ? downloadState.batchManifest : opened;
+        if (list && (downloadState.renderedJobs !== downloadState.jobs || downloadState.renderedList !== list || downloadState.renderedLanguage !== currentLanguage ||
+            downloadState.renderedBatchManifest !== manifest || downloadState.renderedBatchRevision !== manifest?.revision || downloadState.renderedScanContext !== downloadState.scanContext)) {
+            let bound = null;
+            try { if (manifest && downloadState.scanContext) bound = boundDownloadJobs(manifest, JSON.parse(downloadState.scanContext).account); }
+            catch (_) { /* Invalid or conflicting identities must never produce verified batch labels. */ }
             // ponytail: native details handle disclosure; preserve open dates across language redraws.
             const openDays = new Set(Array.from(list.querySelectorAll('details[open]'), group => group.dataset.day));
             list.replaceChildren();
@@ -3171,7 +3170,14 @@
                 groupHeader.className = 'af3-day-heading';
                 const master = document.createElement('input');
                 master.type = 'checkbox'; master.dataset.day = day;
-                master.setAttribute('aria-label', t('downloadDay', { day, count: jobs.length }));
+                const counts = new Map();
+                for (const job of jobs) {
+                    const saved = job.id && bound?.get(job.key);
+                    if (saved && saved.name === job.name) { counts.set(saved.batchIndex, (counts.get(saved.batchIndex) || 0) + 1); }
+                }
+                const labels = [...counts].sort((a, b) => a[0] - b[0]).map(([index, count]) => t('downloadDayBatch', { index, count }));
+                const heading = t('downloadDay', { day, count: jobs.length });
+                master.setAttribute('aria-label', [heading, ...labels].join(' · '));
                 master.onclick = event => event.stopPropagation();
                 master.onchange = () => {
                     if (downloadState.busy || isRunning || fastaState.busy) return;
@@ -3179,7 +3185,9 @@
                     for (const job of jobs) master.checked ? downloadState.selected.add(job.key) : downloadState.selected.delete(job.key);
                     renderDownloadSection();
                 };
-                groupHeader.append(master, document.createTextNode(t('downloadDay', { day, count: jobs.length })));
+                const batchLabel = document.createElement('span'); batchLabel.className = 'af3-day-batches';
+                batchLabel.textContent = labels.length ? ' · ' + labels.join(' / ') : '';
+                groupHeader.append(master, document.createTextNode(heading), batchLabel);
                 group.appendChild(groupHeader);
                 for (const job of jobs) {
                     const label = document.createElement('label');
@@ -3203,6 +3211,9 @@
             downloadState.renderedJobs = downloadState.jobs;
             downloadState.renderedList = list;
             downloadState.renderedLanguage = currentLanguage;
+            downloadState.renderedBatchManifest = manifest;
+            downloadState.renderedBatchRevision = manifest?.revision;
+            downloadState.renderedScanContext = downloadState.scanContext;
         }
         list?.querySelectorAll('input[data-job-key]').forEach(input => { input.checked = downloadState.selected.has(input.dataset.jobKey); });
         list?.querySelectorAll('input[data-day]').forEach(input => {
@@ -3346,88 +3357,6 @@
         }
     }
 
-    function resultZipComplete(tail, size) {
-        const view = new DataView(tail.buffer, tail.byteOffset, tail.byteLength);
-        for (let i = tail.length - 22; i >= 0; i--) {
-            if (view.getUint32(i, true) !== 0x06054b50 || i + 22 + view.getUint16(i + 20, true) !== tail.length) continue;
-            // Single-file, non-ZIP64 archives only; never commit a truncated response as a ZIP.
-            return view.getUint16(i + 4, true) === 0 && view.getUint16(i + 6, true) === 0 &&
-                view.getUint16(i + 8, true) === view.getUint16(i + 10, true) && view.getUint16(i + 10, true) !== 0xffff &&
-                view.getUint32(i + 12, true) + view.getUint32(i + 16, true) <= size - (tail.length - i);
-        }
-        return false;
-    }
-
-    async function saveResultZip(directory, name, url, verify) {
-        checkDownloadActive();
-        const controller = downloadState.controller;
-        let reader = null, writer = null, handle = null, committed = false, timer = null;
-        const resetTimeout = () => {
-            clearTimeout(timer);
-            timer = setTimeout(() => controller.abort(), 60000);
-        };
-        try {
-            resetTimeout();
-            let response;
-            try { response = await fetch(url, { mode: 'same-origin', credentials: 'same-origin', redirect: 'error', signal: controller.signal }); }
-            catch (_) { throw new Error(t('downloadSaveTransfer')); }
-            checkDownloadActive();
-            const type = response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase();
-            if (!response.ok || response.redirected || !response.body ||
-                !['application/zip', 'application/x-zip-compressed', 'application/octet-stream'].includes(type)) throw new Error(t('downloadSaveResponse'));
-            reader = response.body.getReader();
-            handle = await directory.getFileHandle(name, { create: true });
-            if ((await handle.getFile()).size !== 0) { handle = null; throw new Error(t('downloadSaveWrite')); }
-            checkDownloadActive();
-            try { writer = await handle.createWritable({ mode: 'exclusive' }); }
-            catch (_) { throw new Error(t('downloadSaveWrite')); }
-            let size = 0, prefix = new Uint8Array(), tail = new Uint8Array();
-            while (true) {
-                checkDownloadActive();
-                let chunk;
-                try { chunk = await reader.read(); }
-                catch (_) { throw new Error(t('downloadSaveTransfer')); }
-                checkDownloadActive();
-                if (chunk.done) break;
-                resetTimeout();
-                const bytes = chunk.value;
-                size += bytes.length;
-                if (prefix.length < 4) {
-                    const joined = new Uint8Array(prefix.length + bytes.length);
-                    joined.set(prefix); joined.set(bytes, prefix.length); prefix = joined.slice(0, 4);
-                }
-                if (prefix.length === 4 && !(prefix[0] === 80 && prefix[1] === 75 &&
-                    ((prefix[2] === 3 && prefix[3] === 4) || (prefix[2] === 5 && prefix[3] === 6)))) throw new Error(t('downloadSaveResponse'));
-                const joined = new Uint8Array(tail.length + bytes.length);
-                joined.set(tail); joined.set(bytes, tail.length); tail = joined.slice(-65557);
-                try { await writer.write(bytes); }
-                catch (_) { throw new Error(t('downloadSaveWrite')); }
-            }
-            const length = response.headers.get('Content-Length');
-            const encoding = response.headers.get('Content-Encoding');
-            if (size < 22 || !resultZipComplete(tail, size) ||
-                ((!encoding || encoding === 'identity') && length !== null && (!/^\d+$/.test(length) || Number(length) !== size))) throw new Error(t('downloadSaveResponse'));
-            await verify();
-            checkDownloadActive();
-            if (controller.signal.aborted) throw new Error(t('downloadSaveTransfer'));
-            try { await writer.close(); committed = true; }
-            catch (_) { throw new Error(t('downloadSaveWrite')); }
-        } finally {
-            clearTimeout(timer);
-            try { await reader?.cancel(); } catch (_) {}
-            if (!committed) {
-                try { await writer?.abort(); } catch (_) {}
-                // Only remove this operation's new, still-empty placeholder, never an existing result.
-                if (handle) {
-                    try {
-                        const current = await directory.getFileHandle(name);
-                        if (await current.isSameEntry(handle) && (await current.getFile()).size === 0) await directory.removeEntry(name);
-                    } catch (_) { throw Object.assign(new Error(t('downloadSaveCleanup', { name })), { resultCleanup: true }); }
-                }
-            }
-        }
-    }
-
     function boundDownloadJobs(manifest, account) {
         const bound = new Map();
         for (const batch of manifest.batches) {
@@ -3435,8 +3364,8 @@
             for (const job of batch.jobs) {
                 if (!job.jobId || typeof job.jobId !== 'string' || /[\\/\s?#\x00-\x1f\x7f]/.test(job.jobId) || job.importStatus !== 'confirmed') continue;
                 const key = 'id:' + job.jobId;
-                if (bound.has(key)) throw new Error(t('downloadSaveMismatch'));
-                bound.set(key, job);
+                if (bound.has(key)) throw new Error(t('downloadBatchConflict'));
+                bound.set(key, { ...job, batchIndex: batch.index });
             }
         }
         return bound;
@@ -3459,123 +3388,19 @@
             if (manifest.runId !== runId) throw new Error(t('fastaChanged'));
             const bound = boundDownloadJobs(manifest, account);
             const selected = downloadState.jobs.filter(job => job.id && bound.get(job.key)?.name === job.name);
+            downloadState.batchOpened = fastaState.manifest; downloadState.batchOpenedRevision = fastaState.manifest.revision;
+            downloadState.batchManifest = manifest;
+            const batches = manifest.batches.filter(batch => normalizeAccountEmail(batch.account) === account);
+            const confirmed = batches.flatMap(batch => batch.jobs).filter(job => job.importStatus === 'confirmed');
+            const missing = confirmed.length - bound.size;
             resetDownloadQueue();
             downloadState.selected = new Set(selected.map(job => job.key));
-            setDownloadMessage(selected.length ? 'downloadFound' : 'downloadBatchEmpty');
+            setDownloadMessage(selected.length ? 'downloadFound' : !batches.length ? 'downloadBatchNoAccount' :
+                !confirmed.length ? 'downloadBatchUnconfirmed' : missing ? 'downloadBatchMissingIds' : 'downloadBatchEmpty', { missing, bound: bound.size });
         } catch (error) {
             if (isUserStopError(error)) setDownloadMessage('downloadBatchStopped');
             else setDownloadMessage('error', { detail: error.message });
         } finally { downloadState.busy = false; renderDownloadSection(); checkSystemStatus(); }
-    }
-
-    async function saveDownloadResults() {
-        if (isRunning || downloadState.busy || fastaState.busy) return;
-        if (!downloadState.complete || !downloadState.selected.size) { setDownloadMessage('downloadNoSelection'); return; }
-        const progress = { saved: 0, skipped: 0, total: downloadState.selected.size, folder: '' };
-        const records = downloadState.jobs.filter(job => downloadState.selected.has(job.key));
-        const openedDirectory = fastaState.dir && fastaState.saved && fastaState.manifest?.generationComplete ? fastaState.dir : null;
-        if ((!openedDirectory && typeof window.showDirectoryPicker !== 'function') || !navigator.locks?.request) {
-            setDownloadMessage('downloadSaveError', { ...progress, detail: t('downloadSaveUnsupported') }); return;
-        }
-        downloadState.context = downloadState.scanContext;
-        downloadState.stop = false; downloadState.selectionChanged = false;
-        downloadState.busy = true; downloadState.phase = 'save';
-        downloadState.controller = new AbortController();
-        resetDownloadQueue();
-        let watcher = null, abortReason = null;
-        checkSystemStatus();
-        renderDownloadSection();
-        try {
-            checkDownloadActive();
-            const account = JSON.parse(downloadState.context).account;
-            if (!account) throw new Error(t('fastaContextAccountMissing'));
-            // Reuse the writable handle from “Open existing batch folder” or generation. Only ask for a picker when this page has no valid open batch.
-            const directory = openedDirectory || await window.showDirectoryPicker({ mode: 'readwrite' });
-            checkDownloadActive();
-            progress.folder = directory.name;
-            let snapshot;
-            try { snapshot = await readFastaManifest(directory); }
-            catch (_) { throw new Error(t('downloadSaveFolder')); }
-            checkDownloadActive();
-            const { manifest, text } = snapshot;
-            const bound = boundDownloadJobs(manifest, account);
-            if (records.length !== progress.total || records.some(job => !job.id || bound.get(job.key)?.name !== job.name)) throw new Error(t('downloadSaveMismatch'));
-            if (!confirm(t('downloadSaveConfirm', { count: records.length, folder: directory.name }))) {
-                setDownloadMessage('downloadSaveCancelled', progress); return;
-            }
-            checkDownloadActive();
-            watcher = setInterval(() => {
-                try { checkDownloadActive(); }
-                catch (error) { abortReason ||= error; downloadState.controller?.abort(); }
-            }, 100);
-            // ponytail: same-origin tabs share one batch lock; use only one browser on a physical folder.
-            await navigator.locks.request('af3-results:' + manifest.runId, { mode: 'exclusive', ifAvailable: true }, async lock => {
-                if (!lock) throw new Error(t('downloadSaveLocked'));
-                checkDownloadActive();
-                const output = await directory.getDirectoryHandle('results', { create: true });
-                const pending = new Map(records.map(job => [job.key, job]));
-                const visited = new Set();
-                let page = await firstDownloadPage();
-                while (pending.size) {
-                    checkDownloadActive();
-                    if (visited.has(page.signature) || visited.size >= 1000) throw new Error(t('downloadPageError'));
-                    visited.add(page.signature);
-                    page = await resolveDownloadPage(page, page.jobs.filter(job =>
-                        records.some(target => target.name === job.name && target.modified === job.modified)));
-                    for (const job of page.jobs) {
-                        const target = pending.get(job.key);
-                        if (!target) continue;
-                        if (!sameDownloadJob(job, target)) throw new Error(t('downloadMissing'));
-                        let stem = job.name.replace(/[<>:"/\\|?*\x00-\x1f\x7f]/g, '_').replace(/[. ]+$/g, '') || 'result';
-                        if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(stem)) stem = '_' + stem;
-                        const name = stem.slice(0, 100) + '__' + (await fastaHash(job.key)).slice(0, 16) + '.zip';
-                        checkDownloadActive();
-                        let exists = false;
-                        try { await output.getFileHandle(name); exists = true; }
-                        catch (error) { if (error.name !== 'NotFoundError') throw error; }
-                        if (exists) progress.skipped++;
-                        else {
-                            const url = await readDownloadMenuIdentity(job.row, job);
-                            if (!url) throw new Error(t('downloadSaveLink'));
-                            const verify = async () => {
-                                if (!sameDownloadJob(await resolveDownloadJob(job), target)) throw new Error(t('downloadMissing'));
-                                const current = await (await directory.getFileHandle('manifest.json')).getFile();
-                                if (current.size > FASTA_MANIFEST_LIMIT || await current.text() !== text) throw new Error(t('fastaJournalChanged'));
-                            };
-                            await verify();
-                            setDownloadMessage('downloadSaveProgress', { ...progress, name: job.name });
-                            await saveResultZip(output, name, url, verify);
-                            // Count only committed files, even if Stop arrived while close() was in flight.
-                            progress.saved++;
-                            addLog(t('downloadSaveProgress', { ...progress, name: job.name }));
-                        }
-                        pending.delete(job.key);
-                        checkDownloadActive();
-                    }
-                    if (!pending.size) break;
-                    if (!downloadButtonEnabled(page.next)) throw new Error(t('downloadMissing'));
-                    page = await moveDownloadPage(page.next, page.signature);
-                }
-                await firstDownloadPage();
-                checkDownloadActive();
-            });
-            setDownloadMessage('downloadSaveDone', progress);
-            addLog(t('downloadSaveDone', progress));
-        } catch (error) {
-            if (!error.resultCleanup) {
-                error = abortReason || error;
-                if (downloadState.stop) error = makeStoppedError();
-            }
-            const cancelled = error.name === 'AbortError' || isUserStopError(error);
-            if (!cancelled) downloadState.complete = false;
-            setDownloadMessage(cancelled ? 'downloadSaveCancelled' : 'downloadSaveError', { ...progress, detail: error.message });
-            addLog(t(cancelled ? 'downloadSaveCancelled' : 'downloadSaveError', { ...progress, detail: error.message }), cancelled ? 'warn' : 'error');
-        } finally {
-            clearInterval(watcher);
-            downloadState.controller.abort(); downloadState.controller = null;
-            downloadState.busy = false;
-            renderDownloadSection(); checkSystemStatus();
-        }
     }
 
     // --- Local score extraction: milk-compatible metrics; no website requests. ---
@@ -3852,13 +3677,13 @@
         const outputs = [], all = archives.flatMap(archive => archive.rows);
         if (all.length > SCORE_ROW_LIMIT) throw scoreFail('scoreLimit');
         for (const archive of archives) {
-            const stem = archive.name.replace(/\.zip$/i, '');
+            const stem = (archive.fileName || archive.name).replace(/\.zip$/i, '');
             const best = [...scoreBest(archive.rows).values()].sort((a, b) => b.ranking_score - a.ranking_score);
-            outputs.push({ name: stem + '_scores_best.csv', text: scoreCsv(best, scoreFields(archive.rows, SCORE_SINGLE_FIELDS)) },
-                { name: stem + '_scores_pairs.csv', text: scoreCsv(archive.pairs, SCORE_PAIR_FIELDS) });
+            outputs.push({ name: stem + '_scores_best.csv', directory: archive.directory, path: archive.name.replace(/\.zip$/i, '_scores_best.csv'), text: scoreCsv(best, scoreFields(archive.rows, SCORE_SINGLE_FIELDS)) },
+                { name: stem + '_scores_pairs.csv', directory: archive.directory, path: archive.name.replace(/\.zip$/i, '_scores_pairs.csv'), text: scoreCsv(archive.pairs, SCORE_PAIR_FIELDS) });
         }
         const normalize = value => value.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const jobs = manifest.batches.flatMap(batch => batch.jobs), best = scoreBest(all), used = new Set(), ordered = [], missing = [];
+        const jobs = manifest?.batches.flatMap(batch => batch.jobs) || [], best = scoreBest(all), used = new Set(), ordered = [], missing = [];
         const signatures = new Map();
         for (const row of all) {
             const signature = JSON.stringify([row.job_name, row._sequences, row.n_chains]);
@@ -3886,7 +3711,7 @@
                 ordered.push({ ...row, fasta_header: job.header, in_fasta: 'yes' });
             }
         }
-        for (const row of [...best.values()].sort((a, b) => scoreCompare(a.job, b.job))) if (!used.has(row.job)) ordered.push({ ...row, fasta_header: '', in_fasta: 'no' });
+        for (const row of [...best.values()].sort((a, b) => scoreCompare(a.job, b.job))) if (!used.has(row.job)) ordered.push({ ...row, fasta_header: '', in_fasta: manifest ? 'no' : '' });
         const order = new Map(ordered.map((row, index) => [row.job, index])), metadata = new Map(ordered.map(row => [row.job, row]));
         const merged = row => ({ ...row, fasta_header: metadata.get(row.job).fasta_header, in_fasta: metadata.get(row.job).in_fasta,
             receptor_len: row.long_peptide_len, peptide: row.short_peptide, peptide_len: row.short_peptide_len });
@@ -3897,11 +3722,11 @@
         const names = new Set();
         let bytes = 0;
         for (const output of outputs) {
-            if (/[<>:"/\\|?*\x00-\x1f\x7f]/.test(output.name) || output.name.length > 240 || names.has(output.name.toLowerCase())) throw scoreFail('scoreOutputConflict');
-            names.add(output.name.toLowerCase()); bytes += new Blob([output.text]).size;
+            if (/[<>:"/\\|?*\x00-\x1f\x7f]/.test(output.name) || output.name.length > 240 || names.has((output.path || output.name).toLowerCase())) throw scoreFail('scoreOutputConflict');
+            names.add((output.path || output.name).toLowerCase()); bytes += new Blob([output.text]).size;
         }
         if (bytes > SCORE_CSV_LIMIT) throw scoreFail('scoreLimit');
-        return { outputs, jobs: best.size, models: all.length, missing: missing.length };
+        return { outputs, jobs: best.size, models: all.length, missing: manifest ? missing.length : null };
     }
 
     async function writeScoreCsv(directory, output, verify) {
@@ -3927,74 +3752,118 @@
                     try {
                         const current = await directory.getFileHandle(output.name);
                         if (await current.isSameEntry(handle) && (await current.getFile()).size === 0) await directory.removeEntry(output.name);
-                    } catch (_) { throw Object.assign(scoreFail('downloadSaveCleanup', output.name), { resultCleanup: true }); }
+                    } catch (_) { throw Object.assign(scoreFail('scoreCleanup', output.name), { resultCleanup: true }); }
                 }
             }
         }
     }
 
+    async function scoreDefaultDirectory(directory) {
+        try { downloadState.scoreDirectory = await directory.getDirectoryHandle('results'); }
+        catch (_) { downloadState.scoreDirectory = directory; } // ponytail: do not create folders just to suggest a picker location.
+    }
+
+    async function scoreScanDirectory(directory) {
+        const files = [], tree = [], folders = [{ directory, path: '', depth: 0 }];
+        let entries = 0, ignored = 0;
+        for (let index = 0; index < folders.length; index++) {
+            const parent = folders[index];
+            for await (const [name, handle] of parent.directory.entries()) {
+                scoreCheck();
+                if (++entries > 100000) throw scoreFail('scoreLimit');
+                const path = parent.path + name;
+                if (handle.kind === 'directory') {
+                    if (parent.depth >= 32 || folders.length >= 1000) throw scoreFail('scoreLimit', path);
+                    tree.push(path + '/'); folders.push({ directory: handle, path: path + '/', depth: parent.depth + 1 });
+                } else if (/\.zip$/i.test(name)) {
+                    const file = await handle.getFile();
+                    files.push({ name: path, fileName: name, directory: parent.directory, handle, file });
+                    tree.push(path + ' (' + file.size + ' bytes)');
+                    if (files.length > 1000) throw scoreFail('scoreLimit');
+                } else ignored++;
+            }
+        }
+        files.sort((a, b) => scoreCompare(a.name, b.name)); tree.sort(scoreCompare);
+        return { files, tree, folders: folders.length, ignored };
+    }
+
     async function extractResultScores() {
         if (isRunning || fastaState.busy || downloadState.busy) return;
-        const opened = fastaState.dir && fastaState.saved && fastaState.manifest?.generationComplete ? fastaState.dir : null;
-        if ((!opened && typeof window.showDirectoryPicker !== 'function') || !navigator.locks?.request) { setDownloadMessage('scoreError', { saved: 0, detail: t('downloadSaveUnsupported') }); return; }
+        if (typeof window.showDirectoryPicker !== 'function' || !navigator.locks?.request) { setDownloadMessage('scoreError', { saved: 0, detail: t('scoreFolderUnsupported') }); return; }
         downloadState.busy = true; downloadState.stop = false; downloadState.phase = 'extract';
         resetDownloadQueue(); checkSystemStatus();
         let saved = 0, current = '';
         try {
-            const directory = opened || await window.showDirectoryPicker({ mode: 'readwrite' });
-            scoreCheck();
-            let snapshot;
-            try { snapshot = await readFastaManifest(directory); }
-            catch (_) { throw scoreFail('downloadSaveFolder'); }
-            const { manifest, text } = snapshot;
-            await navigator.locks.request('af3-results:' + manifest.runId, { mode: 'exclusive', ifAvailable: true }, async lock => {
-                if (!lock) throw scoreFail('downloadSaveLocked');
-                scoreCheck();
-                const results = await directory.getDirectoryHandle('results');
-                const handles = [];
-                for await (const [name, handle] of results.entries()) {
-                    scoreCheck();
-                    if (handle.kind === 'file' && /\.zip$/i.test(name)) handles.push({ name, handle });
-                    if (handles.length > 1000) throw scoreFail('scoreLimit');
-                }
+            // Always show the picker; startIn is a suggestion, never permission to reuse a different folder silently.
+            const directory = await window.showDirectoryPicker({ id: 'af3-score-results', mode: 'readwrite',
+                ...(downloadState.scoreDirectory ? { startIn: downloadState.scoreDirectory } : {}) });
+            downloadState.scoreDirectory = directory; scoreCheck();
+            setDownloadMessage('scoreScanning', { folder: directory.name });
+            // ponytail: one same-origin extraction lock also covers overlapping parent/child selections.
+            await navigator.locks.request('af3-score-extraction', { mode: 'exclusive', ifAvailable: true }, async lock => {
+                if (!lock) throw scoreFail('scoreLocked');
+                const scan = await scoreScanDirectory(directory), handles = scan.files;
                 if (!handles.length) throw scoreFail('scoreNoZips');
-                handles.sort((a, b) => scoreCompare(a.name, b.name));
-                const archives = [];
-                let modelCount = 0, pairCount = 0;
-                for (const [index, item] of handles.entries()) {
-                    current = item.name;
-                    setDownloadMessage('scoreReading', { index: index + 1, total: handles.length, name: item.name });
-                    await sleep(0); scoreCheck();
-                    const file = await item.handle.getFile(); item.file = file;
-                    const parsed = await scoreReadArchive(file);
-                    if ((modelCount += parsed.rows.length) > SCORE_ROW_LIMIT || (pairCount += parsed.pairs.length) > 1000000) throw scoreFail('scoreLimit');
-                    archives.push({ name: item.name, ...parsed });
+                let manifestDirectory = directory, snapshot = null;
+                try { await directory.getFileHandle('manifest.json'); }
+                catch (error) {
+                    if (error.name !== 'NotFoundError') throw error;
+                    const opened = fastaState.saved && fastaState.dir;
+                    manifestDirectory = opened && (await opened.resolve(directory))?.[0] === 'results' ? opened : null;
                 }
-                const report = scoreOutputs(archives, manifest);
+                if (manifestDirectory) {
+                    try { snapshot = await readFastaManifest(manifestDirectory); }
+                    catch (error) {
+                        if (error.name !== 'NotFoundError' || manifestDirectory === directory) throw scoreFail('scoreManifestInvalid');
+                    }
+                }
+                const manifest = snapshot?.manifest;
+                const association = t(manifest ? 'scoreWithManifest' : 'scoreWithoutManifest');
+                const shown = scan.tree.slice(0, 60);
+                if (scan.tree.length > shown.length) shown.push(t('scoreMorePaths', { count: scan.tree.length - shown.length }));
+                scoreCheck();
+                if (!confirm(t('scoreScanConfirm', { folder: directory.name, folders: scan.folders, count: handles.length,
+                    ignored: scan.ignored, tree: shown.join('\n'), association }))) { setDownloadMessage('scoreCancelled', { saved }); return; }
                 const verify = async () => {
                     scoreCheck();
-                    const disk = await (await directory.getFileHandle('manifest.json')).getFile();
-                    if (disk.size > FASTA_MANIFEST_LIMIT || await disk.text() !== text) throw scoreFail('scoreSourceChanged');
+                    if (snapshot) {
+                        const disk = await (await manifestDirectory.getFileHandle('manifest.json')).getFile();
+                        if (disk.size > FASTA_MANIFEST_LIMIT || await disk.text() !== snapshot.text) throw scoreFail('scoreSourceChanged');
+                    }
                     for (const item of handles) {
                         const file = await item.handle.getFile();
                         if (file.size !== item.file.size || file.lastModified !== item.file.lastModified) throw scoreFail('scoreSourceChanged');
                     }
                     scoreCheck();
                 };
+                await verify();
+                const archives = [];
+                let modelCount = 0, pairCount = 0;
+                for (const [index, item] of handles.entries()) {
+                    current = item.name;
+                    setDownloadMessage('scoreReading', { index: index + 1, total: handles.length, name: item.name });
+                    await sleep(0); scoreCheck();
+                    const parsed = await scoreReadArchive(item.file);
+                    for (const row of parsed.rows) row.source_zip = item.name;
+                    if ((modelCount += parsed.rows.length) > SCORE_ROW_LIMIT || (pairCount += parsed.pairs.length) > 1000000) throw scoreFail('scoreLimit');
+                    archives.push({ name: item.name, fileName: item.fileName, directory: item.directory, ...parsed });
+                }
+                const report = scoreOutputs(archives, manifest);
                 for (const output of report.outputs) {
-                    try { output.before = await (await results.getFileHandle(output.name)).getFile(); }
+                    output.directory ||= directory;
+                    try { output.before = await (await output.directory.getFileHandle(output.name)).getFile(); }
                     catch (error) { if (error.name !== 'NotFoundError') throw error; }
                 }
-                const overwrite = report.outputs.filter(output => output.before).map(output => output.name);
+                const overwrite = report.outputs.filter(output => output.before).map(output => output.path || output.name);
                 if (!confirm(t('scoreConfirm', { count: handles.length, models: report.models, folder: directory.name, files: report.outputs.length,
-                    existing: overwrite.length, names: overwrite.join('\n') || '—' }))) { setDownloadMessage('scoreCancelled', { saved }); return; }
+                    existing: overwrite.length, names: overwrite.join('\n') || '—', association }))) { setDownloadMessage('scoreCancelled', { saved }); return; }
                 for (const output of report.outputs) {
-                    current = output.name;
+                    current = output.path || output.name;
                     setDownloadMessage('scoreWriting', { saved, total: report.outputs.length, name: current });
-                    await writeScoreCsv(results, output, verify); saved++;
+                    await writeScoreCsv(output.directory, output, verify); saved++;
                 }
-                setDownloadMessage('scoreDone', { zips: handles.length, jobs: report.jobs, models: report.models, missing: report.missing, saved, folder: directory.name });
-                addLog(t('scoreDone', { zips: handles.length, jobs: report.jobs, models: report.models, missing: report.missing, saved, folder: directory.name }));
+                const vars = { zips: handles.length, jobs: report.jobs, models: report.models, missing: report.missing ?? '—', saved, folder: directory.name };
+                setDownloadMessage('scoreDone', vars); addLog(t('scoreDone', vars));
             });
         } catch (error) {
             const cancelled = !error.resultCleanup && (isUserStopError(error) || error.name === 'AbortError');
@@ -4045,7 +3914,7 @@
             ['clear', 'downloadClear', () => { if (downloadState.busy || isRunning || fastaState.busy || !downloadState.complete || !downloadState.jobs.length) return; resetDownloadQueue(); downloadState.selected.clear(); setDownloadMessage('downloadFound'); }],
             ['apply', 'downloadApply', () => applySelectionToWebsite()],
             ['next', 'downloadNext', () => applySelectionToWebsite(true)],
-            ['stop', 'stopButton', () => { downloadState.stop = true; downloadState.controller?.abort(); updateDownloadControls(); }],
+            ['stop', 'stopButton', () => { downloadState.stop = true; updateDownloadControls(); }],
         ]) {
             const button = translated('button', key); button.type = 'button'; button.id = `af3-download-${id}`;
             button.className = id === 'apply' ? 'af3-primary' : id === 'stop' ? 'af3-danger' : ['all', 'batch', 'clear'].includes(id) ? 'af3-quiet' : '';
@@ -4077,9 +3946,6 @@
         const queue = document.createElement('p'); queue.id = 'af3-download-queue';
         queue.setAttribute('role', 'status'); queue.setAttribute('aria-live', 'polite'); section.appendChild(queue);
         const hint = translated('p', 'downloadHint'); hint.className = 'af3-help af3-download-hint'; section.appendChild(hint);
-        const save = translated('button', 'downloadSave'); save.type = 'button'; save.id = 'af3-download-save';
-        save.onclick = saveDownloadResults; section.appendChild(save);
-        const saveHint = translated('p', 'downloadSaveHint'); saveHint.className = 'af3-help'; section.appendChild(saveHint);
         const extract = translated('button', 'scoreExtract'); extract.type = 'button'; extract.id = 'af3-download-extract';
         extract.onclick = extractResultScores; section.appendChild(extract);
         const scoreHint = translated('p', 'scoreHint'); scoreHint.className = 'af3-help'; section.appendChild(scoreHint);
@@ -4499,7 +4365,7 @@
     function checkSystemStatus() {
         updateAccountEmail();
         updateQuota();
-        updateDownloadControls();
+        renderDownloadSection();
         renderFastaSection();
         const btn = getUiElement('af3-v20-btn');
         const light = getUiElement('af3-status-light');
