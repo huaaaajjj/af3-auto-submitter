@@ -4,9 +4,11 @@
 
 ## 安装 5.0 正式版
 
-[安装或更新 5.0.5](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 5.0.6](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 **从 4.0 起只发布正式版，不再维护独立开发版渠道。** 安装文件为 `af3-auto-submitter.user.js`，正常开发、安装、测试和更新均以 `main` 的正式文件为准。
+
+**5.0.6 更新：** 本地提取新增阶段进度条：目录扫描显示不定进度；ZIP 解析按已完成包数显示数量和百分比，当前未解析完的包不计完成；CSV 写入按成功关闭提交的文件数显示数量和百分比。ZIP 阶段 100% 不代表 CSV 已保存，各阶段分开计数，不估算剩余时间；完成、取消或出错后隐藏进度条并保留实际汇总。
 
 **5.0.5 更新：** 移除“保存所选 ZIP 到 results…”按钮及其说明，不再由脚本下载 ZIP。请使用官网原生 Download，将下载的 ZIP 放进一个文件夹（推荐 `results/`）；“选择 ZIP 文件夹 / 提取 CSV…”每次都打开目录选择器。先扫描并确认目录结构与 ZIP 路径，再读取指标；写入前另行确认覆盖清单。独立 ZIP 文件夹无需 manifest 或登录账号；已授权的 results 可作为默认位置，但绝不跳过选择。
 
@@ -25,7 +27,7 @@
 1. 安装 Tampermonkey，点击上方正式安装链接并确认。若仅显示源码，在油猴原脚本编辑器中完整替换并保存。
 2. 允许脚本在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。使用 Edge InPrivate 时，需要开启扩展的“允许在 InPrivate 中使用”。
 3. 普通窗口与 InPrivate 要共用账号目录，需在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 刷新官网，确认标题显示 **v5.0.5**，并核对当前账号和官网额度。网站控件与通知需使用英文。
+4. 刷新官网，确认标题显示 **v5.0.6**，并核对当前账号和官网额度。网站控件与通知需使用英文。
 5. 首次仅试 1 个任务；生成 JSON、导入草稿、预测提交、预测完成是四个不同阶段。结果不确定时不要重复点击 Confirm 或刷新后直接重试。
 
 正式更新检查地址是 `main/af3-auto-submitter.meta.js`，完整下载地址是 `main/af3-auto-submitter.user.js`。启用油猴“检查更新”即可接收后续正式版本。
@@ -219,6 +221,8 @@ MNPQRSTVWY
 6. 优先关联所选目录自己的有效 manifest；仅当所选目录没有清单，且选择了本页已打开批次的 `results/` 或其子目录，也只读使用对应原清单，以保留任务顺序和缺失统计。其他已打开清单不会影响独立文件夹。未关联清单时 `in_fasta` 留空、缺失任务数显示 `—`，不把未核实的数据当作“无缺失”。
 7. 可点“停止”；仅成功关闭提交的 CSV 计入已保存，已完成文件保留，未提交写入中止。多个 CSV 不是跨文件原子事务，部分完成请核对数量。源 ZIP、manifest、FASTA 和输入 JSON 不修改。
 
+提取按钮下方显示当前阶段的原生进度条：扫描目录时总量未知，仅显示不定进度；ZIP 解析与 CSV 写入分别按“已完成 / 总数（百分比）”计数。ZIP 达到 100% 后还要汇总、确认写入和保存 CSV，不能当作整个提取完成。单个大 ZIP 处理期间百分比可能暂时不变；这是文件计数，不是字节进度或耗时预测。完成、取消或失败后隐藏进度条，状态文字保留真实保存数量。
+
 | 输出文件 | 位置与内容 |
 | --- | --- |
 | `<ZIP名>_scores_best.csv` | 对应 ZIP 旁；每个 job 取 `ranking_score` 最高模型，按分数降序 |
@@ -280,7 +284,7 @@ node test_score_core.mjs
 git diff --check
 ```
 
-浏览器回归共 293 个场景（提交与账户 34、原有下载 139、FASTA 55、当前批次选择 16、本地指标提取 49）。另有无依赖的指标核心检查，覆盖舍入、CSV 转义及单/多链统计。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
+浏览器回归共 294 个场景（提交与账户 34、原有下载 139、FASTA 55、当前批次选择 16、本地指标提取 50）。另有无依赖的指标核心检查，覆盖舍入、CSV 转义及单/多链统计。完整检查包含真实的 60 秒等待，需要数分钟。文件系统大部分采用内存句柄模拟；另有原生 Edge 独占写入与 Web Lock 检查，不等于真实账号端到端验证。新版本在真实官网首次仍只试一个任务。
 
 面板不显示时先核对版本、站点权限并确认只启用一份脚本。额度显示“无法识别”不等于额度为零。提交结果不确定、部分导入或锁定时，先人工核对官网记录，再决定后续操作；不要用反复启动代替确认。
 

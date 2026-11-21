@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.5
+// @version      5.0.6
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期勾选官网下载、选择本地 ZIP 文件夹提取指标 CSV。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.5';
+    const SCRIPT_VERSION = '5.0.6';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -647,6 +647,9 @@
         scoreRunning: "Running: extracting local ZIP scores",
         scoreHint: "Download ZIPs with the website and put them in one folder (results recommended). Always choose that folder here; preview its tree and confirm before reading ZIP contents. Per-ZIP CSVs stay beside each ZIP; merged tables go in the chosen folder. No manifest or website scan required. Existing CSV replacements need confirmation.",
         scoreScanning: "Scanning folder structure: {folder}…",
+        scoreReadProgress: "ZIPs parsed: {completed}/{total} ({percent}%)",
+        scoreWriteProgress: "CSVs saved: {completed}/{total} ({percent}%)",
+        scorePreparing: "Parsed {total} ZIPs, {models} models; preparing CSVs and waiting for write confirmation…",
         scoreScanConfirm: "Chosen folder: {folder}\n{folders} folders; {count} ZIPs; {ignored} other files ignored.\n{tree}\n{association}\nRead these ZIPs and extract scores? Cancelling reads no ZIP contents and writes no CSVs.",
         scoreWithManifest: "Associated manifest: preserve original job order and report missing jobs.",
         scoreWithoutManifest: "No associated manifest: summarize ZIPs only; missing-job counts are not evaluated.",
@@ -734,6 +737,9 @@
             scoreRunning: "运行中：正在提取本地 ZIP 指标",
             scoreHint: "先用官网下载 ZIP，集中放到一个文件夹（推荐 results）。每次点击都由你选择文件夹，先预览目录结构并确认，再读取 ZIP 提取；不必打开批次或查找官网任务。每包 CSV 放在对应 ZIP 旁，汇总表放在所选目录；替换已有 CSV 前再次确认，原 ZIP 和输入文件不变。",
             scoreScanning: "正在扫描文件夹结构：{folder}…",
+            scoreReadProgress: "ZIP 已解析：{completed}/{total}（{percent}%）",
+            scoreWriteProgress: "CSV 已保存：{completed}/{total}（{percent}%）",
+            scorePreparing: "已解析 {total} 个 ZIP、{models} 个模型；正在汇总并等待写入确认…",
             scoreScanConfirm: "所选文件夹：{folder}\n共 {folders} 个目录、{count} 个 ZIP；忽略其他文件 {ignored} 个。\n{tree}\n{association}\n确认读取这些 ZIP 并提取指标？取消不会读取 ZIP 内容，也不会写入 CSV。",
             scoreWithManifest: "已关联清单：按原任务顺序汇总并统计缺失任务。",
             scoreWithoutManifest: "未关联清单：只汇总 ZIP，不判断缺失任务。",
@@ -3138,6 +3144,24 @@
                 'downloadBatchUnconfirmed', 'downloadContextChanged', 'downloadNativeChanged'].includes(key);
             showMessageError(status, error, key === 'error' ? downloadState.messageVars.detail : t(key, vars));
         }
+        const progress = getUiElement('af3-score-progress'), progressText = getUiElement('af3-score-progress-text');
+        if (progress && progressText) {
+            const key = downloadState.message, vars = downloadState.messageVars;
+            const reading = key === 'scoreReading' || key === 'scorePreparing', writing = key === 'scoreWriting';
+            const active = downloadState.busy && downloadState.phase === 'extract' && (reading || writing || key === 'scoreScanning');
+            progress.hidden = progressText.hidden = !active;
+            let text = '';
+            if (active && (reading || writing)) {
+                // ponytail: completed files per stage, not byte progress or estimated time.
+                const completed = writing ? vars.saved : key === 'scoreReading' ? vars.index - 1 : vars.total;
+                progress.max = vars.total; progress.value = completed;
+                text = t(writing ? 'scoreWriteProgress' : 'scoreReadProgress', { completed, total: vars.total, percent: Math.floor(completed / vars.total * 100) });
+            } else {
+                progress.removeAttribute('value');
+                if (active) text = t('scoreScanning', vars);
+            }
+            if (progressText.textContent !== text) progressText.textContent = text;
+        }
         const queueText = getUiElement('af3-download-queue');
         if (queueText) {
             const queue = downloadState.queue;
@@ -3848,6 +3872,8 @@
                     if ((modelCount += parsed.rows.length) > SCORE_ROW_LIMIT || (pairCount += parsed.pairs.length) > 1000000) throw scoreFail('scoreLimit');
                     archives.push({ name: item.name, fileName: item.fileName, directory: item.directory, ...parsed });
                 }
+                setDownloadMessage('scorePreparing', { total: handles.length, models: modelCount });
+                await sleep(0); scoreCheck();
                 const report = scoreOutputs(archives, manifest);
                 for (const output of report.outputs) {
                     output.directory ||= directory;
@@ -3948,6 +3974,11 @@
         const hint = translated('p', 'downloadHint'); hint.className = 'af3-help af3-download-hint'; section.appendChild(hint);
         const extract = translated('button', 'scoreExtract'); extract.type = 'button'; extract.id = 'af3-download-extract';
         extract.onclick = extractResultScores; section.appendChild(extract);
+        const progressText = document.createElement('p'); progressText.id = 'af3-score-progress-text'; progressText.className = 'af3-help'; progressText.hidden = true;
+        progressText.setAttribute('role', 'status'); progressText.setAttribute('aria-live', 'polite');
+        const progress = document.createElement('progress'); progress.id = 'af3-score-progress'; progress.hidden = true;
+        progress.setAttribute('aria-labelledby', progressText.id); progress.setAttribute('aria-describedby', status.id);
+        section.append(progressText, progress);
         const scoreHint = translated('p', 'scoreHint'); scoreHint.className = 'af3-help'; section.appendChild(scoreHint);
         return section;
     }
@@ -4154,7 +4185,7 @@
             #af3-footer-msg:not(.af3-error-message) { color: var(--af3-muted); }
             .af3-help, .af3-account-help, .af3-account-card time { font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
             .af3-help:not(.af3-error-message), .af3-account-help, .af3-account-card time { color: var(--af3-muted); }
-            #af3-fasta-progress { display: block; width: 100%; height: 10px; accent-color: var(--af3-primary); }
+            #af3-fasta-progress, #af3-score-progress { display: block; width: 100%; height: 10px; accent-color: var(--af3-primary); }
             .af3-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(135px, 100%), 1fr)); gap: 8px; }
             .af3-download-tools, .af3-download-actions, .af3-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
             .af3-batch-selection { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; }

@@ -60,7 +60,7 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
 <body>
 <main>
   <header>
-    <p class="kicker">AF3 自动助手 v5.0.5 · 安装与完整使用指南</p>
+    <p class="kicker">AF3 自动助手 v5.0.6 · 安装与完整使用指南</p>
     <h1>AF3 自动提交助手使用指南</h1>
     <p class="lead">从安装、准备 FASTA、生成本地批次、导入并核对草稿，到确认提交预测、查找结果、保存 ZIP 和提取 CSV。先按日常流程使用；后面的 50 任务章节是单独的历史实测记录。</p>
     <nav aria-label="教程章节">
@@ -80,7 +80,7 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
       <li>
         <div class="copy">
           <h3>安装脚本并确认账号</h3>
-          <p>使用 Edge 或 Chrome 安装 Tampermonkey，再安装仓库正式版 <code>af3-auto-submitter.user.js</code>。允许扩展在 <code>alphafoldserver.com</code> 运行并刷新页面；标题应显示 <strong>v5.0.5</strong>，顶部当前账号需与本次任务所属账号一致。</p>
+          <p>使用 Edge 或 Chrome 安装 Tampermonkey，再安装仓库正式版 <code>af3-auto-submitter.user.js</code>。允许扩展在 <code>alphafoldserver.com</code> 运行并刷新页面；标题应显示 <strong>v5.0.6</strong>，顶部当前账号需与本次任务所属账号一致。</p>
           <p>使用 InPrivate/无痕窗口时，另行允许 Tampermonkey 在无痕模式运行。若要与普通窗口共享账号目录，按 <a href="https://github.com/huaaaajjj/af3-auto-submitter/blob/main/README.md">README 的升级说明</a> 设置扩展存储；登录 Cookie 仍由浏览器管理。</p>
         </div>
         <div class="media"><p class="note">面板未出现时先检查脚本是否启用、站点权限及当前地址，再刷新官网。只启用一份正式版。</p></div>
@@ -172,6 +172,7 @@ MNPQRSTVWY</pre>
           <h3>选目录，确认结构，再提取</h3>
           <p>点<strong>“选择 ZIP 文件夹 / 提取 CSV…”</strong>，每次都会出现目录选择器。已授权的 results 优先作为默认位置，浏览器也会记住上次选择；首次仍需你授权目录。</p>
           <p>先扫描目录和子目录，列出 ZIP 路径、大小和数量，请你确认后才读取指标内容。取消此预览不解析 ZIP、不写 CSV。没有 manifest 也能提取，其他已打开清单不会影响独立目录。</p>
+          <p>按钮下方显示提取阶段进度：扫描目录时为不定进度；ZIP 按已解析包数、CSV 按已保存文件数分别显示百分比。一个大 ZIP 处理时进度可能暂时不动；ZIP 达到 100% 还不代表 CSV 已保存。</p>
           <p>全部解析成功后再次确认覆盖已有 CSV。每个 ZIP 的最佳模型/链对报告放在 ZIP 旁，三张汇总表放在所选目录根。源 ZIP、清单和输入文件不修改。</p>
         </div>
         <div class="media"><p class="note">无清单时不判断缺失任务；部分写入后停止只保留已提交 CSV，按面板数量核对。</p></div>

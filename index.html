@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 正式版 5.0.5：FASTA 本地分批、草稿导入与历史核对、明确确认后提交预测、按日期勾选官网下载。移除脚本 ZIP 保存按钮；请把官网 ZIP 集中放入一个文件夹（推荐 results），点击“选择 ZIP 文件夹 / 提取 CSV…”。每次选择目录，先确认结构和 ZIP 路径，再解析指标及确认 CSV 覆盖；独立 ZIP 文件夹无需 manifest。已核实的日期结果仍显示批次编号。</p>
+            <p class="version-note">本 fork 正式版 5.0.6：FASTA 本地分批、草稿导入与历史核对、明确确认后提交预测、按日期勾选官网下载。移除脚本 ZIP 保存按钮；请把官网 ZIP 集中放入一个文件夹（推荐 results），点击“选择 ZIP 文件夹 / 提取 CSV…”。每次选择目录，先确认结构和 ZIP 路径，再解析指标及确认 CSV 覆盖；独立 ZIP 文件夹无需 manifest。已核实的日期结果仍显示批次编号。</p>
             <p class="version-note">升级前请备份油猴脚本及脚本数据；在原已安装条目内更新并核对账号，不要先卸载旧脚本。新建条目不能保证继承原 GM 账号记录。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 5.0.5 正式版</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 5.0.6 正式版</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/main" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看正式源码</a>
                 <a href="https://huaaaajjj.github.io/af3-auto-submitter/docs/tutorial/" class="install-btn secondary-btn">图文使用指南</a>
             </div>
@@ -296,8 +296,9 @@
         </section>
 
         <section>
-            <h2>✨ 5.0.5 正式版更新重点</h2>
+            <h2>✨ 5.0.6 正式版更新重点</h2>
             <ul class="release-list">
+                <li>5.0.6 本地提取显示阶段进度：扫描目录为不定进度，ZIP 解析和 CSV 写入分别按已完成文件数显示百分比。ZIP 解析 100% 不代表 CSV 保存完成；取消、失败、完成后保留真实汇总，不估算剩余耗时。</li>
                 <li>5.0.5 移除脚本 ZIP 保存按钮及说明；本地提取每次选择文件夹，先确认结构和 ZIP 清单再读取指标，写入前确认覆盖。推荐 results，独立 ZIP 目录无需清单；原 ZIP、输入和 manifest 不变。</li>
                 <li>5.0.4 日期标题标注已核实的分批编号和匹配数，同日多批分别列出；未匹配时只显示日期和任务数。无匹配提示区分账号、导入确认、缺少 ID 和已绑定 ID 不匹配，不按名称猜认。</li>
                 <li>5.0.3 按钮操作出错时高亮提示文字并闪烁三次；系统开启「减少动态效果」时仅高亮。</li>
@@ -417,6 +418,7 @@
                 <li>点<strong>选择 ZIP 文件夹 / 提取 CSV…</strong>，每次都由你选择目录。已授权的 results 可作为默认位置；否则浏览器记住上次位置，首次需自行选择。独立 ZIP 文件夹不要求 manifest、登录账号或官网扫描。</li>
                 <li>递归扫描目录结构和 ZIP 路径，确认后才读取 ZIP 内容。取消预览不会解析或写文件。超过 60 个路径时明示未展示的数量，仍扫描全部受支持条目。</li>
                 <li>本地计算最佳模型、全部模型、链对、pLDDT 和跨链 PAE。每包报告放在对应 ZIP 旁；all_scores.csv、all_scores_all_models.csv、all_scores_missing.csv 放在所选目录根。有关联清单才按清单顺序统计缺失；无清单不虚构“无缺失”。</li>
+                <li>提取按钮下方可查看阶段进度：扫描总量未知时不显示百分比；ZIP 解析和 CSV 写入分别按完成数显示进度，写入成功关闭后才计数。ZIP 阶段 100% 后仍需确认并保存 CSV。</li>
                 <li>解析成功后另行确认 CSV 覆盖路径。停止或失败保留已提交 CSV，不计未完成文件；原 ZIP、输入和 manifest 不改。</li>
             </ol>
             <p>普通单卷、非 ZIP64 的 stored/deflate ZIP 需要新版 Edge/Chrome。格式、CRC、JSON、匹配冲突或资源超限会停止，未完整解析前不写报告。详细限制见 <a href="README.md">README</a>。</p>
@@ -457,7 +459,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 5.0.5 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 5.0.6 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -467,7 +469,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter 5.0.5 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter 5.0.6 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 

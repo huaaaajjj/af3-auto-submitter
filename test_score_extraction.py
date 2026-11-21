@@ -100,16 +100,31 @@ CASE = history.split('const reviewChecks=', 1)[0] + r'''
 window.WIZ_global_data={oPEP7c:'fixture@example.com'};
 localStorage.setItem('af3-dev-panel-language','en');
 const zipFixtures=__FIXTURES__;
-const fs={pickers:0,options:[],confirms:[],commits:[],aborts:0,removed:[],writers:[],mtime:100,contentReads:0,scanApproved:false};
+const fs={pickers:0,options:[],confirms:[],commits:[],aborts:0,removed:[],writers:[],mtime:100,contentReads:0,scanApproved:false,progress:{scan:0,reads:[],writes:[]}};
 const absent=()=>new DOMException('Missing','NotFoundError');
 class Directory {
  constructor(name){this.kind='directory';this.name=name;this.files=new Map();this.dirs=new Map()}
  put(name,data){
   const file=new File([data],name,{lastModified:++fs.mtime});
-  if(name.endsWith('.zip')){const slice=file.slice.bind(file);file.slice=(...args)=>{assert(fs.scanApproved,'Read archive content before scan confirmation');fs.contentReads++;return slice(...args)}}
+  if(name.endsWith('.zip')){const slice=file.slice.bind(file);file.slice=(...args)=>{assert(fs.scanApproved,'Read archive content before scan confirmation');
+   if(id==='score-progress'){
+    const progress=ui('score-progress'),label=ui('score-progress-text');
+    assert(progress&&!progress.hidden&&label&&!label.hidden,'ZIP extraction progress is not visible');
+    assert(progress.tagName==='PROGRESS'&&progress.max===2&&progress.value===(name==='folds_one.zip'?0:1),'ZIP progress counted the current unfinished archive');
+    assert(progress.getAttribute('aria-labelledby')===label.id,'Progress bar has no accessible label');
+    assert(label.textContent.includes(name==='folds_one.zip'?'0/2 (0%)':'1/2 (50%)'),'ZIP progress text/count is wrong: '+label.textContent);
+    fs.progress.reads.push(progress.value);
+   }
+   fs.contentReads++;return slice(...args)}}
   this.files.set(name,file);
  }
- async *entries(){for(const name of this.files.keys())yield [name,await this.getFileHandle(name)];for(const entry of this.dirs)yield entry}
+ async *entries(){
+  if(id==='score-progress'){
+   const progress=ui('score-progress');
+   assert(progress&&!progress.hidden&&!progress.hasAttribute('value'),'Unknown directory scan showed missing or fabricated determinate progress');
+   fs.progress.scan++;
+  }
+  for(const name of this.files.keys())yield [name,await this.getFileHandle(name)];for(const entry of this.dirs)yield entry}
  async isSameEntry(other){return other===this}
  async resolve(other){if(other===this)return [];for(const [name,dir] of this.dirs){const path=await dir.resolve(other);if(path)return [name,...path]}return null}
  async getDirectoryHandle(name,options={}){if(!this.dirs.has(name)){if(!options.create)throw absent();this.dirs.set(name,new Directory(name))}return this.dirs.get(name)}
@@ -123,6 +138,12 @@ class Directory {
    fs.writers.push(options.mode);const csv=name.endsWith('.csv');let staged='';
    if(csv&&id==='score-write-denied')throw new DOMException('Disk full','QuotaExceededError');
    return {async write(data){
+    if(csv&&id==='score-progress'){
+     const progress=ui('score-progress'),label=ui('score-progress-text');
+     assert(progress&&!progress.hidden&&progress.max===7&&progress.value===fs.commits.length,'CSV progress advanced before successful file close');
+     assert(label.textContent.includes(fs.commits.length+'/7'),'CSV progress text is wrong: '+label.textContent);
+     fs.progress.writes.push(progress.value);
+    }
     if(csv&&id==='score-partial'&&fs.commits.length===1)throw new DOMException('Disk full','QuotaExceededError');
     staged=data;
     if(csv&&id==='score-cleanup-failure')throw Error('Synthetic write failure');
@@ -159,7 +180,7 @@ if(id==='score-corrupt')results.put('folds_one.zip',new Uint8Array([80,75,3,4,0]
 if(id==='score-missing-results')batch.dirs.delete('results');
 if(id==='score-bad-manifest')batch.put('manifest.json','{broken');
 const reused=['score-reuse','score-reuse-no-picker','score-unrelated-open','score-local-manifest','score-local-manifest-invalid'].includes(id);
-const standalone=['score-standalone','score-nested','score-unrelated-open','score-scan-cancel','score-picker-default','score-duplicate-basenames','score-reentry'].includes(id);
+const standalone=['score-standalone','score-nested','score-unrelated-open','score-scan-cancel','score-picker-default','score-duplicate-basenames','score-reentry','score-progress'].includes(id);
 const output=reused||standalone?results:batch;
 if(id==='score-nested'||id==='score-duplicate-basenames'){
  const nested=new Directory('nested');nested.put(id==='score-nested'?'extra.zip':'folds_one.zip',bytes('two'));results.dirs.set('nested',nested);
@@ -177,6 +198,15 @@ window.confirm=message=>{
  fs.confirms.push(message);
  const scan=message.startsWith('Chosen folder:');
  if(scan){assert(fs.contentReads===0,'Preview ran after archive parsing');if(id==='score-preview-change')results.put('folds_one.zip',bytes('two'));fs.scanApproved=id!=='score-scan-cancel';return fs.scanApproved}
+ if(id==='score-progress'){
+  const progress=ui('score-progress'),label=ui('score-progress-text');
+  assert(progress&&!progress.hidden&&progress.max===2&&progress.value===2,'Finished parsing progress was not reported before write confirmation');
+  assert(label.textContent.includes('2/2 (100%)'),'Final ZIP parsing percentage is wrong');
+  assert(uiStatus().includes('preparing CSV'),'Missing report-preparation phase');
+  ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));
+  assert(label.textContent.includes('ZIP 已解析')&&progress.value===2,'Progress translation reset its value');
+  ui('language-select').value='en';ui('language-select').dispatchEvent(new Event('change'));
+ }
  if(id==='score-output-change')output.put('all_scores.csv','new external CSV');
  return id!=='score-cancel';
 };
@@ -202,6 +232,7 @@ async function table(name){
  const script=document.createElement('script');script.src='/script.js';document.head.append(script);
  await waitFor(()=>ui('download-extract'),'Missing extraction button');
  assert(!ui('download-extract').disabled,'Local extraction must work without a website scan');
+ if(id==='score-progress')assert(ui('score-progress')?.hidden&&ui('score-progress-text')?.hidden,'Extraction progress was visible before starting');
  assert(!ui('download-save')&&!document.getElementById('af3-dev-panel').shadowRoot.textContent.includes('Saves separate ZIPs'),'Removed ZIP-save button/help is still present');
 
  if(reused){
@@ -228,7 +259,7 @@ async function table(name){
  ui('download-extract').click();
  await waitFor(()=>ui('download-stop').hidden,'Extraction did not finish',60000);fs.unlock?.();
  const status=uiStatus();
- const success=['score-extract','score-existing','score-reuse','score-stored','score-flat','score-missing-full','score-null-iptm','score-standalone','score-nested','score-unrelated-open','score-picker-default','score-duplicate-basenames','score-reentry'].includes(id);
+ const success=['score-extract','score-existing','score-reuse','score-stored','score-flat','score-missing-full','score-null-iptm','score-standalone','score-nested','score-unrelated-open','score-picker-default','score-duplicate-basenames','score-reentry','score-progress'].includes(id);
  if(id==='score-local-manifest'){
   const best=await table('all_scores.csv'),missing=await table('all_scores_missing.csv'),ix=key=>best[0].indexOf(key);
   assert(fs.commits.length===7&&best.length===3&&missing.length===1&&status.includes('missing manifest jobs: 0'),'Chosen folder own manifest was overridden by the opened parent: '+status);
@@ -279,6 +310,8 @@ async function table(name){
  if(id==='score-local-manifest-invalid')assert(fs.commits.length===0&&fs.contentReads===0&&status.includes('associated manifest.json is invalid'),'Invalid own manifest silently fell back to parent');
  if(id.includes('cleanup-failure'))assert(status.includes('Could not remove')&&status.includes('folds_one_scores_best.csv'),'Failed cleanup did not report the exact placeholder');
  if(id==='score-picker-stop')assert(fs.contentReads===0&&fs.confirms.length===0,'Stop during folder choice proceeded to preview or content reads');
+ assert(ui('score-progress')?.hidden&&ui('score-progress-text')?.hidden,'Progress remained active after completion, failure or cancellation');
+ if(id==='score-progress')assert(fs.progress.scan>0&&fs.progress.reads.includes(0)&&fs.progress.reads.includes(1)&&fs.progress.writes.join(',')==='0,1,2,3,4,5,6','Missing extraction stage progression');
  assert(fs.writers.every(mode=>mode==='exclusive'),'Non-exclusive CSV writer');
  assert(state.transportCalls.length===0&&state.downloads.length===0&&state.bulkDownloads.length===0&&state.submits===0&&state.clones===0&&state.deletes===0&&state.nativeCheckboxClicks===0,'Extraction performed a website action');
  assert(state.errors.length===0,state.errors.join('; '));
@@ -287,7 +320,7 @@ async function table(name){
 </script>'''
 CASE = CASE.replace('__FIXTURES__', json.dumps(FIXTURES))
 SCENARIOS = [
-    'score-local-manifest', 'score-local-manifest-invalid', 'score-cleanup-failure', 'score-stop-cleanup-failure', 'score-picker-stop', 'score-reentry', 'score-preview-change', 'score-duplicate-basenames', 'score-standalone', 'score-nested', 'score-unrelated-open', 'score-scan-cancel', 'score-picker-default', 'score-extract', 'score-stored', 'score-flat', 'score-reuse', 'score-reuse-no-picker', 'score-existing', 'score-cancel',
+    'score-progress', 'score-local-manifest', 'score-local-manifest-invalid', 'score-cleanup-failure', 'score-stop-cleanup-failure', 'score-picker-stop', 'score-reentry', 'score-preview-change', 'score-duplicate-basenames', 'score-standalone', 'score-nested', 'score-unrelated-open', 'score-scan-cancel', 'score-picker-default', 'score-extract', 'score-stored', 'score-flat', 'score-reuse', 'score-reuse-no-picker', 'score-existing', 'score-cancel',
     'score-picker-cancel', 'score-picker-denied', 'score-no-picker', 'score-no-decompressor',
     'score-missing-results', 'score-bad-manifest', 'score-empty', 'score-corrupt', 'score-crc',
     'score-encrypted', 'score-zip64', 'score-local-name', 'score-traversal', 'score-duplicate', 'score-bzip',
