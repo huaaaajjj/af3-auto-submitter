@@ -60,7 +60,7 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
 <body>
 <main>
   <header>
-    <p class="kicker">AF3 自动助手 v5.0.6 · 安装与完整使用指南</p>
+    <p class="kicker">AF3 自动助手 v5.0.7 · 安装与完整使用指南</p>
     <h1>AF3 自动提交助手使用指南</h1>
     <p class="lead">从安装、准备 FASTA、生成本地批次、导入并核对草稿，到确认提交预测、查找结果、保存 ZIP 和提取 CSV。先按日常流程使用；后面的 50 任务章节是单独的历史实测记录。</p>
     <nav aria-label="教程章节">
@@ -80,7 +80,7 @@ footer { border-top: 1px solid var(--line); padding-block-start: 1rem; margin-bl
       <li>
         <div class="copy">
           <h3>安装脚本并确认账号</h3>
-          <p>使用 Edge 或 Chrome 安装 Tampermonkey，再安装仓库正式版 <code>af3-auto-submitter.user.js</code>。允许扩展在 <code>alphafoldserver.com</code> 运行并刷新页面；标题应显示 <strong>v5.0.6</strong>，顶部当前账号需与本次任务所属账号一致。</p>
+          <p>使用 Edge 或 Chrome 安装 Tampermonkey，再安装仓库正式版 <code>af3-auto-submitter.user.js</code>。允许扩展在 <code>alphafoldserver.com</code> 运行并刷新页面；标题应显示 <strong>v5.0.7</strong>，顶部当前账号需与本次任务所属账号一致。</p>
           <p>使用 InPrivate/无痕窗口时，另行允许 Tampermonkey 在无痕模式运行。若要与普通窗口共享账号目录，按 <a href="https://github.com/huaaaajjj/af3-auto-submitter/blob/main/README.md">README 的升级说明</a> 设置扩展存储；登录 Cookie 仍由浏览器管理。</p>
         </div>
         <div class="media"><p class="note">面板未出现时先检查脚本是否启用、站点权限及当前地址，再刷新官网。只启用一份正式版。</p></div>
@@ -190,6 +190,9 @@ MNPQRSTVWY</pre>
         </div>
       </li>
     </ol>
+    <h3>查看分级日志并导出</h3>
+    <p>展开面板底部“日志”，可按 DEBUG（调试细节）、INFO（操作结果）、WARN（取消/需处理）和 ERROR（真实失败）筛选。目录扫描、ZIP 模型/链对数量与解析耗时、CSV 成功提交都会记录；不会把写入开始当成成功。</p>
+    <p>点“导出全部日志”并检查浏览器下载列表，导出含版本、完整 UTC 时间、全部保留级别和淘汰统计，不受筛选影响。仅保留本页最近 500 条，刷新后清空；对外分享前请检查并脱敏账号、任务名及本地文件名。</p>
     <p class="note">本页说明常用路径；日期扫描、匹配规则、文件格式和资源限制见 <a href="https://github.com/huaaaajjj/af3-auto-submitter/blob/main/README.md">README 的完整技术说明</a>。换账号、真实预测及任何账户额度操作都应遵守官网规则；不绕过账号或额度限制。</p>
   </section>
 
