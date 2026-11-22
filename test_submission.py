@@ -582,6 +582,52 @@ async function checkAccountManager(){
     assert(state.calls===0&&state.opened.length===0&&state.errors.length===0,'Strict CSP rendering caused a task action or script error');
     parent.postMessage({type:'af3-case-result',result:{passed:true,message:'Trusted Types enforced: startup, navigation, account save and panel recovery; 0 submits'}},location.origin);return;
   }
+  if(id==='log-controls'){
+    await until(()=>ui('log-level')&&ui('log-export'),5000);
+    const previousLanguage=ui('language-select').value;
+    ui('language-select').value='en';ui('language-select').dispatchEvent(new Event('change'));
+    assert(!ui('log-controls').getClientRects().length,'Collapsed log exposed its controls');
+    ui('log-toggle').click();
+    assert(ui('log-level').getClientRects().length&&ui('log-level').getAttribute('aria-label'),'Log filter is inaccessible');
+    ui('v20-count').value=1;ui('v20-btn').click();await until(()=>state.summaries.length===1,20000);
+    window.showDirectoryPicker=async()=>{throw new DOMException('Denied\n[INFO] forged <img src=x> https://secret.invalid/?token=private','NotAllowedError')};
+    ui('fasta-restore').click();await until(()=>ui('fasta-stop').hidden);
+    ui('download-start').value='';ui('download-scan').click();
+    const original=ui('log-body').textContent;
+    for(const level of ['DEBUG','INFO','WARN','ERROR'])assert(original.includes('['+level+']'),'Missing severity '+level+': '+original);
+    assert(!ui('log-body').querySelector('img')&&!original.includes('token=private')&&!original.includes('\n[INFO] forged'),'Untrusted log content was unsafe or leaked a URL');
+    assert(/\[\d{4}-\d{2}-\d{2}T[^\]]+Z\]/.test(original),'Log timestamps lack date/time zone');
+    for(const level of ['debug','info','warn','error']){
+      ui('log-level').value=level;ui('log-level').dispatchEvent(new Event('change'));
+      const entries=[...ui('log-body').querySelectorAll('[data-level]')];
+      assert(entries.length&&entries.every(n=>n.dataset.level===level),'Log filter included another level: '+level);
+    }
+    ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));
+    assert(ui('log-level').value==='error'&&ui('log-export').textContent.includes('导出'),'Language change lost filter or export label');
+    ui('language-select').value='en';ui('language-select').dispatchEvent(new Event('change'));
+    let captured=null,revoked=null;
+    const create=URL.createObjectURL.bind(URL),revoke=URL.revokeObjectURL.bind(URL),click=HTMLAnchorElement.prototype.click;
+    URL.createObjectURL=blob=>{captured={blob,url:create(blob)};return captured.url};
+    URL.revokeObjectURL=url=>{revoked=url;revoke(url)};
+    HTMLAnchorElement.prototype.click=function(){if(this.download.startsWith('af3-logs-')){captured.filename=this.download;return}return click.call(this)};
+    ui('log-export').click();await until(()=>captured?.filename,5000);
+    const text=await captured.blob.text();
+    for(const level of ['DEBUG','INFO','WARN','ERROR'])assert(text.includes('['+level+']'),'Export silently used the selected filter: '+level);
+    assert(text.includes('AF3 Auto Submitter v')&&text.includes('Exported (UTC):')&&captured.blob.type.startsWith('text/plain'),'Export lacks release metadata/type');
+    assert(!text.includes('token=private')&&!text.includes('\n[INFO] forged')&&/\.txt$/.test(captured.filename),'Unsafe export contents/name');
+    await until(()=>revoked===captured.url,5000);
+    URL.createObjectURL=()=>{throw Error('Blocked export')};ui('log-export').click();
+    assert(ui('log-body').textContent.includes('[ERROR]')&&ui('log-body').textContent.includes('export'),'Export failure was not logged');
+    for(let i=0;i<506;i++)ui('download-scan').click();
+    ui('log-level').value='all';ui('log-level').dispatchEvent(new Event('change'));
+    assert(ui('log-body').querySelectorAll('[data-level]').length===500&&ui('log-summary').textContent.includes('discarded'),'Log retention limit/drop notice is missing');
+    document.getElementById('af3-dev-panel').remove();await until(()=>ui('log-level'),5000);
+    assert(ui('log-toggle').getAttribute('aria-expanded')==='true'&&ui('log-level').value==='all'&&ui('log-body').querySelectorAll('[data-level]').length===500,'Panel recovery lost log state');
+    assert(state.calls===1&&state.errors.length===0,'Log controls triggered an extra submission or uncaught error');
+    URL.createObjectURL=create;URL.revokeObjectURL=revoke;HTMLAnchorElement.prototype.click=click;
+    ui('language-select').value=previousLanguage;ui('language-select').dispatchEvent(new Event('change'));
+    parent.postMessage({type:'af3-case-result',result:{passed:true,message:'severity filtering, UTC timestamps, complete text export, sanitization, cleanup, retention and panel recovery'}},location.origin);return;
+  }
   if(id==='action-error-feedback'){
     await until(()=>ui('download-scan'));
     ui('download-start').value='';ui('download-scan').click();
@@ -716,6 +762,7 @@ async function checkAccountManager(){
   }
   if(['server-error','failed-error','no-toast','stale-row'].includes(id))assert(ui('footer-msg').classList.contains('af3-error-message'),'Submission failure message is not highlighted');
   if(['delayed-success','failed-success','paused-success','stop-confirmed-refresh','sandbox-event-window','failed-sandbox-event-window','multi-success'].includes(id))assert(!ui('footer-msg').classList.contains('af3-error-message'),'Successful or stopped submission flashed as an error');
+  if(['server-error','failed-error','no-toast','stale-row'].includes(id))assert([...ui('log-body').querySelectorAll('[data-level="error"]')].some(n=>n.textContent.includes('运行汇总')),'Error filter hides the failed-run summary');
   if(id==='failed-error')assert(!state.earlySuccess,'Failed clone was called submitted before the server response');
   if(id==='paused-success')assert(state.pausedConfirmed,'Success received during pause was not processed until resume');
   parent.postMessage({type:'af3-case-result',result:{passed:true,message:'confirm clicks='+state.calls+', confirmed='+successes}},location.origin);
@@ -724,7 +771,7 @@ async function checkAccountManager(){
 
 
 SCENARIOS = [
-    'action-error-feedback',
+    'log-controls', 'action-error-feedback',
     'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-unavailable', 'account-login-busy', 'account-quota', 'account-persistence',
     'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-migration', 'account-switch-submission', 'account-switch-confirm',
     'stop-confirmed-refresh', 'delayed-success', 'old-success', 'server-error', 'no-toast', 'sandbox-event-window',

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.6
+// @version      5.0.7
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期勾选官网下载、选择本地 ZIP 文件夹提取指标 CSV。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.6';
+    const SCRIPT_VERSION = '5.0.7';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -645,6 +645,36 @@
         scoreLocked: "Another page is extracting local ZIPs. Stop that extraction before retrying.",
         scoreExtract: "Choose ZIP folder / extract CSV…",
         scoreRunning: "Running: extracting local ZIP scores",
+        logLevel: "Log level",
+        logAll: "All levels",
+        logDebug: "DEBUG · Detail",
+        logInfo: "INFO · Information",
+        logWarn: "WARN · Warning",
+        logError: "ERROR · Error",
+        logExport: "Export all logs",
+        logHelp: "This page retains the latest {limit} entries; reloading clears them. Logs may include account, job and local file names. Review/redact before sharing.",
+        logSummary: "Showing {shown}/{total}; discarded {dropped}. Export includes all retained levels.",
+        logExportRequested: "Requested export of {count} log entries; check the browser downloads list.",
+        logExportFailed: "Log export failed: {detail}",
+        logCancelled: "{action}: user cancelled before the action.",
+        fastaLogGenerate: "Generating local batches: {name}, {bytes} bytes. No upload.",
+        fastaLogGenerated: "Local batches saved: {folder}; {jobs} jobs, {batches} batches; manifest revision {revision}.",
+        fastaLogRestore: "Opening and validating an existing batch folder…",
+        fastaLogRestored: "Batch folder restored: {folder}; {jobs} jobs, {batches} batches; manifest revision {revision}. No upload.",
+        fastaLogPage: "History page {page}: read {count} rows; {scanned} rows scanned.",
+        fastaLogValidated: "Batch {index}: website validation accepted all {count} draft names; preparing one native draft-save click.",
+        fastaLogPersistFailed: "Final local manifest save failed: {detail}. Check the original website history before retrying.",
+        downloadLogApply: "Applying verified website selection: {mode}; {count} jobs; queue item {index}/{total}. This does not download files.",
+        downloadLogBatch: "Folder {folder}: {batches} account batches; {bound} bound IDs, {missing} confirmed jobs without IDs; {selected} results selected.",
+        downloadLogPages: "History scan finished after {pages} pages; {ending}.",
+        downloadLogEndReached: "reached the end of history",
+        downloadLogDateReached: "stopped after the verified date boundary",
+        scoreLogStart: "Local ZIP extraction requested; waiting for a folder choice. No website requests.",
+        scoreLogScan: "Folder {folder}: scanned {folders} directories, found {zips} ZIPs ({bytes} bytes), ignored {ignored} other files.",
+        scoreLogParsed: "ZIP parsed {index}/{total}: {name}; {bytes} bytes, {models} models, {pairs} directed chain pairs; {ms} ms.",
+        scoreLogOutputs: "CSV write confirmed: {files} outputs, {existing} replacements; folder {folder}.",
+        scoreLogSaved: "CSV committed {saved}/{total}: {name}; {bytes} bytes; {ms} ms.",
+        submissionLogTarget: "Processing task {index}: {name}. A task click is not a launch confirmation.",
         scoreHint: "Download ZIPs with the website and put them in one folder (results recommended). Always choose that folder here; preview its tree and confirm before reading ZIP contents. Per-ZIP CSVs stay beside each ZIP; merged tables go in the chosen folder. No manifest or website scan required. Existing CSV replacements need confirmation.",
         scoreScanning: "Scanning folder structure: {folder}…",
         scoreReadProgress: "ZIPs parsed: {completed}/{total} ({percent}%)",
@@ -735,6 +765,36 @@
             scoreLocked: "另一页面正在提取本地 ZIP，请先停止那次提取再重试。",
             scoreExtract: "选择 ZIP 文件夹 / 提取 CSV…",
             scoreRunning: "运行中：正在提取本地 ZIP 指标",
+            logLevel: "日志级别",
+            logAll: "全部级别",
+            logDebug: "DEBUG · 调试",
+            logInfo: "INFO · 信息",
+            logWarn: "WARN · 警告",
+            logError: "ERROR · 错误",
+            logExport: "导出全部日志",
+            logHelp: "仅保留本页最近 {limit} 条，刷新后清空。日志可能含账号、任务名和本地文件名，分享前请检查并脱敏。",
+            logSummary: "显示 {shown}/{total} 条，已淘汰 {dropped} 条。导出包含全部保留级别。",
+            logExportRequested: "已请求导出 {count} 条日志，请在浏览器下载列表核对文件。",
+            logExportFailed: "日志导出失败：{detail}",
+            logCancelled: "{action}：用户已在操作前取消。",
+            fastaLogGenerate: "开始生成本地批次：{name}，{bytes} 字节；此步骤不上传。",
+            fastaLogGenerated: "本地批次已保存：{folder}；{jobs} 个任务、{batches} 批；清单版本 {revision}。",
+            fastaLogRestore: "开始打开并校验已有批次文件夹…",
+            fastaLogRestored: "已恢复批次目录：{folder}；{jobs} 个任务、{batches} 批；清单版本 {revision}；未上传。",
+            fastaLogPage: "历史第 {page} 页：读取 {count} 行，累计 {scanned} 行。",
+            fastaLogValidated: "第 {index} 批：官网已通过全部 {count} 个草稿名称校验，准备单次原生草稿保存。",
+            fastaLogPersistFailed: "最终本地清单保存失败：{detail}。重试前请先核对官网原记录。",
+            downloadLogApply: "开始应用已核实的官网勾选：{mode}；{count} 个任务；队列第 {index}/{total} 项。此操作不下载文件。",
+            downloadLogBatch: "目录 {folder}：当前账号 {batches} 批；已绑定 ID {bound} 个、已确认但缺 ID {missing} 个；选中结果 {selected} 个。",
+            downloadLogPages: "历史扫描结束：共 {pages} 页；{ending}。",
+            downloadLogEndReached: "已扫描到底",
+            downloadLogDateReached: "已越过确认的日期边界后提前结束",
+            scoreLogStart: "请求本地 ZIP 提取，等待选择文件夹；不请求官网。",
+            scoreLogScan: "目录 {folder}：已扫描 {folders} 个目录，找到 {zips} 个 ZIP（共 {bytes} 字节），忽略其他文件 {ignored} 个。",
+            scoreLogParsed: "ZIP 解析完成 {index}/{total}：{name}；{bytes} 字节、{models} 个模型、{pairs} 个有向链对；耗时 {ms} 毫秒。",
+            scoreLogOutputs: "已确认写入 CSV：共 {files} 个输出、覆盖已有文件 {existing} 个；目录 {folder}。",
+            scoreLogSaved: "CSV 已提交 {saved}/{total}：{name}；{bytes} 字节；耗时 {ms} 毫秒。",
+            submissionLogTarget: "正在处理第 {index} 个任务：{name}。点击任务不等于已确认提交。",
             scoreHint: "先用官网下载 ZIP，集中放到一个文件夹（推荐 results）。每次点击都由你选择文件夹，先预览目录结构并确认，再读取 ZIP 提取；不必打开批次或查找官网任务。每包 CSV 放在对应 ZIP 旁，汇总表放在所选目录；替换已有 CSV 前再次确认，原 ZIP 和输入文件不变。",
             scoreScanning: "正在扫描文件夹结构：{folder}…",
             scoreReadProgress: "ZIP 已解析：{completed}/{total}（{percent}%）",
@@ -1094,6 +1154,7 @@
             fastaState.message = total === null ? t('fastaCheckingPage', { page: visited.size, count: scanned }) :
                 t('fastaCheckingTotal', { page: visited.size, count: scanned, total, percent: Math.floor(scanned / total * 100) });
             renderFastaSection();
+            addLog(t('fastaLogPage', { page: visited.size, count: page.jobs.length, scanned }), 'debug');
             for (let job of page.jobs) {
                 const cell = job.row.querySelector('.mat-column-status, .cdk-column-status');
                 const statusText = ((cell?.textContent || '') + ' ' + Array.from(cell?.querySelectorAll('[aria-label], [mattooltip]') || [], n => n.getAttribute('aria-label') || n.getAttribute('mattooltip')).join(' ')).toLowerCase();
@@ -1144,11 +1205,12 @@
 
     async function generateFastaBatches() {
         if (fastaState.busy || isRunning || downloadState.busy) return;
-        if (typeof window.showDirectoryPicker !== 'function') { fastaState.error = true; fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
+        if (typeof window.showDirectoryPicker !== 'function') { fastaState.error = true; fastaState.message = t('fastaUnsupported'); addLog(fastaState.message, 'error'); renderFastaSection(); return; }
         const file = getUiElement('af3-fasta-file')?.files[0];
-        if (!file?.size || file.size > FASTA_FILE_LIMIT) { fastaState.error = true; fastaState.message = t('fastaChooseFile'); renderFastaSection(); return; }
+        if (!file?.size || file.size > FASTA_FILE_LIMIT) { fastaState.error = true; fastaState.message = t('fastaChooseFile'); addLog(fastaState.message, 'warn'); renderFastaSection(); return; }
         fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.progress = null;
         fastaState.message = t('fastaRunning'); renderFastaSection(); checkSystemStatus();
+        addLog(t('fastaLogGenerate', { name: file.name, bytes: file.size }));
         try {
             // Request permission directly from the click, before asynchronous parsing consumes activation.
             const parent = await window.showDirectoryPicker({ mode: 'readwrite' });
@@ -1202,10 +1264,12 @@
             manifest.generationComplete = true;
             await persistFastaManifest();
             await scoreDefaultDirectory(fastaState.dir);
+            addLog(t('fastaLogGenerated', { folder: fastaState.dir.name, jobs: records.length, batches: manifest.batches.length, revision: manifest.revision }));
             fastaState.message = t('fastaSummary', { count: records.length, batches: manifest.batches.length, lengths: records[0].chains.map(chain => chain.length).join(' + ') });
         } catch (error) {
             fastaState.error = error.name !== 'AbortError' && !isUserStopError(error);
             fastaState.message = fastaState.error ? error.message : t('fastaStopped');
+            addLog(t('fastaLogError', { detail: fastaState.message }), fastaState.error ? 'error' : 'warn');
         } finally { fastaState.busy = false; renderFastaSection(); checkSystemStatus(); }
     }
 
@@ -1238,8 +1302,9 @@
 
     async function restoreFastaBatches() {
         if (fastaState.busy || isRunning || downloadState.busy) return;
-        if (typeof window.showDirectoryPicker !== 'function') { fastaState.error = true; fastaState.message = t('fastaUnsupported'); renderFastaSection(); return; }
+        if (typeof window.showDirectoryPicker !== 'function') { fastaState.error = true; fastaState.message = t('fastaUnsupported'); addLog(fastaState.message, 'error'); renderFastaSection(); return; }
         fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.progress = null; renderFastaSection(); checkSystemStatus();
+        addLog(t('fastaLogRestore'));
         try {
             const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
             const { manifest } = await readFastaManifest(dir);
@@ -1260,12 +1325,14 @@
                 await persistFastaManifest();
             } catch (error) { Object.assign(fastaState, previous); throw error; }
             await scoreDefaultDirectory(dir);
+            addLog(t('fastaLogRestored', { folder: dir.name, jobs: manifest.source.records, batches: manifest.batches.length, revision: manifest.revision }));
             getUiElement('af3-fasta-file').value = '';
             fastaState.message = t('fastaDirectory');
         } catch (error) {
             if (error.name !== 'AbortError') fastaState.saved = false;
             fastaState.error = error.name !== 'AbortError' && !isUserStopError(error);
             fastaState.message = fastaState.error ? error.message : t('fastaStopped');
+            addLog(t('fastaLogError', { detail: fastaState.message }), fastaState.error ? 'error' : 'warn');
         }
         finally { fastaState.busy = false; renderFastaSection(); checkSystemStatus(); }
     }
@@ -1346,7 +1413,7 @@
                 : t('fastaLogImportStart', { index: batch.index, count: batch.jobs.length, account }));
             if (Array.from(document.querySelectorAll('gdm-af-upload-dialog, [role="dialog"], mat-dialog-container, [role="menu"]')).some(downloadVisible)) throw new Error(t('fastaCloseDialog'));
             if (!checkOnly && (selected.length !== 1 || selected[0] !== 'saved draft')) throw new Error(t('fastaNeedDraft'));
-            if (!checkOnly && !confirm(t('fastaConfirm', { index: batch.index, count: batch.jobs.length, account }))) return;
+            if (!checkOnly && !confirm(t('fastaConfirm', { index: batch.index, count: batch.jobs.length, account }))) { addLog(t('logCancelled', { action: t('fastaImport') }), 'warn'); return; }
             fastaCheck();
             await selectHistoryScanPageSize(fastaState, getFastaContext, 'size', fastaCheck);
             addLog(t('fastaLogPageSize'));
@@ -1402,6 +1469,7 @@
                 return Array.from(dialog.querySelectorAll('button')).find(button => downloadText(button) === text && downloadButtonEnabled(button));
             };
             const save = await fastaWait(validatedSave);
+            addLog(t('fastaLogValidated', { index: batch.index, count: batch.jobs.length }));
             attempt.phase = 'saving_drafts'; attempt.saveClickedAt = new Date().toISOString(); batch.status = 'uncertain';
             await persistFastaManifest();
             fastaCheck();
@@ -1427,7 +1495,7 @@
         } catch (error) {
             fastaState.error = !isUserStopError(error);
             fastaState.message = isUserStopError(error) ? t('fastaStopped') : error.message;
-            addLog(t('fastaLogError', { detail: fastaState.message }), 'error');
+            addLog(t('fastaLogError', { detail: fastaState.message }), isUserStopError(error) ? 'warn' : 'error');
             if (attempt) {
                 attempt.result = saveSent ? 'unconfirmed' : 'not_saved'; attempt.error = fastaState.message;
                 if (!saveSent && attempt.saveClickedAt) { attempt.savePreparedAt = attempt.saveClickedAt; attempt.saveClickedAt = null; }
@@ -1444,7 +1512,7 @@
             fastaState.dialog = null;
             if (attempt) {
                 attempt.endedAt = new Date().toISOString();
-                try { await persistFastaManifest(); } catch (error) { fastaState.error = true; fastaState.message = error.message; }
+                try { await persistFastaManifest(); } catch (error) { fastaState.error = true; fastaState.message = error.message; addLog(t('fastaLogPersistFailed', { detail: error.message }), 'error'); }
             }
             fastaState.busy = false; fastaState.context = null; renderFastaSection(); checkSystemStatus();
         }
@@ -1562,7 +1630,8 @@
         watchNative: false, nativeMutation: false, selectionChanged: false,
         format: getSavedDownloadFormat(), queue: null, scoreDirectory: null,
     };
-    let logExpanded = false;
+    let logExpanded = false, logFilter = 'all', logDropped = 0;
+    const LOG_LIMIT = 500;
     let currentLanguage = getSavedLanguage();
     let runProgress = {
         active: false,
@@ -2148,14 +2217,42 @@
         if (target.textContent !== message) target.textContent = message;
     }
 
-    function addLog(message, level = 'info') {
-        const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-        logEntries.push({ time, message, level });
-        if (logEntries.length > 120) logEntries.shift();
+    function formatLogEntry(entry) {
+        return `[${entry.time}] [${entry.level.toUpperCase()}] ${entry.message}`;
+    }
 
-        const consoleFn = level === 'warn' ? console.warn : level === 'error' ? console.error : console.log;
-        consoleFn(`[AF3] ${message}`);
+    function addLog(message, level = 'info') {
+        if (!['debug', 'info', 'warn', 'error'].includes(level)) level = 'info';
+        // Website text and filenames are data: keep one physical log line and omit full URLs/tokens.
+        message = String(message).replace(/https?:\/\/\S+/gi, '[URL omitted]')
+            .replace(/[\x00-\x1f\x7f]/g, char => '\\x' + char.charCodeAt(0).toString(16).padStart(2, '0'));
+        const entry = { time: new Date().toISOString(), message, level };
+        logEntries.push(entry);
+        if (logEntries.length > LOG_LIMIT) { logEntries.shift(); logDropped++; }
+        const consoleFn = level === 'debug' ? console.debug : level === 'warn' ? console.warn : level === 'error' ? console.error : console.log;
+        consoleFn(`[AF3] ${formatLogEntry(entry)}`);
         renderLogPanel();
+    }
+
+    function exportLogs() {
+        let url = null, link = null;
+        try {
+            const count = logEntries.length;
+            const text = [`AF3 Auto Submitter v${SCRIPT_VERSION}`, `Exported (UTC): ${new Date().toISOString()}`,
+                `Retained: ${count}/${LOG_LIMIT}; discarded: ${logDropped}; all levels (UI filter is not applied).`,
+                '', ...logEntries.map(formatLogEntry)].join('\r\n') + '\r\n';
+            url = URL.createObjectURL(new Blob(['﻿', text], { type: 'text/plain;charset=utf-8' }));
+            link = document.createElement('a'); link.href = url;
+            link.download = `af3-logs-v${SCRIPT_VERSION}-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+            link.hidden = true; getPanelHost().shadowRoot.appendChild(link); link.click();
+            addLog(t('logExportRequested', { count }));
+        } catch (error) {
+            addLog(t('logExportFailed', { detail: error.message }), 'error');
+            logExpanded = true; renderLogPanel();
+        } finally {
+            link?.remove();
+            if (url) setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
     }
 
     function startRunProgress(total) {
@@ -2236,22 +2333,34 @@
             success: runProgress.success,
             skipped: runProgress.skipped,
             errors: runProgress.errors
-        }));
+        }), status === 'error' ? 'error' : status === 'stopped' ? 'warn' : 'info');
         alert(summary);
     }
 
     function renderLogPanel() {
-        const toggle = getUiElement('af3-log-toggle');
-        const body = getUiElement('af3-log-body');
-
+        const toggle = getUiElement('af3-log-toggle'), body = getUiElement('af3-log-body');
         if (toggle) {
             toggle.textContent = `${t('logLabel')} (${logEntries.length})`;
             toggle.setAttribute('aria-expanded', String(logExpanded));
         }
+        const controls = getUiElement('af3-log-controls');
+        if (controls) {
+            controls.hidden = !logExpanded;
+            controls.querySelectorAll('[data-log-i18n]').forEach(node => { node.textContent = t(node.dataset.logI18n, { limit: LOG_LIMIT }); });
+        }
+        const filter = getUiElement('af3-log-level');
+        if (filter) { filter.value = logFilter; filter.setAttribute('aria-label', t('logLevel')); }
+        const exportButton = getUiElement('af3-log-export');
+        if (exportButton) exportButton.disabled = !logEntries.length;
+        const visible = logEntries.filter(entry => logFilter === 'all' || entry.level === logFilter);
+        const summary = getUiElement('af3-log-summary');
+        if (summary) summary.textContent = t('logSummary', { shown: visible.length, total: logEntries.length, dropped: logDropped });
         if (!body) return;
-
         body.style.display = logExpanded ? 'block' : 'none';
-        body.textContent = logEntries.map(entry => `[${entry.time}] ${entry.message}`).join('\n');
+        body.replaceChildren(...visible.map(entry => {
+            const line = document.createElement('span'); line.dataset.level = entry.level;
+            line.textContent = formatLogEntry(entry) + '\n'; return line;
+        }));
         if (logExpanded) body.scrollTop = body.scrollHeight;
     }
 
@@ -2485,14 +2594,14 @@
 
         const menuBtn = buttons[buttons.length - 1];
 
-        addLog(t('clickRowMenu'));
+        addLog(t('clickRowMenu'), 'debug');
         simulateClick(menuBtn, 'rgba(0, 0, 255, 0.3)');
         return true;
     }
 
     // 2. 【核心修复】全屏搜索 "Clone and reuse" 文字并点击
     async function clickCloneOption() {
-        addLog(t('lookingClone'));
+        addLog(t('lookingClone'), 'debug');
 
         // 轮询机制：菜单弹出可能有动画，我们给它 2秒 时间反复找
         for(let i = 0; i < 10; i++) {
@@ -2526,7 +2635,7 @@
                 // 为了保险，我们优先找它的 li 或 role="menuitem" 父级
                 const clickable = target.closest('li') || target.closest('[role="menuitem"]') || target.closest('button') || target;
 
-                addLog(t('foundClone'));
+                addLog(t('foundClone'), 'debug');
                 simulateClick(clickable, 'rgba(0, 255, 0, 0.5)'); // 绿色高亮
                 return true;
             }
@@ -2537,7 +2646,7 @@
 
     // 3. 返回 Failed 列表页
     async function backToFailedTab() {
-        addLog(t('backFailedTab'));
+        addLog(t('backFailedTab'), 'debug');
         const tabs = Array.from(document.querySelectorAll('button[role="tab"], div[role="tab"]'));
         const failedTab = tabs.find(t => t.textContent.includes("Failed"));
 
@@ -3084,6 +3193,15 @@
         showMessageError(getUiElement('af3-download-status'), false);
         downloadState.message = key;
         downloadState.messageVars = vars;
+        if (key !== 'downloadIdle') {
+            const level = ['error', 'downloadError', 'scoreError'].includes(key) ? 'error' :
+                ['downloadInvalidRange', 'downloadNoSelection', 'downloadBatchOpen', 'downloadBatchEmpty', 'downloadBatchNoAccount',
+                    'downloadBatchMissingIds', 'downloadBatchUnconfirmed', 'downloadStopped', 'downloadIncomplete', 'downloadBatchStopped',
+                    'downloadContextChanged', 'downloadNativeChanged', 'downloadQueueInvalid', 'scoreCancelled'].includes(key) ? 'warn' :
+                    ['downloadScanning', 'scoreReading', 'scoreWriting'].includes(key) ? 'debug' : 'info';
+            const logVars = key === 'downloadFound' ? { count: downloadState.jobs.length, selected: downloadState.selected.size, unknown: downloadState.unknown } : vars;
+            addLog(key === 'error' ? vars.detail : t(key, logVars), level);
+        }
         renderDownloadSection();
     }
 
@@ -3268,9 +3386,9 @@
         checkSystemStatus();
         try {
             downloadState.context = getDownloadContext();
+            addLog(t('downloadLogStart', { start, end, filters: JSON.parse(downloadState.context).selected.join(', ') }));
             await selectHistoryScanPageSize(downloadState, getDownloadContext, 'pageSize', checkDownloadActive);
             downloadState.scanContext = downloadState.context;
-            addLog(t('downloadLogStart', { start, end, filters: JSON.parse(downloadState.context).selected.join(', ') }));
             const history = getDownloadHistory();
             const { sort, search } = JSON.parse(downloadState.context);
             // Native unsearched MatTable data is sorted by Modified before pagination; search results need not be.
@@ -3304,6 +3422,7 @@
                 if (pastStart || !downloadButtonEnabled(page.next)) break;
                 page = await moveDownloadPage(page.next, page.signature);
             }
+            const ending = t(downloadButtonEnabled(page.next) ? 'downloadLogDateReached' : 'downloadLogEndReached');
             await firstDownloadPage();
             checkDownloadActive();
             downloadState.jobs = matches;
@@ -3311,9 +3430,9 @@
             downloadState.complete = true;
             setDownloadMessage('downloadFound');
             addLog(t('downloadLogResult', { count: matches.length, unknown: downloadState.unknown }));
+            addLog(t('downloadLogPages', { pages: visited.size, ending }), 'debug');
         } catch (error) {
             setDownloadMessage(isUserStopError(error) ? 'downloadIncomplete' : 'error', { detail: error.message });
-            addLog(t('fastaLogError', { detail: error.message }), 'error');
         } finally {
             downloadState.busy = false;
             renderDownloadSection();
@@ -3336,10 +3455,11 @@
             queueRecords = advance ? previousQueue.records : downloadState.jobs.filter(job => downloadState.selected.has(job.key));
             if (queueRecords.length !== downloadState.selected.size) throw new Error(t('downloadNativeMismatch'));
             if (advance && previousQueue.context !== getDownloadContext()) throw new Error(t('downloadContextChanged'));
-            if (!advance && !confirm(t(individual ? 'downloadIndividualConfirm' : 'downloadApplyConfirm', { count: queueRecords.length }))) return;
+            if (!advance && !confirm(t(individual ? 'downloadIndividualConfirm' : 'downloadApplyConfirm', { count: queueRecords.length }))) { addLog(t('logCancelled', { action: t('downloadApply') }), 'warn'); return; }
             checkDownloadActive();
             queueIndex = advance ? previousQueue.index + 1 : 0;
             records = individual ? [queueRecords[queueIndex]] : queueRecords;
+            addLog(t('downloadLogApply', { mode: t(individual ? 'downloadIndividual' : 'downloadCombined'), count: records.length, index: queueIndex + 1, total: individual ? queueRecords.length : 1 }));
         } catch (error) {
             resetDownloadQueue();
             downloadState.complete = false;
@@ -3417,6 +3537,7 @@
             const batches = manifest.batches.filter(batch => normalizeAccountEmail(batch.account) === account);
             const confirmed = batches.flatMap(batch => batch.jobs).filter(job => job.importStatus === 'confirmed');
             const missing = confirmed.length - bound.size;
+            addLog(t('downloadLogBatch', { folder: directory.name, batches: batches.length, bound: bound.size, missing, selected: selected.length }), selected.length ? 'info' : 'warn');
             resetDownloadQueue();
             downloadState.selected = new Set(selected.map(job => job.key));
             setDownloadMessage(selected.length ? 'downloadFound' : !batches.length ? 'downloadBatchNoAccount' :
@@ -3815,6 +3936,7 @@
         if (isRunning || fastaState.busy || downloadState.busy) return;
         if (typeof window.showDirectoryPicker !== 'function' || !navigator.locks?.request) { setDownloadMessage('scoreError', { saved: 0, detail: t('scoreFolderUnsupported') }); return; }
         downloadState.busy = true; downloadState.stop = false; downloadState.phase = 'extract';
+        addLog(t('scoreLogStart'));
         resetDownloadQueue(); checkSystemStatus();
         let saved = 0, current = '';
         try {
@@ -3827,6 +3949,7 @@
             await navigator.locks.request('af3-score-extraction', { mode: 'exclusive', ifAvailable: true }, async lock => {
                 if (!lock) throw scoreFail('scoreLocked');
                 const scan = await scoreScanDirectory(directory), handles = scan.files;
+                addLog(t('scoreLogScan', { folder: directory.name, folders: scan.folders, zips: handles.length, bytes: handles.reduce((sum, item) => sum + item.file.size, 0), ignored: scan.ignored }));
                 if (!handles.length) throw scoreFail('scoreNoZips');
                 let manifestDirectory = directory, snapshot = null;
                 try { await directory.getFileHandle('manifest.json'); }
@@ -3843,6 +3966,7 @@
                 }
                 const manifest = snapshot?.manifest;
                 const association = t(manifest ? 'scoreWithManifest' : 'scoreWithoutManifest');
+                addLog(association);
                 const shown = scan.tree.slice(0, 60);
                 if (scan.tree.length > shown.length) shown.push(t('scoreMorePaths', { count: scan.tree.length - shown.length }));
                 scoreCheck();
@@ -3867,10 +3991,12 @@
                     current = item.name;
                     setDownloadMessage('scoreReading', { index: index + 1, total: handles.length, name: item.name });
                     await sleep(0); scoreCheck();
+                    const started = Date.now();
                     const parsed = await scoreReadArchive(item.file);
                     for (const row of parsed.rows) row.source_zip = item.name;
                     if ((modelCount += parsed.rows.length) > SCORE_ROW_LIMIT || (pairCount += parsed.pairs.length) > 1000000) throw scoreFail('scoreLimit');
                     archives.push({ name: item.name, fileName: item.fileName, directory: item.directory, ...parsed });
+                    addLog(t('scoreLogParsed', { index: index + 1, total: handles.length, name: item.name, bytes: item.file.size, models: parsed.rows.length, pairs: parsed.pairs.length, ms: Date.now() - started }), 'debug');
                 }
                 setDownloadMessage('scorePreparing', { total: handles.length, models: modelCount });
                 await sleep(0); scoreCheck();
@@ -3883,19 +4009,21 @@
                 const overwrite = report.outputs.filter(output => output.before).map(output => output.path || output.name);
                 if (!confirm(t('scoreConfirm', { count: handles.length, models: report.models, folder: directory.name, files: report.outputs.length,
                     existing: overwrite.length, names: overwrite.join('\n') || '—', association }))) { setDownloadMessage('scoreCancelled', { saved }); return; }
+                addLog(t('scoreLogOutputs', { files: report.outputs.length, existing: overwrite.length, folder: directory.name }));
                 for (const output of report.outputs) {
                     current = output.path || output.name;
                     setDownloadMessage('scoreWriting', { saved, total: report.outputs.length, name: current });
+                    const started = Date.now();
                     await writeScoreCsv(output.directory, output, verify); saved++;
+                    addLog(t('scoreLogSaved', { saved, total: report.outputs.length, name: current, bytes: new Blob([output.text]).size, ms: Date.now() - started }));
                 }
                 const vars = { zips: handles.length, jobs: report.jobs, models: report.models, missing: report.missing ?? '—', saved, folder: directory.name };
-                setDownloadMessage('scoreDone', vars); addLog(t('scoreDone', vars));
+                setDownloadMessage('scoreDone', vars);
             });
         } catch (error) {
             const cancelled = !error.resultCleanup && (isUserStopError(error) || error.name === 'AbortError');
             const detail = ['NotAllowedError', 'NotFoundError', 'NoModificationAllowedError', 'QuotaExceededError'].includes(error.name) ? t('scoreFileError') : error.message;
             setDownloadMessage(cancelled ? 'scoreCancelled' : 'scoreError', { saved, detail: (current ? current + ': ' : '') + detail });
-            addLog(cancelled ? t('scoreCancelled', { saved }) : t('scoreError', { saved, detail: (current ? current + ': ' : '') + detail }), cancelled ? 'warn' : 'error');
         } finally { downloadState.busy = false; renderDownloadSection(); checkSystemStatus(); }
     }
     // --- End local score extraction. ---
@@ -4225,6 +4353,13 @@
             #af3-log-toggle::before { content: '›'; font-size: 18px; line-height: 1; }
             #af3-log-toggle[aria-expanded="true"]::before { transform: rotate(90deg); }
             #af3-log-body { max-height: 160px; overflow: auto; margin: 6px 0 0; padding: 10px; border: 1px solid var(--af3-border); border-radius: 9px; background: var(--af3-surface); color: var(--af3-muted); white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.6 var(--af3-mono); }
+            #af3-log-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 6px; margin-block: 6px; }
+            #af3-log-controls label { flex: 1; min-width: 120px; margin: 0; }
+            #af3-log-controls p { flex-basis: 100%; }
+            #af3-log-body [data-level="debug"] { color: var(--af3-muted); }
+            #af3-log-body [data-level="info"] { color: var(--af3-ink); }
+            #af3-log-body [data-level="warn"] { color: var(--af3-warning); }
+            #af3-log-body [data-level="error"] { color: var(--af3-danger); font-weight: 600; }
             #af3-resize-handle { position: absolute; right: 5px; bottom: 5px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--af3-surface); color: var(--af3-muted); font: 18px/1 sans-serif; cursor: nwse-resize; user-select: none; touch-action: none; z-index: 1; }
             @container (max-width: 280px) {
                 #af3-header { padding: 12px; } .af3-navigation { padding: 0 12px 10px; }
@@ -4363,8 +4498,20 @@
         const logBody = document.createElement('pre');
         logBody.id = 'af3-log-body';
         logBody.style.display = 'none';
-        logPanel.appendChild(logToggle);
-        logPanel.appendChild(logBody);
+        const logControls = document.createElement('div'); logControls.id = 'af3-log-controls'; logControls.hidden = true;
+        const logField = document.createElement('label'); logField.className = 'af3-field';
+        const logLabel = document.createElement('span'); logLabel.dataset.logI18n = 'logLevel';
+        const logLevel = document.createElement('select'); logLevel.id = 'af3-log-level';
+        for (const [value, key] of [['all', 'logAll'], ['debug', 'logDebug'], ['info', 'logInfo'], ['warn', 'logWarn'], ['error', 'logError']]) {
+            const option = document.createElement('option'); option.value = value; option.dataset.logI18n = key; logLevel.appendChild(option);
+        }
+        logLevel.onchange = () => { logFilter = logLevel.value; renderLogPanel(); };
+        logField.append(logLabel, logLevel);
+        const logExport = document.createElement('button'); logExport.id = 'af3-log-export'; logExport.type = 'button'; logExport.dataset.logI18n = 'logExport'; logExport.onclick = exportLogs;
+        const logHelp = document.createElement('p'); logHelp.className = 'af3-help'; logHelp.dataset.logI18n = 'logHelp';
+        const logSummary = document.createElement('p'); logSummary.id = 'af3-log-summary'; logSummary.className = 'af3-help';
+        logControls.append(logField, logExport, logHelp, logSummary);
+        logPanel.append(logToggle, logControls, logBody);
 
         container.appendChild(header); container.appendChild(languageRow);
         const tasksPage = document.createElement('div'); tasksPage.id = 'af3-tasks-page'; tasksPage.className = 'af3-page';
@@ -4484,13 +4631,14 @@
                 }
                 const taskLabel = getTaskLabel(rows[0], `Draft ${i}`);
                 const draftIdentity = getDraftIdentity(rows[0]);
+                addLog(t('submissionLogTarget', { index: i, name: taskLabel }), 'debug');
 
                 simulateClick(rows[0], 'rgba(0,0,255,0.2)');
                 await controlledSleep(500);
 
                 const continueBtn = findButtonByText("Continue and preview job");
                 if (continueBtn) {
-                    addLog(t('foundContinue'));
+                    addLog(t('foundContinue'), 'debug');
                     simulateClick(continueBtn, 'rgba(0,255,0,0.3)');
                     await controlledSleep(WAIT_FOR_MODAL);
                 } else {
@@ -4508,7 +4656,7 @@
                      recordProgressResult('skipped', { label: taskLabel, reason });
                      continue;
                 }
-                addLog(t('foundConfirm'));
+                addLog(t('foundConfirm'), 'debug');
                 await submitAndConfirm(confirmBtn, draftIdentity);
                 addLog(t('draftDone', { index: i }));
                 recordProgressResult('success');
@@ -4597,7 +4745,7 @@
                     recordProgressResult('skipped', { label: taskLabel, reason });
                     continue;
                 }
-                addLog(t('foundContinue'));
+                addLog(t('foundContinue'), 'debug');
                 simulateClick(continueBtn);
                 await controlledSleep(WAIT_FOR_MODAL);
 
@@ -4610,7 +4758,7 @@
                      confirmBtn = findButtonByText("Confirm and submit");
                      if (!confirmBtn) throw new Error(t('missingConfirmError'));
                 }
-                addLog(t('foundConfirm'));
+                addLog(t('foundConfirm'), 'debug');
                 await submitAndConfirm(confirmBtn);
                 addLog(t('failedSubmitted', { index: i + 1 }));
                 recordProgressResult('success');

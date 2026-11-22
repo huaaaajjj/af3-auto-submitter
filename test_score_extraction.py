@@ -312,6 +312,14 @@ async function table(name){
  if(id==='score-picker-stop')assert(fs.contentReads===0&&fs.confirms.length===0,'Stop during folder choice proceeded to preview or content reads');
  assert(ui('score-progress')?.hidden&&ui('score-progress-text')?.hidden,'Progress remained active after completion, failure or cancellation');
  if(id==='score-progress')assert(fs.progress.scan>0&&fs.progress.reads.includes(0)&&fs.progress.reads.includes(1)&&fs.progress.writes.join(',')==='0,1,2,3,4,5,6','Missing extraction stage progression');
+ const logRows=[...ui('log-body').querySelectorAll('[data-level]')];
+ if(success||id==='score-local-manifest'){
+  assert(logRows.some(n=>n.dataset.level==='info'&&n.textContent.includes('scanned')&&n.textContent.includes('ZIPs')),'Directory scan summary is missing from INFO logs');
+  assert(logRows.some(n=>n.dataset.level==='debug'&&n.textContent.includes('ZIP parsed')&&n.textContent.includes('models')&&n.textContent.includes('ms')),'ZIP parse details/timing are missing from DEBUG logs');
+  assert(logRows.filter(n=>n.dataset.level==='info'&&n.textContent.includes('CSV committed')).length===fs.commits.length,'Committed-CSV logs disagree with actual closed files');
+ }
+ if(['score-cancel','score-picker-cancel','score-picker-stop','score-scan-cancel','score-stop-read','score-stop-write','score-stop-close'].includes(id))assert(logRows.some(n=>n.dataset.level==='warn'&&/cancel|stop/i.test(n.textContent))&&!logRows.some(n=>n.dataset.level==='error'),'Normal stop/cancellation logged as an error');
+ if(id.includes('cleanup-failure'))assert(logRows.some(n=>n.dataset.level==='error'&&n.textContent.includes('Could not remove')),'Cleanup failure did not reach ERROR logs');
  assert(fs.writers.every(mode=>mode==='exclusive'),'Non-exclusive CSV writer');
  assert(state.transportCalls.length===0&&state.downloads.length===0&&state.bulkDownloads.length===0&&state.submits===0&&state.clones===0&&state.deletes===0&&state.nativeCheckboxClicks===0,'Extraction performed a website action');
  assert(state.errors.length===0,state.errors.join('; '));
