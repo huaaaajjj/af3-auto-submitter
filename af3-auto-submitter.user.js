@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.7
+// @version      5.0.8
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期勾选官网下载、选择本地 ZIP 文件夹提取指标 CSV。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.7';
+    const SCRIPT_VERSION = '5.0.8';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -832,11 +832,11 @@
     }
 
     const accountEnglish = {
-        tasksPage: 'Jobs', accountsPage: 'Accounts', accountsIntro: 'Accounts and quota records are saved locally in Tampermonkey. Only the signed-in account can update its quota; other accounts show historical records.',
+        tasksPage: 'Jobs', accountsPage: 'Accounts', accountsIntro: 'Accounts and quota records are saved locally in Tampermonkey. Website readings are authoritative. Older readings show an estimated 30 jobs after 23:00 UTC each day; verify on the website. Closing this page catches up on reopening.',
         accountsCount: '{count} saved accounts', accountsEmpty: 'No saved accounts. Sign in to record the current account, or add an email below.',
         accountEmailLabel: 'Email', accountNoteLabel: 'Note (optional)', accountAdd: 'Save account', accountSave: 'Save changes', accountCancel: 'Cancel edit',
         accountCurrent: 'Current account', accountEdit: 'Edit', accountRemove: 'Remove', accountRemoveConfirm: 'Remove the local record for {email}? This does not delete the website account.',
-        accountLiveQuota: 'Website quota: {count}', accountSavedQuota: 'Last recorded quota: {count}', accountNoQuota: 'Quota not recorded', accountRecordedAt: 'Recorded: {time}',
+        accountLiveQuota: 'Website quota: {count}', accountSavedQuota: 'Last recorded quota: {count}', accountResetQuota: 'Estimated quota: 30 · daily 23:00 UTC reset; verify on website', accountNoQuota: 'Quota not recorded', accountRecordedAt: 'Recorded: {time}',
         accountRefresh: 'Record current quota', accountLogin: 'Sign in / switch in InPrivate', accountLoginHelp: 'Opens https://alphafoldserver.com/ in Edge InPrivate. Sign in on the website; this normal window stays signed in. Allow Tampermonkey in InPrivate, then set Tampermonkey Settings > Security > Store data in incognito mode to Permanent to share the local account list. InPrivate sign-in cookies remain temporary; close all InPrivate windows to start a fresh session.',
         accountPrivateOpened: 'Requested the AlphaFold Server homepage in InPrivate. Sign in there and check the account email. If no tab appears, allow Tampermonkey in InPrivate and try again.',
         accountPrivateUnavailable: 'Could not open InPrivate. Allow Tampermonkey in Edge InPrivate settings, then retry; or open an InPrivate window manually.',
@@ -847,11 +847,11 @@
     };
     const accountTranslations = {
         zh: {
-            tasksPage: '任务', accountsPage: '账户管理', accountsIntro: '账号与额度记录保存在 Tampermonkey 本机存储中。仅当前登录账号可更新额度，其他账号显示历史记录。',
+            tasksPage: '任务', accountsPage: '账户管理', accountsIntro: '账号与额度记录保存在 Tampermonkey 本机存储中。官网实测额度优先；旧记录每天 23:00 UTC（北京时间 07:00）自动显示预计 30 个，待官网核实。页面关闭期间下次打开补算。',
             accountsCount: '已保存 {count} 个账号', accountsEmpty: '暂无账号。登录后会记录当前账号，也可在下方添加邮箱。',
             accountEmailLabel: '邮箱', accountNoteLabel: '备注（可选）', accountAdd: '保存账号', accountSave: '保存修改', accountCancel: '取消编辑',
             accountCurrent: '当前账号', accountEdit: '编辑', accountRemove: '移除', accountRemoveConfirm: '移除 {email} 的本地记录？不会删除官网账号。',
-            accountLiveQuota: '官网当前额度：{count} 个', accountSavedQuota: '上次记录额度：{count} 个', accountNoQuota: '尚未记录额度', accountRecordedAt: '记录时间：{time}',
+            accountLiveQuota: '官网当前额度：{count} 个', accountSavedQuota: '上次记录额度：{count} 个', accountResetQuota: '预计额度：30 个 · 已按每日 23:00 UTC 刷新，待官网核实', accountNoQuota: '尚未记录额度', accountRecordedAt: '记录时间：{time}',
             accountRefresh: '记录当前额度', accountLogin: '在 InPrivate 中登录 / 切换', accountLoginHelp: '在 Edge InPrivate 中直接打开 https://alphafoldserver.com/，请在官网操作登录，普通窗口保持原登录。需在 Edge 扩展详情中允许 Tampermonkey 在 InPrivate 中运行，并在 Tampermonkey 设置 > Security 中将“Store data in incognito mode”设为 Permanent，账号、备注和额度记录才会与普通窗口共用并保存在本机。InPrivate 登录 Cookie 仍是独立临时会话；关闭全部 InPrivate 窗口后可从空会话开始。',
             accountPrivateOpened: '已请求在 InPrivate 中打开 AlphaFold Server 首页，请在官网登录并核对账号邮箱。若未打开，请确认已允许 Tampermonkey 在 InPrivate 中运行。',
             accountPrivateUnavailable: '无法打开 InPrivate。请在 Edge 扩展详情中允许 Tampermonkey 在 InPrivate 中运行后重试；也可手动打开 InPrivate 窗口。',
@@ -1896,6 +1896,12 @@
         return email.length <= 254 && /^[A-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?)+$/i.test(email) ? email.toLowerCase() : '';
     }
 
+    function accountQuotaResetAt(now = Date.now()) {
+        // ponytail: fixed 23:00 UTC estimate from the published BST schedule; not a website guarantee.
+        const day = 86400000, offset = 23 * 3600000;
+        return Math.floor((now - offset) / day) * day + offset;
+    }
+
     function parseAccountRecords(value) {
         const data = typeof value === 'string' ? JSON.parse(value) : value;
         if (data?.version !== 1 || !Array.isArray(data.accounts)) throw new Error('Invalid account records');
@@ -1998,6 +2004,7 @@
         const sources = Array.from(document.querySelectorAll('gdm-af-request .points')).filter(downloadVisible);
         const node = sources.length === 1 ? sources[0] : null;
         const text = node?.textContent || '';
+        const resetAt = accountQuotaResetAt();
         if (email !== observedAccountEmail) {
             const previous = accountQuotaBinding;
             const changed = observedAccountEmail !== undefined;
@@ -2005,7 +2012,7 @@
             // A profile may change before the old quota DOM disappears. Wait for a
             // new node/value before associating that quota with another account.
             accountQuotaBinding = {
-                node: previous?.node || node, text: previous?.text ?? text,
+                node: previous?.node || node, text: previous?.text ?? text, resetAt,
                 ready: Boolean(email && (!hasObservedAccount || node !== previous?.node || text !== previous?.text)),
             };
             if (email) {
@@ -2026,6 +2033,11 @@
                 }
                 renderDownloadSection();
             }
+        }
+        if (email && accountQuotaBinding.resetAt !== resetAt) {
+            // A pre-reset DOM value is not evidence of today's website quota.
+            accountQuotaBinding.ready = false;
+            accountQuotaBinding.resetAt = resetAt;
         }
         if (email && !accountQuotaBinding.ready &&
             (node !== accountQuotaBinding.node || text !== accountQuotaBinding.text)) accountQuotaBinding.ready = true;
@@ -2097,7 +2109,7 @@
         getUiElement('af3-accounts-count').textContent = t('accountsCount', { count: accountRecords.length });
         showMessageError(getUiElement('af3-accounts-message'), accountStorageError || ['accountInvalid', 'accountReadFailed', 'accountPrivateUnavailable'].includes(accountMessage),
             accountStorageError ? t('accountStorageError') : accountMessage ? t(accountMessage) : '');
-        const signature = JSON.stringify([currentLanguage, observedAccountEmail, accountLiveQuota, accountRecords]);
+        const signature = JSON.stringify([currentLanguage, observedAccountEmail, accountLiveQuota, accountRecords, accountQuotaResetAt()]);
         if (!force && signature === accountRenderSignature) return;
         accountRenderSignature = signature;
         list.replaceChildren();
@@ -2114,7 +2126,10 @@
             if (record.note) { const note = document.createElement('p'); note.textContent = record.note; card.append(note); }
             const quota = document.createElement('p');
             const live = record.email === observedAccountEmail && accountLiveQuota !== null;
-            quota.textContent = t(live ? 'accountLiveQuota' : record.quota ? 'accountSavedQuota' : 'accountNoQuota', { count: live ? accountLiveQuota : record.quota?.remaining });
+            const reset = record.quota && record.quota.observedAt < accountQuotaResetAt();
+            // Derive scheduled estimates; keep the real reading/time and shared storage untouched.
+            quota.dataset.quotaSource = live ? 'website' : reset ? 'scheduled' : 'recorded';
+            quota.textContent = t(live ? 'accountLiveQuota' : reset ? 'accountResetQuota' : record.quota ? 'accountSavedQuota' : 'accountNoQuota', { count: live ? accountLiveQuota : record.quota?.remaining });
             quota.className = live ? 'af3-account-live' : 'af3-account-history'; card.append(quota);
             if (record.quota) {
                 const time = document.createElement('time'); time.dateTime = new Date(record.quota.observedAt).toISOString();
