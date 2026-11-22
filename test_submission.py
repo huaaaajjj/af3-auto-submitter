@@ -73,6 +73,19 @@ const id=new URLSearchParams(location.search).get('id');
 const accountsKey='af3-dev-panel-accounts-v1';
 const restored=new URLSearchParams(location.search).has('restore');
 if(id.startsWith('account-')&&!restored){localStorage.removeItem(accountsKey);top.__af3GMValues.delete(accountsKey);localStorage.setItem('af3-dev-panel-language','zh')}
+if(id==='account-daily-reset'){
+  const realNow=Date.now.bind(Date),start=Date.parse('2032-02-29T22:59:00Z');
+  window.quotaClockOffset=(restored?Date.parse('2032-03-03T23:01:00Z'):start)-realNow();
+  Date.now=()=>realNow()+window.quotaClockOffset;
+  window.WIZ_global_data={oPEP7c:'current@example.com'};
+  document.querySelector('gdm-af-request .points').textContent=restored?'Unavailable':'Remaining jobs: 0';
+  if(!restored)top.__af3GMValues.set(accountsKey,{version:1,accounts:[
+    {email:'current@example.com',note:'Keep current note',quota:{remaining:0,observedAt:start}},
+    {email:'offline@example.com',note:'Keep offline note',quota:{remaining:4,observedAt:start}},
+    {email:'older@example.com',note:'Older reading',quota:{remaining:2,observedAt:start-2*86400000}},
+    {email:'unknown@example.com',note:'Never measured',quota:null}
+  ]});
+}
 if(id==='account-migration'&&!restored){
   top.__af3GMValues.set(accountsKey,{version:1,accounts:[{email:'shared@example.com',note:'Shared note',quota:null}]});
   localStorage.setItem(accountsKey,JSON.stringify({version:1,accounts:[{email:'legacy@example.com',note:'Imported note',quota:null},{email:'shared@example.com',note:'Legacy note',quota:null}]}));
@@ -511,6 +524,31 @@ async function checkAccountManager(){
     assert(records().find(item=>item.email==='second@example.com').quota.observedAt===recorded,'Unknown quota changed the record timestamp');
     window.WIZ_global_data.oPEP7c='';await until(()=>!cards().some(node=>node.querySelector('.af3-account-current')),2500);
     assert(records().length===2,'Sign-out deleted saved accounts');
+  }else if(id==='account-daily-reset'){
+    const quota=email=>card(email).querySelector('[data-quota-source]');
+    if(restored){
+      assert(quota('current@example.com')?.dataset.quotaSource==='scheduled'&&quota('current@example.com').textContent.includes('30'),'Reload did not catch up missed resets');
+      assert(records().find(r=>r.email==='current@example.com').quota.remaining===27&&card('offline@example.com').textContent.includes('Keep offline note'),'Estimated reset overwrote readings/notes');
+    }else{
+      assert(quota('older@example.com')?.dataset.quotaSource==='scheduled'&&quota('older@example.com').textContent.includes('30'),'Missed daily reset was not applied on startup');
+      assert(quota('offline@example.com')?.textContent.includes('4')&&quota('offline@example.com').dataset.quotaSource==='recorded','Quota reset before 23:00 UTC');
+      assert(quota('unknown@example.com')?.textContent.includes('尚未记录额度'),'Never-measured quota was invented');
+      const before=JSON.stringify(records());
+      window.quotaClockOffset+=60000;
+      await until(()=>quota('current@example.com')?.dataset.quotaSource==='scheduled'&&quota('offline@example.com')?.dataset.quotaSource==='scheduled',3000);
+      assert(quota('current@example.com').textContent.includes('30')&&quota('offline@example.com').textContent.includes('30'),'Daily reset did not restore the local estimate to 30');
+      assert(ui('account-refresh').disabled,'Stale website quota remained recordable after reset');
+      await pause(1100);assert(JSON.stringify(records())===before,'Stale DOM or scheduled estimates changed persisted readings');
+      document.querySelector('gdm-af-request .points').textContent='Remaining jobs: 27';
+      await until(()=>quota('current@example.com')?.dataset.quotaSource==='website'&&records().find(r=>r.email==='current@example.com').quota.remaining===27,3000);
+      assert(quota('offline@example.com').dataset.quotaSource==='scheduled','Current website reading overwrote another account');
+      document.querySelector('gdm-af-request .points').textContent='Unavailable';
+      await until(()=>ui('account-refresh').disabled,3000);
+      window.quotaClockOffset+=3*86400000;
+      await until(()=>quota('current@example.com')?.dataset.quotaSource==='scheduled',3000);
+      assert(quota('current@example.com').textContent.includes('30')&&!quota('current@example.com').textContent.includes('90'),'Missed days accumulated quota');
+      location.replace('/case?id='+id+'&restore=1');return false;
+    }
   }else if(id==='account-cross-tab'){
     save('original@example.com','original');
     const frame=document.createElement('iframe');frame.src='/case?id=storage-writer';frame.hidden=true;
@@ -669,7 +707,7 @@ async function checkAccountManager(){
     parent.postMessage({type:'af3-case-result',result:{passed:true,message:'errors highlighted, finite pulse/retry, stable polling, reduced motion, success/cancel clearing; 0 submits'}},location.origin);return;
   }
   if(id==='account-email'){await until(()=>ui('v20-btn'),5000);await checkAccountEmail();return}
-  if(['account-manager','account-login','account-login-unavailable','account-quota','account-persistence','account-storage','account-storage-blocked','account-cross-tab','account-migration'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
+  if(['account-manager','account-login','account-login-unavailable','account-quota','account-daily-reset','account-persistence','account-storage','account-storage-blocked','account-cross-tab','account-migration'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
   if(id==='storage-writer')return;
   if(id==='panel-ui'){
     await until(()=>ui('v20-btn'),5000);
@@ -772,7 +810,7 @@ async function checkAccountManager(){
 
 SCENARIOS = [
     'log-controls', 'action-error-feedback',
-    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-unavailable', 'account-login-busy', 'account-quota', 'account-persistence',
+    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-unavailable', 'account-login-busy', 'account-quota', 'account-daily-reset', 'account-persistence',
     'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-migration', 'account-switch-submission', 'account-switch-confirm',
     'stop-confirmed-refresh', 'delayed-success', 'old-success', 'server-error', 'no-toast', 'sandbox-event-window',
     'failed-success', 'failed-error', 'failed-sandbox-event-window', 'stop-in-flight', 'stale-row',
