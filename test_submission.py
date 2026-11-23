@@ -361,6 +361,8 @@ async function checkPanelUi(){
         ui('language-select').value=language;ui('language-select').dispatchEvent(new Event('change'));
         assert(ui('v20-count').labels.length&&ui('count-label').textContent,'Quantity input lacks a visible label');
         assert(ui('language-select').getAttribute('aria-label'),'Language selector lacks an accessible name');
+        const refresh=ui('panel-refresh'),refreshBox=refresh.getBoundingClientRect(),headerBox=ui('header').getBoundingClientRect();
+        assert(refresh.getAttribute('aria-label')&&refresh.title&&refreshBox.width>=24&&refreshBox.height>=24&&refreshBox.left>=headerBox.left&&refreshBox.right<=headerBox.right,language+' refresh button is inaccessible');
         for(const [page,names] of Object.entries(controls)){
           ui(page+'-tab').click();
           const active=ui(page+'-page');
@@ -371,7 +373,7 @@ async function checkPanelUi(){
             const box=control.getBoundingClientRect(),viewport=workspace.getBoundingClientRect();
             assert(box.width>0&&box.height>0,language+' '+name+' is not rendered');
             assert(box.left>=viewport.left-1&&box.right<=viewport.right+1,language+' '+name+' is clipped horizontally');
-            assert(box.top>=viewport.top-1&&box.bottom<=viewport.bottom+1,language+' '+name+' cannot scroll into view');
+            assert(box.top>=viewport.top-1&&box.bottom<=viewport.bottom+1,language+' '+name+' cannot scroll into view: '+JSON.stringify({width,height,header:ui('header').getBoundingClientRect().height,control:box.height,workspace:viewport.height}));
             assert(Math.abs(ui('header').getBoundingClientRect().top-headerTop)<1,'Scrolling content moved panel navigation');
           }
         }
@@ -422,7 +424,7 @@ async function checkAccountEmail(){
     for(const name of ['v20-count','download-scan','download-apply']){
       ui(name).scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
       const box=ui(name).getBoundingClientRect();
-      assert(box.top>=viewport.top-1&&box.bottom<=viewport.bottom+1,'Long account makes '+name+' unreachable: '+language);
+      assert(box.top>=viewport.top-1&&box.bottom<=viewport.bottom+1,'Long account makes '+name+' unreachable: '+language+' '+JSON.stringify({header:ui('header').getBoundingClientRect().height,control:box.height,workspace:viewport.height}));
     }
   }
   ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'));
@@ -492,11 +494,54 @@ async function checkAccountManager(){
     save('memory@example.com','first');save('another@example.com','second');
     assert(cards().length===2&&card('memory@example.com').textContent.includes('first'),'Unavailable storage lost in-page records');
     assert(ui('accounts-message').textContent.includes('当前页面有效'),'Unavailable storage did not report memory-only mode');
+    ui('panel-refresh').click();
+    assert(cards().length===2&&card('memory@example.com').textContent.includes('first'),'Global refresh lost memory-only records');
     if(id==='account-storage')assert(GM_getValue(accountsKey)==='{invalid','Corrupt stored data was overwritten');
   }else if(id==='account-persistence'){
     if(!restored){save('saved@example.com','My work account');location.replace('/case?id='+id+'&restore=1');return false}
     assert(card('saved@example.com')?.textContent.includes('My work account'),'Reload lost account or note');
     assert(ui('account-input').value==='','Reload retained an unfinished edit');
+  }else if(id==='account-panel-refresh'){
+    const refresh=ui('panel-refresh');
+    assert(refresh?.textContent==='↻'&&refresh.getAttribute('aria-label')==='刷新'&&refresh.getClientRects().length&&refresh.title,'Global refresh button is missing or inaccessible');
+    save('offline@example.com','Original note');
+    card('offline@example.com').querySelector('[data-action="edit"]').click();
+    ui('account-note').value='Unsaved note';ui('v20-count').value='17';ui('download-start').value='2032-03-01';
+    const observedAt=Date.now()-3*86400000;
+    // Simulate a shared record change whose notification was missed.
+    top.__af3GMValues.set(accountsKey,{version:1,accounts:[
+      {email:'offline@example.com',note:'Other tab note',quota:{remaining:4,observedAt}},
+      {email:'unknown@example.com',note:'Never measured',quota:null}
+    ]});
+    refresh.click();
+    assert(card('offline@example.com').textContent.includes('Other tab note'),'Refresh did not reload shared records');
+    assert(card('offline@example.com').querySelector('[data-quota-source]').dataset.quotaSource==='scheduled','Refresh did not recompute daily estimates');
+    assert(records()[0].quota.observedAt===observedAt&&records()[0].quota.remaining===4,'Refresh replaced historical quota with an estimate');
+    assert(card('unknown@example.com').textContent.includes('尚未记录额度'),'Refresh invented a quota without a reading');
+    assert(ui('account-note').value==='Unsaved note'&&ui('account-input').readOnly&&ui('v20-count').value==='17'&&ui('download-start').value==='2032-03-01','Refresh discarded unfinished inputs');
+    window.WIZ_global_data={oPEP7c:'current@example.com'};
+    document.querySelector('gdm-af-request .points').textContent='Remaining jobs: 7';
+    document.getElementById('mode').textContent='Failed';
+    for(const name of ['fasta-summary','fasta-status','download-status','download-ready-text','log-summary'])ui(name).textContent='Stale panel display';
+    refresh.click();
+    for(const name of ['fasta-summary','fasta-status','download-status','download-ready-text','log-summary'])assert(ui(name).textContent!=='Stale panel display','Refresh missed '+name);
+    assert(ui('account-email').textContent.includes('current@example.com')&&ui('quota').textContent.includes('7'),'Refresh did not immediately update account and website quota');
+    assert(records().find(r=>r.email==='current@example.com')?.quota?.remaining===7,'Refresh did not record the current website quota');
+    assert(ui('submission-section').dataset.state==='failed','Refresh did not update task mode');
+    ui('tasks-tab').click();
+    assert(refresh.getClientRects().length,'Global refresh is hidden on the Tasks page');
+    document.getElementById('mode').textContent='Saved draft';refresh.click();
+    assert(ui('submission-section').dataset.state==='draft','Refresh did not update the draft mode');
+    const before=JSON.stringify(records());
+    document.querySelector('gdm-af-request .points').textContent='Unavailable';refresh.click();
+    assert(JSON.stringify(records())===before&&ui('account-refresh').disabled,'Unknown quota changed saved readings');
+    document.querySelector('gdm-af-request .points').textContent='Remaining jobs: 7';refresh.click();
+    window.WIZ_global_data.oPEP7c='next@example.com';refresh.click();
+    assert(records().find(r=>r.email==='next@example.com')?.quota===null,'Refresh assigned old quota to a newly selected account');
+    ui('language-select').value='en';ui('language-select').dispatchEvent(new Event('change'));
+    assert(refresh.getAttribute('aria-label')==='Refresh'&&refresh.title.includes('without reloading'),'Refresh labels did not translate');
+    assert(ui('log-body').textContent.includes('面板已刷新'),'Refresh did not report completion in the log');
+    assert(!state.prompts.length&&!state.summaries.length&&!window.__af3PrivateTabCalls.length,'Refresh opened a confirmation or login window');
   }else if(id==='account-quota'){
     const points=document.querySelector('gdm-af-request .points');
     window.WIZ_global_data={oPEP7c:'first@example.com'};
@@ -538,6 +583,8 @@ async function checkAccountManager(){
       await until(()=>quota('current@example.com')?.dataset.quotaSource==='scheduled'&&quota('offline@example.com')?.dataset.quotaSource==='scheduled',3000);
       assert(quota('current@example.com').textContent.includes('30')&&quota('offline@example.com').textContent.includes('30'),'Daily reset did not restore the local estimate to 30');
       assert(ui('account-refresh').disabled,'Stale website quota remained recordable after reset');
+      ui('panel-refresh').click();
+      assert(ui('account-refresh').disabled&&JSON.stringify(records())===before,'Global refresh recorded stale pre-reset quota');
       await pause(1100);assert(JSON.stringify(records())===before,'Stale DOM or scheduled estimates changed persisted readings');
       document.querySelector('gdm-af-request .points').textContent='Remaining jobs: 27';
       await until(()=>quota('current@example.com')?.dataset.quotaSource==='website'&&records().find(r=>r.email==='current@example.com').quota.remaining===27,3000);
@@ -606,6 +653,7 @@ async function checkAccountManager(){
     assert(state.errors.length===0,'Startup error under the website CSP: '+state.errors.join('; '));
     await until(()=>ui('v20-btn')&&ui('accounts-tab'),5000);
     assert(ui('tasks-page').getClientRects().length,'Tasks page was not rendered under Trusted Types');
+    ui('panel-refresh').click();
     ui('accounts-tab').click();
     assert(ui('accounts-page').getClientRects().length,'Account page was not rendered under Trusted Types');
     ui('account-login').click();assertInPrivateSwitch(ui('account-login'));
@@ -707,7 +755,7 @@ async function checkAccountManager(){
     parent.postMessage({type:'af3-case-result',result:{passed:true,message:'errors highlighted, finite pulse/retry, stable polling, reduced motion, success/cancel clearing; 0 submits'}},location.origin);return;
   }
   if(id==='account-email'){await until(()=>ui('v20-btn'),5000);await checkAccountEmail();return}
-  if(['account-manager','account-login','account-login-unavailable','account-quota','account-daily-reset','account-persistence','account-storage','account-storage-blocked','account-cross-tab','account-migration'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
+  if(['account-manager','account-login','account-login-unavailable','account-quota','account-panel-refresh','account-daily-reset','account-persistence','account-storage','account-storage-blocked','account-cross-tab','account-migration'].includes(id)){await until(()=>ui('v20-btn'),5000);await checkAccountManager();return}
   if(id==='storage-writer')return;
   if(id==='panel-ui'){
     await until(()=>ui('v20-btn'),5000);
@@ -794,7 +842,8 @@ async function checkAccountManager(){
   }else{
     assert(state.calls===1,'Confirm clicked '+state.calls+' times; expected one and stop');
     assert(successes===(id==='stale-row'?1:0),'A click, closed dialog, old toast or changed row was counted as success: '+state.summaries.at(-1));
-    assert(ui('v20-btn').disabled,'Start was re-enabled after an unconfirmed/error/stale-row submission');
+    ui('panel-refresh').click();
+    assert(ui('v20-btn').disabled,'Global refresh unlocked an unconfirmed/error/stale-row submission');
     const before=state.calls;ui('v20-btn').disabled=false;ui('v20-btn').click();await pause(600);
     assert(state.calls===before,'Start event bypassed blocked submission state');
   }
@@ -810,7 +859,7 @@ async function checkAccountManager(){
 
 SCENARIOS = [
     'log-controls', 'action-error-feedback',
-    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-unavailable', 'account-login-busy', 'account-quota', 'account-daily-reset', 'account-persistence',
+    'startup-trusted-types', 'panel-ui', 'account-email', 'account-manager', 'account-login', 'account-login-unavailable', 'account-login-busy', 'account-quota', 'account-panel-refresh', 'account-daily-reset', 'account-persistence',
     'account-storage', 'account-storage-blocked', 'account-cross-tab', 'account-migration', 'account-switch-submission', 'account-switch-confirm',
     'stop-confirmed-refresh', 'delayed-success', 'old-success', 'server-error', 'no-toast', 'sandbox-event-window',
     'failed-success', 'failed-error', 'failed-sandbox-event-window', 'stop-in-flight', 'stale-row',

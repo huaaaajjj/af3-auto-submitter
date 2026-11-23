@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.8
+// @version      5.0.9
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期勾选官网下载、选择本地 ZIP 文件夹提取指标 CSV。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.8';
+    const SCRIPT_VERSION = '5.0.9';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -832,6 +832,8 @@
     }
 
     const accountEnglish = {
+        panelRefresh: 'Refresh', panelRefreshHelp: 'Refresh loaded account records, quota and panel status without reloading the website or starting tasks.',
+        panelRefreshed: 'Panel refreshed from loaded website data and local records; no website reload or tasks started.',
         tasksPage: 'Jobs', accountsPage: 'Accounts', accountsIntro: 'Accounts and quota records are saved locally in Tampermonkey. Website readings are authoritative. Older readings show an estimated 30 jobs after 23:00 UTC each day; verify on the website. Closing this page catches up on reopening.',
         accountsCount: '{count} saved accounts', accountsEmpty: 'No saved accounts. Sign in to record the current account, or add an email below.',
         accountEmailLabel: 'Email', accountNoteLabel: 'Note (optional)', accountAdd: 'Save account', accountSave: 'Save changes', accountCancel: 'Cancel edit',
@@ -847,6 +849,8 @@
     };
     const accountTranslations = {
         zh: {
+            panelRefresh: '刷新', panelRefreshHelp: '刷新已加载的账户记录、额度与面板状态；不重载网页，不启动任务。',
+            panelRefreshed: '面板已刷新：已同步官网当前显示与本地记录；未重载网页或启动任务。',
             tasksPage: '任务', accountsPage: '账户管理', accountsIntro: '账号与额度记录保存在 Tampermonkey 本机存储中。官网实测额度优先；旧记录每天 23:00 UTC（北京时间 07:00）自动显示预计 30 个，待官网核实。页面关闭期间下次打开补算。',
             accountsCount: '已保存 {count} 个账号', accountsEmpty: '暂无账号。登录后会记录当前账号，也可在下方添加邮箱。',
             accountEmailLabel: '邮箱', accountNoteLabel: '备注（可选）', accountAdd: '保存账号', accountSave: '保存修改', accountCancel: '取消编辑',
@@ -860,10 +864,10 @@
             accountReadFailed: '无法读取当前账号或额度，请检查登录状态与官网额度显示。', accountStorageError: '账号本地存储不可用或记录无效，改动仅在当前页面有效。',
             accountChanged: '登录账号已变化，已停止处理；请核对官网账号与历史记录后刷新页面。',
         },
-        ja: { tasksPage: 'ジョブ', accountsPage: 'アカウント管理', accountEmailLabel: 'メール', accountNoteLabel: 'メモ（任意）', accountAdd: '保存', accountSave: '変更を保存', accountCancel: '編集を取消', accountCurrent: '現在のアカウント', accountEdit: '編集', accountRemove: '削除', accountRefresh: '現在の残り枠を記録', accountLogin: '公式サイトでログイン / 切替' },
-        ko: { tasksPage: '작업', accountsPage: '계정 관리', accountEmailLabel: '이메일', accountNoteLabel: '메모 (선택)', accountAdd: '계정 저장', accountSave: '변경 저장', accountCancel: '편집 취소', accountCurrent: '현재 계정', accountEdit: '편집', accountRemove: '삭제', accountRefresh: '현재 할당량 기록', accountLogin: '웹사이트 로그인 / 전환' },
-        es: { tasksPage: 'Tareas', accountsPage: 'Cuentas', accountEmailLabel: 'Correo', accountNoteLabel: 'Nota (opcional)', accountAdd: 'Guardar cuenta', accountSave: 'Guardar cambios', accountCancel: 'Cancelar edición', accountCurrent: 'Cuenta actual', accountEdit: 'Editar', accountRemove: 'Eliminar', accountRefresh: 'Registrar cuota actual', accountLogin: 'Iniciar sesión / cambiar' },
-        fr: { tasksPage: 'Tâches', accountsPage: 'Comptes', accountEmailLabel: 'E-mail', accountNoteLabel: 'Note (facultatif)', accountAdd: 'Enregistrer', accountSave: 'Enregistrer les modifications', accountCancel: 'Annuler', accountCurrent: 'Compte actuel', accountEdit: 'Modifier', accountRemove: 'Supprimer', accountRefresh: 'Enregistrer le quota actuel', accountLogin: 'Connexion / changer de compte' },
+        ja: { panelRefresh: '更新', panelRefreshHelp: '読み込み済みのアカウント記録、残り枠、パネル状態を更新します。ページの再読み込みやジョブの開始は行いません。', panelRefreshed: '読み込み済みのサイト表示とローカル記録からパネルを更新しました。ページの再読み込みやジョブの開始は行っていません。', tasksPage: 'ジョブ', accountsPage: 'アカウント管理', accountEmailLabel: 'メール', accountNoteLabel: 'メモ（任意）', accountAdd: '保存', accountSave: '変更を保存', accountCancel: '編集を取消', accountCurrent: '現在のアカウント', accountEdit: '編集', accountRemove: '削除', accountRefresh: '現在の残り枠を記録', accountLogin: '公式サイトでログイン / 切替' },
+        ko: { panelRefresh: '새로고침', panelRefreshHelp: '불러온 계정 기록, 할당량 및 패널 상태를 갱신합니다. 웹페이지를 다시 로드하거나 작업을 시작하지 않습니다.', panelRefreshed: '현재 웹사이트 표시와 로컬 기록으로 패널을 갱신했습니다. 웹페이지 재로드나 작업 시작은 하지 않았습니다.', tasksPage: '작업', accountsPage: '계정 관리', accountEmailLabel: '이메일', accountNoteLabel: '메모 (선택)', accountAdd: '계정 저장', accountSave: '변경 저장', accountCancel: '편집 취소', accountCurrent: '현재 계정', accountEdit: '편집', accountRemove: '삭제', accountRefresh: '현재 할당량 기록', accountLogin: '웹사이트 로그인 / 전환' },
+        es: { panelRefresh: 'Actualizar', panelRefreshHelp: 'Actualiza los registros de cuentas, la cuota y el estado del panel ya cargados, sin recargar la web ni iniciar tareas.', panelRefreshed: 'Panel actualizado con los datos web cargados y los registros locales; no se ha recargado la web ni iniciado tareas.', tasksPage: 'Tareas', accountsPage: 'Cuentas', accountEmailLabel: 'Correo', accountNoteLabel: 'Nota (opcional)', accountAdd: 'Guardar cuenta', accountSave: 'Guardar cambios', accountCancel: 'Cancelar edición', accountCurrent: 'Cuenta actual', accountEdit: 'Editar', accountRemove: 'Eliminar', accountRefresh: 'Registrar cuota actual', accountLogin: 'Iniciar sesión / cambiar' },
+        fr: { panelRefresh: 'Actualiser', panelRefreshHelp: 'Actualise les comptes, le quota et l’état du panneau déjà chargés, sans recharger le site ni lancer de tâches.', panelRefreshed: 'Panneau actualisé à partir des données du site déjà chargées et des données locales ; aucun rechargement du site ni lancement de tâches.', tasksPage: 'Tâches', accountsPage: 'Comptes', accountEmailLabel: 'E-mail', accountNoteLabel: 'Note (facultatif)', accountAdd: 'Enregistrer', accountSave: 'Enregistrer les modifications', accountCancel: 'Annuler', accountCurrent: 'Compte actuel', accountEdit: 'Modifier', accountRemove: 'Supprimer', accountRefresh: 'Enregistrer le quota actuel', accountLogin: 'Connexion / changer de compte' },
     };
     for (const language of Object.keys(I18N)) {
         Object.assign(I18N[language], accountEnglish, accountTranslations[language] || {});
@@ -1693,6 +1697,8 @@
         const statusText = getUiElement('af3-status-text');
 
         if (header) header.textContent = t('headerTitle');
+        const refresh = getUiElement('af3-panel-refresh');
+        if (refresh) { refresh.setAttribute('aria-label', t('panelRefresh')); refresh.title = t('panelRefresh') + ': ' + t('panelRefreshHelp'); }
         const countLabel = getUiElement('af3-count-label');
         if (countLabel) countLabel.textContent = t('batchCount');
         const panel = getUiElement(PANEL_ROOT_ID);
@@ -4292,6 +4298,7 @@
                 border-radius: 11px; background: var(--af3-primary-soft); color: var(--af3-primary);
                 font: 600 17px/1 'Bahnschrift', 'Segoe UI', sans-serif; letter-spacing: -.7px;
             }
+            .af3-header-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
             .af3-header-copy { min-width: 0; flex: 1; }
             .af3-header-line { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
             #af3-header-title { font: 600 17px/1.3 'Bahnschrift', 'Segoe UI', 'Microsoft YaHei', sans-serif; overflow-wrap: anywhere; }
@@ -4399,7 +4406,12 @@
             if (isRunning || fastaState.busy || downloadState.busy) return;
             host.toggleAttribute('data-collapsed'); updateDownloadControls();
         };
-        header.prepend(panelToggle);
+        const refresh = document.createElement('button'); refresh.id = 'af3-panel-refresh'; refresh.type = 'button';
+        refresh.className = 'af3-wordmark'; refresh.textContent = '↻';
+        refresh.onmousedown = event => event.stopPropagation();
+        refresh.onclick = refreshPanel;
+        const headerActions = document.createElement('div'); headerActions.className = 'af3-header-actions';
+        headerActions.append(panelToggle, refresh); header.prepend(headerActions);
 
         const languageRow = document.createElement('div');
         languageRow.className = 'af3-navigation';
@@ -4550,6 +4562,19 @@
         renderLogPanel();
         updateRunControls();
         applyLanguage();
+    }
+
+    function refreshPanel() {
+        // ponytail: sync loaded state only; use website controls to fetch new history/results.
+        if (!accountStorageError) {
+            const records = loadAccounts();
+            if (!accountStorageError) accountRecords = records;
+        }
+        checkSystemStatus();
+        renderAccountManager(true);
+        renderPanelPages();
+        updateRunControls();
+        addLog(t('panelRefreshed'));
     }
 
     // --- 状态检测 & 模式判断 ---
