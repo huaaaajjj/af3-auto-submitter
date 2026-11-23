@@ -4,9 +4,11 @@
 
 ## 安装 5.0 正式版
 
-[安装或更新 5.0.8](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 5.0.9](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 **从 4.0 起只发布正式版，不再维护独立开发版渠道。** 安装文件为 `af3-auto-submitter.user.js`，正常开发、安装、测试和更新均以 `main` 的正式文件为准。
+
+**5.0.9 更新：** 面板顶部新增全局“↻ 刷新”按钮，两页均可使用；重新加载本机账户记录、补算每日预计额度，并同步官网当前显示的账号/额度、任务模式、FASTA/结果区状态、运行控件及日志。保留未保存输入、批次、结果勾选和提交锁定；不重载网页、不自动扫描官网历史，也不提交、导入或下载。读取最新服务器历史/额度仍需官网自行更新或手动刷新网页。
 
 **5.0.8 更新：** 账户记录每天 23:00 UTC（北京时间 07:00）自动显示预计恢复 30 个；关闭页面错过刷新，下次打开补算。明确标注“待官网核实”，不覆盖上次官网实测值/时间，不累积多天额度；跨日的旧官网控件不会重新记成今日实测，更新后重新读取。只影响账户页，不修改官网配额或自动登录/提交。
 
@@ -31,7 +33,7 @@
 1. 安装 Tampermonkey，点击上方正式安装链接并确认。若仅显示源码，在油猴原脚本编辑器中完整替换并保存。
 2. 允许脚本在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。使用 Edge InPrivate 时，需要开启扩展的“允许在 InPrivate 中使用”。
 3. 普通窗口与 InPrivate 要共用账号目录，需在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 刷新官网，确认标题显示 **v5.0.8**，并核对当前账号和官网额度。网站控件与通知需使用英文。
+4. 刷新官网，确认标题显示 **v5.0.9**，并核对当前账号和官网额度。网站控件与通知需使用英文。
 5. 首次仅试 1 个任务；生成 JSON、导入草稿、预测提交、预测完成是四个不同阶段。结果不确定时不要重复点击 Confirm 或刷新后直接重试。
 
 正式更新检查地址是 `main/af3-auto-submitter.meta.js`，完整下载地址是 `main/af3-auto-submitter.user.js`。启用油猴“检查更新”即可接收后续正式版本。
@@ -45,6 +47,8 @@
 - FASTA 文件夹的 `manifest.json` 仍使用独立的格式版本 1，不随脚本版本改成 4；已有批次可通过“打开已有批次文件夹”恢复。
 
 ## 快速开始
+
+面板顶部的“↻”刷新按钮可随时同步已加载的官网显示与本地记录，不丢失当前输入；它不是浏览器刷新，不会主动获取服务器新数据。“账户管理”的“记录当前额度”仍单独保留。
 
 完整的图文操作步骤见[安装与使用指南](https://huaaaajjj.github.io/af3-auto-submitter/docs/tutorial/)。建议首次使用先用 1 个任务熟悉流程；确认当前账号、官网额度和目标任务后再增加数量。
 
