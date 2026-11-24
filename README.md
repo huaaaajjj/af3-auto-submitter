@@ -4,9 +4,11 @@
 
 ## 安装 5.0 正式版
 
-[安装或更新 5.0.9](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 5.0.10](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 **从 4.0 起只发布正式版，不再维护独立开发版渠道。** 安装文件为 `af3-auto-submitter.user.js`，正常开发、安装、测试和更新均以 `main` 的正式文件为准。
+
+**5.0.10 更新：** 生成本地批次时，在 `manifest.json` 同级自动创建空的 `results/` 文件夹，用于存放官网手动下载的结果 ZIP。若创建失败则停止生成，不标记完成或启用导入；不会自动下载或改动已有结果，manifest 格式仍为 1。
 
 **5.0.9 更新：** 面板顶部新增全局“↻ 刷新”按钮，两页均可使用；重新加载本机账户记录、补算每日预计额度，并同步官网当前显示的账号/额度、任务模式、FASTA/结果区状态、运行控件及日志。保留未保存输入、批次、结果勾选和提交锁定；不重载网页、不自动扫描官网历史，也不提交、导入或下载。读取最新服务器历史/额度仍需官网自行更新或手动刷新网页。
 
@@ -33,7 +35,7 @@
 1. 安装 Tampermonkey，点击上方正式安装链接并确认。若仅显示源码，在油猴原脚本编辑器中完整替换并保存。
 2. 允许脚本在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。使用 Edge InPrivate 时，需要开启扩展的“允许在 InPrivate 中使用”。
 3. 普通窗口与 InPrivate 要共用账号目录，需在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 刷新官网，确认标题显示 **v5.0.9**，并核对当前账号和官网额度。网站控件与通知需使用英文。
+4. 刷新官网，确认标题显示 **v5.0.10**，并核对当前账号和官网额度。网站控件与通知需使用英文。
 5. 首次仅试 1 个任务；生成 JSON、导入草稿、预测提交、预测完成是四个不同阶段。结果不确定时不要重复点击 Confirm 或刷新后直接重试。
 
 正式更新检查地址是 `main/af3-auto-submitter.meta.js`，完整下载地址是 `main/af3-auto-submitter.user.js`。启用油猴“检查更新”即可接收后续正式版本。
@@ -54,7 +56,7 @@
 
 1. 安装 Tampermonkey 和正式版脚本，允许脚本在 AlphaFold Server 页面运行；刷新后检查面板版本与当前账号。
 2. 准备 UTF-8 FASTA：每个 `>名称` 开始一个任务，每条非空序列行各是一条蛋白链。单链不要折行；多链任务把每条链各写一行。
-3. 选择 FASTA，点击“生成并选择保存目录”。这一步只在本地生成 FASTA、官网 JSON 和 `manifest.json`，不会上传。
+3. 选择 FASTA，点击“生成并选择保存目录”。这一步只在本地生成 FASTA、官网 JSON、`manifest.json` 和同级空的 `results/` 文件夹，不会上传。
 4. 官网清空搜索、仅选 `Saved draft`，点击“导入下一批为草稿”。先核对账号、批次和数量，再确认；草稿保存不会启动预测。
 5. 等官网草稿列表刷新后，点“核对官网历史 / 更新记录”，确认批次数量全部匹配。若提示 `Timeout`、不完整或需核对，先查看官网历史和日志，**不要立即再次导入**。
 6. 只筛选要提交的草稿并核对列表、账号和额度，输入本次处理上限，点击“启动”；再次核对运行摘要后确认。提交会消耗官网额度。官网 `Completed` 后，再核对历史并记录完成状态。
@@ -67,6 +69,16 @@
 “FASTA 分批导入”每 30 个任务生成一份 FASTA 和 AlphaFold Server JSON，先写入用户选定目录的新子文件夹，再由用户明确确认后导入官网草稿。`manifest.json` 保留来源 SHA-256、逐行链格式与链长、原始完整标题、唯一任务名、批次文件校验值、每次导入账号/阶段/时间/错误及逐任务确认和预测状态。生成文件、上传校验、草稿导入和预测完成是不同状态。
 
 从 4.0.1 起只按行读取纯蛋白：每个 `>名称` 开始一个任务，后面的每个非空序列行各是一条蛋白链，遇到下一个 `>` 开始新任务。无需选择链模式或末端肽长度，不拼接序列行、不自动拆肽，只生成 `proteinChain`（每链 `count: 1`）。保留每链 2700、每个任务所有链合计 3000 个残基的限制，不静默去掉 `*`、缺口或跳过非法记录。**单条长链必须写在同一行，传统 FASTA 的折行在这里会被当作不同链。** 原始文件不修改，无效记录会阻止生成并指出位置。先按 ASCII 氨基酸字母校验，再转大写，不把 Unicode 字符改造成有效残基。生成与恢复使用一致的上限：输入及单个分批文件最大 50 MiB、清单最大 50 MiB、最多 10000 批；生成前核对完整清单大小，超限不写入输出文件。
+
+生成的批次目录结构（结果 ZIP 需通过官网手动下载后放入 `results/`）：
+
+```text
+af3_<runId>/
+├── manifest.json
+├── <文件名>_part001.fasta
+├── <文件名>_part001.json
+└── results/
+```
 
 ### 标准 FASTA 示例
 
@@ -104,7 +116,7 @@ MNPQRSTVWY
 
 ### 从头开始
 
-1. **选择文件，生成本地批次。** 登录官网并核对账号。若浏览器没有脚本面板，先安装 Tampermonkey 和 AF3 脚本，并按浏览器提示开启用户脚本运行权限；使用无痕窗口时还需允许扩展在无痕模式运行。选择 `example_50_proteins.fasta`，点“生成并选择保存目录”，选择并授权输出父目录（实测为 `test2/`）。脚本创建新的 `af3_…/` 子目录，写出两组 FASTA/JSON 和 `manifest.json`，此时没有上传。
+1. **选择文件，生成本地批次。** 登录官网并核对账号。若浏览器没有脚本面板，先安装 Tampermonkey 和 AF3 脚本，并按浏览器提示开启用户脚本运行权限；使用无痕窗口时还需允许扩展在无痕模式运行。选择 `example_50_proteins.fasta`，点“生成并选择保存目录”，选择并授权输出父目录（实测为 `test2/`）。脚本创建新的 `af3_…/` 子目录，写出两组 FASTA/JSON 和 `manifest.json`，并创建同级空的 `results/` 文件夹，此时没有上传。
 
    ![本地生成 50 个任务，共两批，输入文件为 example_50_proteins.fasta](docs/tutorial/images/real50-generated.png)
 

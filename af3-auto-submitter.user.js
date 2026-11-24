@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.9
+// @version      5.0.10
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期勾选官网下载、选择本地 ZIP 文件夹提取指标 CSV。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.9';
+    const SCRIPT_VERSION = '5.0.10';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -1260,6 +1260,7 @@
             fastaState.dir = await parent.getDirectoryHandle(folder, { create: true });
             manifest.batches = [];
             fastaState.manifest = manifest; fastaState.saved = false; fastaState.inputChanged = false;
+            await fastaState.dir.getDirectoryHandle('results', { create: true });
             for (const { batch, fasta, json } of outputs) {
                 fastaCheck();
                 await writeFastaFile(batch.fastaFile, fasta); await writeFastaFile(batch.jsonFile, json);
