@@ -58,7 +58,7 @@ const notFound=name=>new DOMException('Missing '+name,'NotFoundError');
 // The committed map changes only on close, matching FileSystemWritableFileStream.
 class MemoryDirectory {
  constructor(name){this.kind='directory';this.name=name;this.files=new Map();this.directories=new Map()}
- async getDirectoryHandle(name,options={}){if(!this.directories.has(name)){if(!options.create)throw notFound(name);this.directories.set(name,new MemoryDirectory(name))}return this.directories.get(name)}
+ async getDirectoryHandle(name,options={}){if(name==='results'&&options.create&&state.resultsError)throw new DOMException('Cannot create results folder',state.resultsError);if(!this.directories.has(name)){if(!options.create)throw notFound(name);this.directories.set(name,new MemoryDirectory(name))}return this.directories.get(name)}
  async getFileHandle(name,options={}){
   if(!this.files.has(name)){if(!options.create)throw notFound(name);this.files.set(name,'')}
   const dir=this;
@@ -257,6 +257,7 @@ async function checkFiles(dir,text,count){
  assert(m.settings.batchSize===30&&m.summary.generated===count,'Generation count/batch size mismatch');
  assert(m.batches.length===Math.ceil(count/30),'Wrong boundary split: '+count);
  assert(dir.files.size===m.batches.length*2+1,'Missing/extra batch files');
+ assert(dir.directories.get('results')?.kind==='directory','Generation did not create results beside manifest.json');
  const names=new Set();let seen=0;
  for(const batch of m.batches){
   const json=dir.files.get(batch.jsonFile),savedFasta=dir.files.get(batch.fastaFile),jobs=JSON.parse(json);
@@ -354,6 +355,21 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   choose(new Uint8Array([62,97,10,255]));await clickFasta('generate');assert(parentDir.directories.size===0,'Invalid UTF-8 accepted');
   choose('>total\n'+'A'.repeat(2700)+'\n'+'G'.repeat(301)+'\n');await clickFasta('generate');assert(parentDir.directories.size===0,'Total residue limit bypassed across chains');
   assert(state.uploads.length===0,'Invalid input uploaded');
+ }else if(id==='fasta-results-directory'){
+  const dir=await generate(fasta(1));await checkFiles(dir,fasta(1),1);
+  const results=dir.directories.get('results');
+  assert(results&&results.files.size===0&&results.directories.size===0,'New results folder must be empty');
+  results.files.set('saved-result.zip','Keep result bytes');
+  await restore(dir);
+  assert(dir.directories.get('results')===results&&results.files.get('saved-result.zip')==='Keep result bytes','Restore replaced existing results');
+  for(const error of ['NotAllowedError','TypeMismatchError']){
+   state.resultsError=error;choose(fasta(1));chosenDir=parentDir;await clickFasta('generate');
+   const failed=Array.from(parentDir.directories.values()).at(-1);
+   assert(!failed.files.has('manifest.json')||!manifest(failed).generationComplete,'Missing results folder was marked complete');
+   assert(ui('fasta-import').disabled&&ui('fasta-status').textContent.includes('Cannot create results folder'),'Results creation error did not stop generation');
+  }
+  state.resultsError='';await checkFiles(await generate(fasta(1)),fasta(1),1);
+  assert(state.uploads.length===0&&!state.transports.length,'Results folder creation started upload or network access');
  }else if(id==='fasta-local-errors'){
   await clickFasta('generate');assert(state.pickers===0&&/Choose a non-empty/.test(ui('fasta-status').textContent),'Missing input did not fail locally');
   choose('');await clickFasta('generate');assert(state.pickers===0,'Empty file invoked picker');
@@ -691,7 +707,7 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
 
 SCENARIOS = [
     'fasta-menu-identity', 'fasta-menu-stop', 'fasta-menu-account', 'fasta-menu-row-change', 'fasta-menu-foreign', 'fasta-menu-conflict', 'fasta-import-streaming',
-    'fasta-boundaries', 'fasta-lines-names', 'fasta-legacy-restore', 'fasta-multichain-import', 'fasta-invalid', 'fasta-local-errors',
+    'fasta-boundaries', 'fasta-lines-names', 'fasta-legacy-restore', 'fasta-multichain-import', 'fasta-invalid', 'fasta-local-errors', 'fasta-results-directory',
     'fasta-restore', 'fasta-import-happy', 'fasta-import-tampered', 'fasta-journal-error',
     'fasta-partial', 'fasta-unclosed', 'fasta-warning', 'fasta-validation-timeout',
     'fasta-stop-validation', 'fasta-stop-save', 'fasta-account-validation',

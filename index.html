@@ -243,10 +243,10 @@
         <header>
             <h1>🤖 AF3 Auto Submitter</h1>
             <p class="subtitle">AlphaFold Server 批量任务自动提交助手</p>
-            <p class="version-note">本 fork 正式版 5.0.9：FASTA 本地分批、草稿导入与历史核对、明确确认后提交预测、按日期勾选官网下载。移除脚本 ZIP 保存按钮；请把官网 ZIP 集中放入一个文件夹（推荐 results），点击“选择 ZIP 文件夹 / 提取 CSV…”。每次选择目录，先确认结构和 ZIP 路径，再解析指标及确认 CSV 覆盖；独立 ZIP 文件夹无需 manifest。已核实的日期结果仍显示批次编号。</p>
+            <p class="version-note">本 fork 正式版 5.0.10：FASTA 本地分批、草稿导入与历史核对、明确确认后提交预测、按日期勾选官网下载。移除脚本 ZIP 保存按钮；请把官网 ZIP 集中放入一个文件夹（推荐 results），点击“选择 ZIP 文件夹 / 提取 CSV…”。每次选择目录，先确认结构和 ZIP 路径，再解析指标及确认 CSV 覆盖；独立 ZIP 文件夹无需 manifest。已核实的日期结果仍显示批次编号。</p>
             <p class="version-note">升级前请备份油猴脚本及脚本数据；在原已安装条目内更新并核对账号，不要先卸载旧脚本。新建条目不能保证继承原 GM 账号记录。</p>
             <div class="install-actions">
-                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 5.0.9 正式版</a>
+                <a href="https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js" class="install-btn" target="_blank" rel="noopener noreferrer">安装 / 更新 5.0.10 正式版</a>
                 <a href="https://github.com/huaaaajjj/af3-auto-submitter/tree/main" class="install-btn secondary-btn" target="_blank" rel="noopener noreferrer">查看正式源码</a>
                 <a href="https://huaaaajjj.github.io/af3-auto-submitter/docs/tutorial/" class="install-btn secondary-btn">图文使用指南</a>
             </div>
@@ -296,8 +296,9 @@
         </section>
 
         <section>
-            <h2>✨ 5.0.9 正式版更新重点</h2>
+            <h2>✨ 5.0.10 正式版更新重点</h2>
             <ul class="release-list">
+                <li>5.0.10 生成批次时自动创建与 manifest.json 同级的空 results/ 文件夹，用于存放官网手动下载的结果 ZIP；创建失败不标记生成完成，不自动下载或改动已有结果。</li>
                 <li>5.0.9 面板顶部新增全局“刷新”：同步已加载的官网账号、额度、任务模式与面板状态，并重读本地账户记录；保留输入、勾选和提交锁定，不重载网页、不扫描历史或启动任务。</li>
                 <li>5.0.8 账户页每天 23:00 UTC（北京时间 07:00）将旧实测记录显示为预计 30 个，待官网核实；关闭后下次打开补算，真实读取值与时间不变。跨日旧官网控件需更新才会重新记录；不改官网额度、不自动登录或提交。</li>
                 <li>5.0.7 日志分为 DEBUG / INFO / WARN / ERROR，可按级别筛选并一键导出全部保留日志。增加目录、ZIP 模型/链对/耗时、CSV 实际提交和官网选择步骤；保留最近 500 条及淘汰统计，刷新前请及时导出并在分享前脱敏。</li>
@@ -470,7 +471,7 @@ git diff --check</code></pre>
                 <strong>浏览器权限：</strong> 使用 Chrome 或 Edge 时，请确认 Tampermonkey 有权限在 <code>alphafoldserver.com</code> 上运行，相关扩展权限和后台运行权限没有被关闭。
             </div>
             <div class="alert">
-                <strong>面板不显示：</strong> 请确认本 fork 的 5.0.9 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
+                <strong>面板不显示：</strong> 请确认本 fork 的 5.0.10 正式版 已安装且只启用一份，然后刷新 <code>https://alphafoldserver.com/</code>。访问 <code>www.alphafoldserver.com</code> 时也需相应站点权限。
             </div>
             <ul>
                 <li><strong>关于失败重跑：</strong> 脚本通过点击 "Clone and reuse" 实现重跑。该过程会产生页面跳转，速度较慢，请耐心等待脚本“补刀”。</li>
@@ -480,7 +481,7 @@ git diff --check</code></pre>
         </section>
 
         <footer>
-            <p>AF3 Auto Submitter 5.0.9 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
+            <p>AF3 Auto Submitter 5.0.10 · 本 fork huaaaajjj/af3-auto-submitter · 原作者 Jiang Siyuan / 上游来源 · MIT 许可证</p>
         </footer>
     </div>
 
