@@ -143,7 +143,8 @@ for(const [label,change] of [['First page',()=>0],['Previous page',()=>state.pag
   setTimeout(renderHistory,state.pageDelay);return;
  }
  const spinner=document.createElement('mat-spinner');spinner.textContent='Loading';document.querySelector('gdm-af-history').append(spinner);
- setTimeout(()=>{state.page=target;renderHistory();spinner.remove()},state.pageDelay);
+ const delay=['fasta-partial-return-timeout','fasta-import-return-timeout'].includes(id)&&state.nativeSaved&&target===0?1600:state.pageDelay;
+ setTimeout(()=>{state.page=target;renderHistory();spinner.remove()},delay);
 };
 function showPrediction(job){
  const request=document.querySelector('gdm-af-request');request.querySelector('.continue')?.remove();
@@ -233,6 +234,9 @@ document.getElementById('native-upload').onclick=()=>{
   setTimeout(()=>{
    const jobs=attempt.behavior==='partial'?attempt.jobs.slice(0,7):attempt.jobs;
    addHistory(jobs,'Saved draft',attempt.account);state.nativeSaved+=jobs.length;
+   if(id==='fasta-partial-late-duplicate'){
+    state.history.push(...Array.from({length:100},(_,i)=>({name:'late_unrelated_'+i,id:'late-'+i,status:'Saved draft',account:owner})),{...state.history.find(row=>row.name===jobs[0].name),id:'late-duplicate'});renderHistory();
+   }
    if(attempt.behavior!=='unclosed')cancelDialog(dialog);
   },260);
  };
@@ -671,8 +675,13 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   const dir=await generate(fasta(1)),batch=manifest(dir).batches[0],original=dir.files.get(batch.jsonFile);dir.files.set(batch.jsonFile,original+' ');
   await clickFasta('import');assert(!state.uploads.length&&/invalid\/changed/.test(ui('fasta-status').textContent),'Changed JSON uploaded');noCompletion(dir);
   dir.files.delete(batch.jsonFile);await clickFasta('import');assert(!state.uploads.length&&/Missing/.test(ui('fasta-status').textContent),'Missing JSON uploaded');
- }else if(['fasta-partial','fasta-unclosed','fasta-warning','fasta-validation-timeout','fasta-stop-validation','fasta-stop-save','fasta-account-validation','fasta-account-save','fasta-account-confirm'].includes(id)){
-  const dir=await generate(fasta(30));const behavior=id.replace('fasta-','');state.behavior=['partial','unclosed','warning','validation-timeout'].includes(behavior)?behavior:'success';
+ }else if(id==='fasta-import-return-timeout'){
+  const dir=await generate(fasta(30));await clickFasta('import');const m=manifest(dir),attempt=m.batches[0].attempts.at(-1);
+  assert(m.importComplete&&m.summary.imported===30&&!m.predictionComplete,'Complete scan was not retained after return timeout');
+  assert(attempt.result==='confirmed'&&attempt.verifiedAt,'Verified attempt was downgraded after return timeout');
+  await assertNoRetry(1,1);
+ }else if(['fasta-partial','fasta-partial-return-timeout','fasta-partial-late-duplicate','fasta-unclosed','fasta-warning','fasta-validation-timeout','fasta-stop-validation','fasta-stop-save','fasta-account-validation','fasta-account-save','fasta-account-confirm'].includes(id)){
+  const dir=await generate(fasta(30));const behavior=id.startsWith('fasta-partial')?'partial':id.replace('fasta-','');state.behavior=['partial','unclosed','warning','validation-timeout'].includes(behavior)?behavior:'success';
   if(behavior==='account-confirm')state.changeOnConfirm=true;
   ui('fasta-import').click();
   if(behavior.endsWith('-validation')){await until(()=>state.uploads[0]?.changes===1,'Native validation started');if(behavior.startsWith('stop'))ui('fasta-stop').click();else{window.WIZ_global_data.oPEP7c='other@example.com';renderHistory()}}
@@ -680,10 +689,12 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   await settled();let m=noCompletion(dir);const shouldSave=['partial','unclosed','stop-save','account-save'].includes(behavior);
   assert(state.saves.length===(shouldSave?1:0),'Warning/stop/account-change bypassed validation or save count wrong');
   if(shouldSave){assert(['partial','uncertain'].includes(m.batches[0].status)&&ui('fasta-import').disabled,'Uncertain batch is retryable');await until(()=>state.nativeSaved>0,'Delayed native save');}
-  if(behavior==='partial')assert(m.summary.imported===7&&m.batches[0].status==='partial','Partial draft history not represented');
+  if(id==='fasta-partial-late-duplicate')assert(m.summary.imported===0&&m.batches[0].status==='uncertain','History was confirmed before checking later-page duplicates');
+  else if(behavior==='partial')assert(m.summary.imported===7&&m.batches[0].status==='partial','Partial draft history not represented');
   await assertNoRetry(behavior==='account-confirm'?0:1,shouldSave?1:0);
   if(shouldSave){
    for(const upload of state.uploads)cancelDialog(upload.dialog);window.WIZ_global_data.oPEP7c=owner;renderHistory();
+   if(id==='fasta-partial-late-duplicate')state.history=state.history.filter(row=>row.id!=='late-duplicate');
    addHistory(m.batches[0].jobs);await clickFasta('sync');m=manifest(dir);assert(m.importComplete&&m.summary.imported===30&&!m.predictionComplete,'History-only recovery failed');assert(state.saves.length===1&&state.uploads.length===1,'Recovery reuploaded uncertain batch');
   }
  }else if(id==='fasta-mutual-exclusion'){
@@ -709,7 +720,7 @@ SCENARIOS = [
     'fasta-menu-identity', 'fasta-menu-stop', 'fasta-menu-account', 'fasta-menu-row-change', 'fasta-menu-foreign', 'fasta-menu-conflict', 'fasta-import-streaming',
     'fasta-boundaries', 'fasta-lines-names', 'fasta-legacy-restore', 'fasta-multichain-import', 'fasta-invalid', 'fasta-local-errors', 'fasta-results-directory',
     'fasta-restore', 'fasta-import-happy', 'fasta-import-tampered', 'fasta-journal-error',
-    'fasta-partial', 'fasta-unclosed', 'fasta-warning', 'fasta-validation-timeout',
+    'fasta-partial', 'fasta-partial-return-timeout', 'fasta-partial-late-duplicate', 'fasta-import-return-timeout', 'fasta-unclosed', 'fasta-warning', 'fasta-validation-timeout',
     'fasta-stop-validation', 'fasta-stop-save', 'fasta-account-validation',
     'fasta-account-save', 'fasta-account-confirm', 'fasta-mutual-exclusion',
     'fasta-stale-journal', 'fasta-restore-truncated', 'fasta-old-completed-name', 'fasta-submit-evidence-completed', 'fasta-duplicate-reconcile', 'fasta-not-saved-restore',
@@ -720,7 +731,7 @@ SCENARIOS = [
     'fasta-page-size-material-stop-late',
     'fasta-sync-progress', 'fasta-context-errors', 'fasta-empty-history', 'fasta-history-placeholders', 'fasta-history-placeholders-stop', 'fasta-history-ambiguous',
 ]
-SHORT_CASES = {'fasta-partial', 'fasta-unclosed', 'fasta-validation-timeout'}
+SHORT_CASES = {'fasta-partial', 'fasta-partial-return-timeout', 'fasta-import-return-timeout', 'fasta-unclosed', 'fasta-validation-timeout'}
 
 
 def main():

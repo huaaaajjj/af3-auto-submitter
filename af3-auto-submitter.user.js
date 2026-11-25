@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.10
+// @version      5.0.11
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期勾选官网下载、选择本地 ZIP 文件夹提取指标 CSV。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.10';
+    const SCRIPT_VERSION = '5.0.11';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -1130,7 +1130,7 @@
         }, deadline === null ? 8000 : Math.max(1, deadline - Date.now()));
     }
 
-    async function readFastaHistory(deadline = null) {
+    async function readFastaHistory(deadline = null, onScanned = null) {
         let page = await fastaHistoryPage(null, deadline);
         const move = async button => { fastaCheck(); if (!downloadButtonEnabled(button)) throw new Error(t('downloadPageError')); button.click(); return fastaHistoryPage(page.signature, deadline); };
         if (downloadButtonEnabled(page.first)) page = await move(page.first);
@@ -1177,6 +1177,9 @@
             if (!downloadButtonEnabled(page.next)) break;
             page = await move(page.next);
         }
+        // Preserve only a complete scan: later pages may contain duplicate names.
+        fastaCheck();
+        if (onScanned) await onScanned(found);
         fastaState.progress = null; fastaState.message = t('fastaHistoryReturning'); renderFastaSection();
         if (downloadButtonEnabled(page.first)) page = await move(page.first);
         const returning = new Set();
@@ -1489,8 +1492,7 @@
             do {
                 await sleep(300); fastaCheck();
                 // The website streams saved drafts into history; use the remaining import budget, not an inner 8-second cutoff.
-                const found = await readFastaHistory(deadline);
-                await reconcileFastaHistory(found, account);
+                await readFastaHistory(deadline, found => reconcileFastaHistory(found, account));
                 if (batch.status === 'imported' && !nativeError) break;
                 if (nativeError) throw new Error(nativeError);
             } while (Date.now() < deadline);
@@ -1502,7 +1504,8 @@
             fastaState.message = isUserStopError(error) ? t('fastaStopped') : error.message;
             addLog(t('fastaLogError', { detail: fastaState.message }), isUserStopError(error) ? 'warn' : 'error');
             if (attempt) {
-                attempt.result = saveSent ? 'unconfirmed' : 'not_saved'; attempt.error = fastaState.message;
+                if (attempt.result !== 'confirmed') attempt.result = saveSent ? 'unconfirmed' : 'not_saved';
+                attempt.error = fastaState.message;
                 if (!saveSent && attempt.saveClickedAt) { attempt.savePreparedAt = attempt.saveClickedAt; attempt.saveClickedAt = null; }
                 if (batch.status !== 'imported' && batch.status !== 'partial') batch.status = saveSent ? 'uncertain' : 'ready';
             }
