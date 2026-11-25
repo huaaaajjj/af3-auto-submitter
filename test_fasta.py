@@ -47,7 +47,7 @@ const state={history:[],page:0,pageSize:10,sizeChanges:[],pageMoves:[],uploads:[
     confirms:[],confirmValue:true,behavior:'success',nativeSaved:0,rowOpens:0,predictions:0,errors:[],transports:[],writeError:'',pickerMode:'normal',pageDelay:90};
 window.addEventListener('error',event=>state.errors.push(event.message));
 window.addEventListener('unhandledrejection',event=>state.errors.push(String(event.reason)));
-window.confirm=message=>{state.confirms.push(String(message));if(String(message).startsWith('Upload batch'))state.uploadAuthorized=state.confirmValue;if(state.changeOnConfirm)window.WIZ_global_data.oPEP7c='other@example.com';return state.confirmValue};
+window.confirm=message=>{state.confirms.push(String(message));if(/^(Upload batch|Reimport batch|再次导入第)/.test(String(message)))state.uploadAuthorized=state.confirmValue;if(state.changeOnConfirm)window.WIZ_global_data.oPEP7c='other@example.com';return state.confirmValue};
 window.alert=()=>{};
 for(const name of ['fetch','GM_xmlhttpRequest','GM_download'])window[name]=()=>{state.transports.push(name);throw Error('Unexpected transport '+name)};
 XMLHttpRequest.prototype.open=function(){state.transports.push('XHR');throw Error('Unexpected XHR')};
@@ -249,6 +249,12 @@ const fasta=count=>Array.from({length:count},(_,i)=>'>synthetic_'+(i+1)+'\n'+seq
 const busy=()=>!ui('fasta-stop').hidden;
 async function settled(){await until(()=>!busy(),'FASTA operation end')}
 async function clickFasta(action){assert(!ui('fasta-'+action).disabled,'Disabled FASTA action: '+action);ui('fasta-'+action).click();await settled()}
+async function importBatch(index){
+ const menu=ui('fasta-batches').querySelector('[data-batch-index="'+index+'"]');
+ assert(menu?.querySelector('summary')&&menu.querySelector('button'),'Missing batch menu '+index);
+ menu.querySelector('summary').click();const button=menu.querySelector('button');
+ assert(!button.disabled,'Disabled batch import '+index);state.uploadAuthorized=true;button.click();await settled();
+}
 async function generate(text=fasta(31),name='synthetic.fasta'){
  chosenDir=parentDir;choose(text,name);await clickFasta('generate');
  const dirs=Array.from(parentDir.directories.values());const dir=dirs.at(-1);assert(dir?.files.has('manifest.json'),'Manifest not committed: '+ui('fasta-status').textContent);state.activeDir=dir;return dir;
@@ -285,7 +291,101 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
 (async()=>{
  const script=document.createElement('script');script.src='/script.js';await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(Error('Userscript load failed'));document.head.append(script)});
  await until(()=>ui('fasta-section'),'FASTA panel');assert(!ui('fasta-mode')&&!ui('fasta-tail'),'Protein layout and tail controls must be removed');
- if(id.startsWith('fasta-menu-')){
+ if(id==='fasta-batch-menu-stable'){
+  const dir=await generate(fasta(31)),menu=ui('fasta-batches').querySelector('details'),toggle=menu.querySelector('summary');
+  toggle.click();toggle.focus();const scroll=ui('fasta-batches').scrollTop;
+  ui('panel-refresh').click();assert(menu.isConnected,'Global refresh rebuilt the unchanged batch menu');
+  await pause(1100);assert(menu.isConnected&&menu.open,'Periodic refresh detached or closed the batch menu');
+  assert(ui('fasta-batches').scrollTop===scroll,'Periodic refresh reset the batch list scroll');
+  assert(ui('fasta-section').getRootNode().activeElement===toggle,'Periodic refresh lost keyboard focus');
+  const count=state.uploads.length;state.uploadAuthorized=true;menu.querySelector('button').click();await settled();
+  assert(manifest(dir).batches[0].status==='imported'&&state.uploads.length===count+1,'Stable menu failed to import');
+ }else if(id==='fasta-batch-fresh'){
+  const dir=await generate(fasta(31));assert(ui('fasta-batches').querySelectorAll('details').length===2,'Not all batches have a menu');
+  await importBatch(2);const m=manifest(dir);
+  assert(state.confirms.length===0,'Never-imported batch prompted');
+  assert(m.batches[0].status==='ready'&&m.batches[1].status==='imported'&&m.summary.imported===1,'Wrong batch imported');
+  assert(state.uploads.length===1&&state.uploads[0].jobs[0].name==='synthetic_31','Menu uploaded the first batch instead of selected batch');
+ }else if(id==='fasta-batch-skip'){
+  const dir=await generate(fasta(61));state.behavior='partial';await clickFasta('import');
+  assert(manifest(dir).batches[0].status==='partial','First batch did not remain partially imported');
+  state.behavior='success';const prompts=state.confirms.length;await importBatch(2);await importBatch(3);const m=manifest(dir);
+  assert(state.confirms.length===prompts,'Unimported later batch prompted');
+  assert(m.batches[0].status==='partial'&&m.batches[0].jobs.filter(j=>j.importStatus==='confirmed').length===7,'Skipping batch lost partial confirmations');
+  assert(m.batches[1].status==='imported'&&m.batches[2].status==='imported'&&m.summary.imported===38,'Earlier failure blocked later batch');
+ }else if(['fasta-batch-account','fasta-batch-cancel','fasta-batch-account-change','fasta-batch-zh','fasta-batch-same-account'].includes(id)){
+  const dir=await generate(fasta(2));await clickFasta('import');const original=manifest(dir).batches[0],before=dir.files.get('manifest.json'),prompts=state.confirms.length;
+  if(id!=='fasta-batch-same-account'){window.WIZ_global_data.oPEP7c='second@example.com';renderHistory()}
+  if(id==='fasta-batch-cancel')state.confirmValue=false;
+  if(id==='fasta-batch-account-change')state.changeOnConfirm=true;
+  if(id==='fasta-batch-zh'){ui('language-select').value='zh';ui('language-select').dispatchEvent(new Event('change'))}
+  await importBatch(1);
+  assert(state.confirms.length===prompts+1,'Previously imported batch did not prompt exactly once');
+  const message=state.confirms.at(-1);assert(message.includes(owner)&&message.includes(id==='fasta-batch-same-account'?owner:'second@example.com'),'Reimport warning omits old or current account');
+  if(['fasta-batch-cancel','fasta-batch-account-change','fasta-batch-same-account'].includes(id)){
+   assert(state.uploads.length===1&&state.saves.length===1,'Cancelled/unsafe repeat uploaded again');
+   assert(dir.files.get('manifest.json')===before,'Cancelled/unsafe repeat changed saved records');
+   if(id==='fasta-batch-cancel')assert(!ui('fasta-status').textContent.includes('Checking website history'),'Cancelled reimport still appears to be checking history');
+  }else{
+   let m=manifest(dir),batch=m.batches[0];assert(state.uploads.length===2&&state.saves.length===2,'New account was not imported exactly once');
+   assert(batch.account==='second@example.com'&&batch.status==='imported'&&batch.jobs.every(j=>j.importStatus==='confirmed'),'New-account confirmations missing');
+   assert(batch.accountHistory?.length===1&&JSON.stringify(batch.accountHistory[0].jobs)===JSON.stringify(original.jobs),'Original-account jobs lost or changed');
+   assert(JSON.stringify(batch.accountHistory[0].attempts)===JSON.stringify(original.attempts),'Original-account attempt evidence lost');
+   if(id==='fasta-batch-zh')assert(message.includes('再次导入第'),'Chinese reimport warning missing');
+   await restore(dir);window.WIZ_global_data.oPEP7c=owner;renderHistory();await clickFasta('sync');m=manifest(dir);
+   assert(m.batches[0].account==='second@example.com'&&m.batches[0].accountHistory[0].jobs.every(j=>j.importStatus==='confirmed'),'Restoring/checking original account overwrote new account');
+   assert(/verified 2\/2|确认 2\/2/.test(ui('fasta-status').textContent),'Original account history no longer tracked');
+   const scans=state.uploads.length;await importBatch(1);assert(state.uploads.length===scans,'Switching back bypassed original-account duplicate protection');
+  }
+ }else if(['fasta-batch-partial-account','fasta-batch-account-retry','fasta-batch-three-accounts'].includes(id)){
+  const dir=await generate(fasta(30));
+  if(id==='fasta-batch-partial-account')state.behavior='partial';
+  await clickFasta('import');const original=manifest(dir).batches[0];
+  state.behavior=id==='fasta-batch-account-retry'?'warning':'success';window.WIZ_global_data.oPEP7c='second@example.com';renderHistory();await importBatch(1);
+  if(id==='fasta-batch-account-retry'){
+   assert(manifest(dir).batches[0].status==='ready'&&manifest(dir).batches[0].accountHistory[0].status==='imported','Validation failure changed old account');
+   state.behavior='success';await importBatch(1);
+  }
+  if(id==='fasta-batch-three-accounts'){window.WIZ_global_data.oPEP7c='third@example.com';renderHistory();await importBatch(1)}
+  let batch=manifest(dir).batches[0];assert(batch.status==='imported'&&batch.jobs.every(job=>job.importStatus==='confirmed'),'New account did not import all tasks');
+  assert(batch.accountHistory.length===(id==='fasta-batch-three-accounts'?2:1),'Lost or duplicated historical account');
+  assert(JSON.stringify(batch.accountHistory[0].jobs)===JSON.stringify(original.jobs),'Original-account job states changed');
+  const recordsBefore=JSON.stringify([batch,...batch.accountHistory].map(record=>({account:record.account,attempts:record.attempts})));
+  for(const record of [batch,...batch.accountHistory]){
+   assert(record.attempts.every(attempt=>attempt.account===record.account&&attempt.startedAt&&attempt.endedAt),'Import account/timestamps missing from manifest');
+   const last=record.attempts.at(-1);assert(last.saveClickedAt&&last.result===(record.status==='imported'?'confirmed':'unconfirmed'),'Manifest lost draft-save time or import result');
+  }
+  if(id==='fasta-batch-account-retry')assert(batch.attempts.length===2&&batch.attempts[0].result==='not_saved'&&batch.attempts[1].result==='confirmed','Failed and successful attempts were not both recorded');
+  await restore(dir);batch=manifest(dir).batches[0];
+  assert(JSON.stringify([batch,...batch.accountHistory].map(record=>({account:record.account,attempts:record.attempts})))===recordsBefore,'Reopening lost repeated-import history');
+  window.WIZ_global_data.oPEP7c=owner;renderHistory();await clickFasta('sync');batch=manifest(dir).batches[0];
+  assert(batch.accountHistory[0].status===original.status&&batch.accountHistory[0].jobs.filter(job=>job.importStatus==='confirmed').length===original.jobs.filter(job=>job.importStatus==='confirmed').length,'Restore contaminated original-account confirmation counts');
+ }else if(id==='fasta-batch-unsaved-account'){
+  const dir=await generate(fasta(1));state.behavior='warning';await clickFasta('import');const prompts=state.confirms.length;
+  assert(state.saves.length===0&&manifest(dir).batches[0].status==='ready','Validation-only failure sent a save');
+  window.WIZ_global_data.oPEP7c='second@example.com';renderHistory();state.behavior='success';await importBatch(1);
+  const batch=manifest(dir).batches[0];assert(state.confirms.length===prompts,'Never-saved batch prompted after switching accounts');
+  assert(batch.status==='imported'&&batch.accountHistory[0].attempts[0].result==='not_saved','Validation-only attempt was lost or incorrectly confirmed');
+ }else if(id==='fasta-batch-legacy-attempts'){
+  const dir=await generate(fasta(1));await clickFasta('import');const m=manifest(dir),batch=m.batches[0];
+  batch.attempts.unshift({account:'legacy-validation@example.com',phase:'validation',startedAt:batch.attempts[0].startedAt,saveClickedAt:null,endedAt:batch.attempts[0].endedAt,result:'not_saved'});
+  dir.files.set('manifest.json',JSON.stringify(m));await restore(dir);
+  window.WIZ_global_data.oPEP7c='second@example.com';renderHistory();await importBatch(1);await restore(dir);
+  assert(!ui('fasta-sync').disabled,'Legacy cross-account validation attempts broke archived manifest restoration');
+  const records=manifest(dir).batches[0].accountHistory[0].attempts;
+  assert(records.length===2&&records[0].account==='legacy-validation@example.com'&&records[1].result==='confirmed','Legacy attempt evidence was lost');
+ }else if(id==='fasta-batch-journal-failure'){
+  const dir=await generate(fasta(1));await clickFasta('import');const before=dir.files.get('manifest.json');
+  window.WIZ_global_data.oPEP7c='second@example.com';renderHistory();state.writeError='manifest.json';await importBatch(1);
+  assert(state.uploads.length===2&&state.uploads[1].changes===0&&state.saves.length===1,'Cross-account upload started without a durable attempt record');
+  assert(dir.files.get('manifest.json')===before,'Write failure overwrote original-account evidence');
+  assert(Array.from(ui('fasta-batches').querySelectorAll('button')).every(button=>button.disabled),'Unsaved cross-account record left menu actions enabled');
+  state.writeError='';await restore(dir);assert(manifest(dir).batches[0].account===owner,'Restore did not recover original account after failed write');
+ }else if(id==='fasta-batch-history-invalid'){
+  const dir=await generate(fasta(1)),m=manifest(dir),batch=m.batches[0];
+  batch.accountHistory=[{...batch,account:owner,jobs:batch.jobs.map(job=>({...job,name:'tampered'}))}];dir.files.set('manifest.json',JSON.stringify(m));
+  await restore(dir);assert(ui('fasta-import').disabled&&/invalid|changed/.test(ui('fasta-status').textContent),'Malformed account history was trusted');
+ }else if(id.startsWith('fasta-menu-')){
   const dir=await generate(fasta(2)),m=manifest(dir),batch=m.batches[0];state.omitIds=true;
   const save=new Date(Date.now()-60000).toISOString();batch.account=owner;
   batch.attempts=[{account:owner,startedAt:save,saveClickedAt:save,endedAt:save,result:'unconfirmed'}];
@@ -711,6 +811,7 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
   assert(state.pickers===pickers&&!state.uploads.length&&!state.rowOpens,'Busy generation allowed another workflow');state.releasePicker();await settled();state.activeDir=Array.from(parentDir.directories.values()).at(-1);state.pickerMode='normal';
   ui('fasta-import').click();await until(()=>state.uploads[0]?.changes===1,'Busy native validation');
   assert(ui('v20-btn').disabled&&ui('download-scan').disabled&&ui('fasta-generate').disabled,'Import did not exclude other workflows');
+  for(const button of ui('fasta-batches').querySelectorAll('button')){assert(button.disabled,'Batch menu enabled during import');syntheticClick(button)}
   syntheticClick(ui('v20-btn'));syntheticClick(ui('download-scan'));syntheticClick(ui('fasta-generate'));await settled();assert(state.pickers===pickers&&!state.rowOpens,'Busy import allowed another workflow');
   filters(['Completed']);for(const row of state.history)row.status='Completed';renderHistory();state.pageDelay=600;
   ui('download-start').value='2026-11-16';ui('download-end').value='2026-11-16';ui('download-scan').click();await until(()=>!ui('download-stop').hidden,'Busy history scan');
@@ -724,6 +825,8 @@ function assertSafe(){assert(state.predictions===0,'Prediction launched');assert
 
 
 SCENARIOS = [
+    'fasta-batch-partial-account', 'fasta-batch-account-retry', 'fasta-batch-three-accounts',
+    'fasta-batch-unsaved-account', 'fasta-batch-legacy-attempts', 'fasta-batch-journal-failure', 'fasta-batch-menu-stable', 'fasta-batch-fresh', 'fasta-batch-skip', 'fasta-batch-account', 'fasta-batch-cancel', 'fasta-batch-account-change', 'fasta-batch-zh', 'fasta-batch-same-account', 'fasta-batch-history-invalid',
     'fasta-menu-identity', 'fasta-menu-stop', 'fasta-menu-account', 'fasta-menu-row-change', 'fasta-menu-foreign', 'fasta-menu-conflict', 'fasta-import-streaming',
     'fasta-boundaries', 'fasta-lines-names', 'fasta-legacy-restore', 'fasta-multichain-import', 'fasta-invalid', 'fasta-local-errors', 'fasta-results-directory',
     'fasta-restore', 'fasta-import-happy', 'fasta-import-tampered', 'fasta-journal-error',
@@ -738,7 +841,7 @@ SCENARIOS = [
     'fasta-page-size-material-stop-late',
     'fasta-sync-progress', 'fasta-context-errors', 'fasta-empty-history', 'fasta-history-placeholders', 'fasta-history-placeholders-stop', 'fasta-history-ambiguous',
 ]
-SHORT_CASES = {'fasta-partial', 'fasta-partial-return-timeout', 'fasta-import-return-timeout', 'fasta-import-return-timeout-zh', 'fasta-unclosed', 'fasta-validation-timeout'}
+SHORT_CASES = {'fasta-batch-partial-account', 'fasta-batch-skip', 'fasta-partial', 'fasta-partial-return-timeout', 'fasta-import-return-timeout', 'fasta-import-return-timeout-zh', 'fasta-unclosed', 'fasta-validation-timeout'}
 
 
 def main():
