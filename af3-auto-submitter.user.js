@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.11
+// @version      5.0.12
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期勾选官网下载、选择本地 ZIP 文件夹提取指标 CSV。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.11';
+    const SCRIPT_VERSION = '5.0.12';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -892,6 +892,7 @@
         fastaCheckingTotal: 'Checking website history… page {page}; {count}/{total} rows read ({percent}%).',
         fastaProgress: 'FASTA operation progress; history scanning, not prediction completion',
         fastaHistoryReturning: 'History read. Returning to the first page…',
+        fastaHistoryReturnTimeout: 'Returning to the first history page timed out. Saved import confirmations are unchanged. Check the website before continuing; do not reimport.',
         fastaUpdating: 'History read. Checking and saving local records…',
         fastaChecked: 'History check complete: verified {matched}/{total} tracked jobs in the current filters. Records saved.',
         fastaLogCheckStart: 'History check started: account {account}; filters {filters}.',
@@ -950,6 +951,7 @@
         fastaCheckingTotal: '正在核对官网历史：第 {page} 页，已读取 {count}/{total} 条（{percent}%）…',
         fastaProgress: 'FASTA 操作进度；历史扫描进度，不是预测完成进度',
         fastaHistoryReturning: '历史读取完成，正在回到首页…',
+        fastaHistoryReturnTimeout: '返回历史首页超时。已保存的导入确认记录保持不变，请核对官网后继续，不要重复导入。',
         fastaUpdating: '历史读取完成，正在核对并保存本地记录…',
         fastaChecked: '核对完成：当前筛选下确认 {matched}/{total} 个跟踪任务，记录已保存。',
         fastaLogCheckStart: '开始核对历史：账号 {account}；筛选 {filters}。',
@@ -1091,7 +1093,7 @@
         }
     }
 
-    async function fastaWait(read, timeout = FASTA_IMPORT_TIMEOUT) {
+    async function fastaWait(read, timeout = FASTA_IMPORT_TIMEOUT, timeoutMessage = null) {
         const deadline = Date.now() + timeout;
         while (Date.now() < deadline) {
             fastaCheck();
@@ -1099,7 +1101,7 @@
             if (result) return result;
             await sleep(100);
         }
-        throw new Error(t('fastaTimeout', { detail: 'Timeout' }));
+        throw new Error(timeoutMessage || t('fastaTimeout', { detail: 'Timeout' }));
     }
 
     function getFastaContext() {
@@ -1118,7 +1120,7 @@
             sort: loading ? previous?.sort || [] : Array.from(root.querySelectorAll('th[aria-sort]'), node => [downloadText(node), node.getAttribute('aria-sort')]) });
     }
 
-    async function fastaHistoryPage(before = null, deadline = null) {
+    async function fastaHistoryPage(before = null, deadline = null, timeoutMessage = null) {
         let signature = '', since = 0;
         return fastaWait(() => {
             const history = getDownloadHistory(true);
@@ -1127,12 +1129,12 @@
             if (before !== null && before === page.signature) return false;
             if (signature !== page.signature) { signature = page.signature; since = Date.now(); return false; }
             return Date.now() - since >= 150 && page;
-        }, deadline === null ? 8000 : Math.max(1, deadline - Date.now()));
+        }, deadline === null ? 8000 : Math.max(1, deadline - Date.now()), timeoutMessage);
     }
 
     async function readFastaHistory(deadline = null, onScanned = null) {
         let page = await fastaHistoryPage(null, deadline);
-        const move = async button => { fastaCheck(); if (!downloadButtonEnabled(button)) throw new Error(t('downloadPageError')); button.click(); return fastaHistoryPage(page.signature, deadline); };
+        const move = async (button, timeoutMessage = null) => { fastaCheck(); if (!downloadButtonEnabled(button)) throw new Error(t('downloadPageError')); button.click(); return fastaHistoryPage(page.signature, deadline, timeoutMessage); };
         if (downloadButtonEnabled(page.first)) page = await move(page.first);
         const rewind = new Set();
         while (downloadButtonEnabled(page.previous)) {
@@ -1181,11 +1183,12 @@
         fastaCheck();
         if (onScanned) await onScanned(found);
         fastaState.progress = null; fastaState.message = t('fastaHistoryReturning'); renderFastaSection();
-        if (downloadButtonEnabled(page.first)) page = await move(page.first);
+        const returnTimeout = t('fastaHistoryReturnTimeout');
+        if (downloadButtonEnabled(page.first)) page = await move(page.first, returnTimeout);
         const returning = new Set();
         while (downloadButtonEnabled(page.previous)) {
             if (returning.has(page.signature) || returning.size >= 1000) throw new Error(t('downloadPageError'));
-            returning.add(page.signature); page = await move(page.previous);
+            returning.add(page.signature); page = await move(page.previous, returnTimeout);
         }
         fastaCheck();
         return found;
