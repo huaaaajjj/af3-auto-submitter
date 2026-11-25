@@ -75,10 +75,18 @@ const reviewed=()=>Array.from(ui('download-results').querySelectorAll('input[dat
  if(!unopened){
   await prepareOpenedBatch();
   const disk=JSON.parse(batchDir.files.get('manifest.json'));
+  if(id==='results-batch-account-history'){
+   const batch=disk.batches[0],previous=JSON.parse(JSON.stringify(batch));
+   batch.account='second@example.com';batch.jobs=batch.jobs.map(job=>({...job,jobId:'second-'+job.jobId}));batch.accountHistory=[previous];
+  }
   if(id==='results-batch-idless')disk.batches[0].jobs.forEach(job=>job.jobId=null);
   else{
    disk.batches[0].jobs[2].jobId='an-older-same-name-job';
    disk.batches[0].jobs[3].importStatus='pending';
+  }
+  if(id==='results-batch-account-history'){
+   disk.batches[0].accountHistory[0].jobs[2].jobId='an-older-same-name-job';
+   disk.batches[0].accountHistory[0].jobs[3].importStatus='pending';
   }
   if(id==='results-batch-other-account')disk.batches[0].account='other@example.com';
   if(id==='results-batch-wrong-ids')disk.batches[0].jobs.forEach(job=>{job.jobId='old-'+job.jobId;job.importStatus='confirmed'});
@@ -197,6 +205,7 @@ const reviewed=()=>Array.from(ui('download-results').querySelectorAll('input[dat
 })().catch(error=>parent.postMessage({type:'af3-case-result',result:{passed:false,message:error.message}},location.origin));
 </script>'''
 SCENARIOS = [
+    'results-batch-account-history',
     'results-batch-rollback', 'results-batch-refresh', 'results-batch-wrong-ids', 'results-batch-unconfirmed', 'results-batch-multiple', 'results-batch-subset', 'results-batch-unopened', 'results-batch-idless', 'results-batch-other-account',
     'results-batch-invalid', 'results-batch-stale', 'results-batch-name', 'results-batch-stop',
     'results-batch-reentry', 'results-batch-language', 'results-batch-queue',

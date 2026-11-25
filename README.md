@@ -4,9 +4,11 @@
 
 ## 安装 5.0 正式版
 
-[安装或更新 5.0.12](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
+[安装或更新 5.0.13](https://raw.githubusercontent.com/huaaaajjj/af3-auto-submitter/main/af3-auto-submitter.user.js) · [正式发布](https://github.com/huaaaajjj/af3-auto-submitter/releases) · [源码](https://github.com/huaaaajjj/af3-auto-submitter/tree/main) · [反馈问题](https://github.com/huaaaajjj/af3-auto-submitter/issues)
 
 **从 4.0 起只发布正式版，不再维护独立开发版渠道。** 安装文件为 `af3-auto-submitter.user.js`，正常开发、安装、测试和更新均以 `main` 的正式文件为准。
+
+**5.0.13 更新：** 所有批次右侧新增“⋯”菜单，可直接导入指定批次，不再被前一批失败挡住。批次菜单首次导入不再额外弹窗；有过草稿保存或确认记录时，显示此前账号和当前账号的再次导入提醒。换账号后可整批重新导入，原账号记录保留并继续支持历史核对和批次结果勾选；同账号仍阻止已导入或保存结果不明的重复上传。清单摘要统计每批最近一次使用的账号，不累加历史账号副本。manifest 格式仍为 1，增加可选的 `accountHistory`；含换账号记录的目录请使用 v5.0.13 或更新版打开。
 
 **5.0.12 修复：** 返回历史首页超时使用中英文专用提示，明确已保存的导入确认记录保持不变，不再将已确认导入误报为“未确认或部分完成”。校验、保存等待等其他阶段继续使用原有警告；不改变导入结果、60 秒核对预算、重复导入保护或 manifest 格式。
 
@@ -39,7 +41,7 @@
 1. 安装 Tampermonkey，点击上方正式安装链接并确认。若仅显示源码，在油猴原脚本编辑器中完整替换并保存。
 2. 允许脚本在 `https://alphafoldserver.com/`（或 `https://www.alphafoldserver.com/`）运行。使用 Edge InPrivate 时，需要开启扩展的“允许在 InPrivate 中使用”。
 3. 普通窗口与 InPrivate 要共用账号目录，需在 Tampermonkey 设置 > Security 中将 `Store data in incognito mode` 设为 `Permanent`。
-4. 刷新官网，确认标题显示 **v5.0.12**，并核对当前账号和官网额度。网站控件与通知需使用英文。
+4. 刷新官网，确认标题显示 **v5.0.13**，并核对当前账号和官网额度。网站控件与通知需使用英文。
 5. 首次仅试 1 个任务；生成 JSON、导入草稿、预测提交、预测完成是四个不同阶段。结果不确定时不要重复点击 Confirm 或刷新后直接重试。
 
 正式更新检查地址是 `main/af3-auto-submitter.meta.js`，完整下载地址是 `main/af3-auto-submitter.user.js`。启用油猴“检查更新”即可接收后续正式版本。
@@ -61,10 +63,13 @@
 1. 安装 Tampermonkey 和正式版脚本，允许脚本在 AlphaFold Server 页面运行；刷新后检查面板版本与当前账号。
 2. 准备 UTF-8 FASTA：每个 `>名称` 开始一个任务，每条非空序列行各是一条蛋白链。单链不要折行；多链任务把每条链各写一行。
 3. 选择 FASTA，点击“生成并选择保存目录”。这一步只在本地生成 FASTA、官网 JSON、`manifest.json` 和同级空的 `results/` 文件夹，不会上传。
-4. 官网清空搜索、仅选 `Saved draft`，点击“导入下一批为草稿”。先核对账号、批次和数量，再确认；草稿保存不会启动预测。
+4. 官网清空搜索、仅选 `Saved draft`，点击“导入下一批为草稿”，或点任意批次右侧“⋯”→“导入此批次”。菜单首次导入直接开始，请先核对当前账号；有过保存或确认记录则提示旧账号和当前账号，确认后才再次导入。前一批失败时可直接选另一批；同一批换账号导入会保留原账号记录，同账号重复上传仍受保护。仅保存草稿，不启动预测。
 5. 等官网草稿列表刷新后，点“核对官网历史 / 更新记录”，确认批次数量全部匹配。若提示 `Timeout`、不完整或需核对，先查看官网历史和日志，**不要立即再次导入**。
 6. 只筛选要提交的草稿并核对列表、账号和额度，输入本次处理上限，点击“启动”；再次核对运行摘要后确认。提交会消耗官网额度。官网 `Completed` 后，再核对历史并记录完成状态。
 7. 以后续跑时点“打开已有批次文件夹”，选直接含 `manifest.json` 的原批次目录；不要重新生成或重复上传。结果下载、保存 ZIP 和本地 CSV 操作见下文独立章节。
+
+**重复导入记录也写入同一个 `manifest.json`：** `batches[]` 保留该批最近使用账号的记录，旧账号完整记录保存在该批的 `accountHistory[]`。每个账号的 `attempts[]` 按次追加账号、`startedAt`、`saveClickedAt`、`endedAt`、`result` 和错误原因（如有），已确认时另有 `verifiedAt`；失败后的安全重试不会覆盖失败记录。取消提醒或被防重复保护拦截时不新增导入尝试。各账号的 `jobs[]` 分开保存导入/预测状态与任务 ID；预测提交时间使用 `submittedAt`，不能把导入草稿时间当作预测提交。重新打开目录后上述记录继续保留。
+
 
 **重要：** 预测提交、草稿导入、提交确认和预测完成是不同阶段。停止或超时不会撤销已发出的官网请求；提交结果不明确时先查官网历史，不要反复点确认。官网列表勾选、按日期应用勾选只会改变选择，不会自动下载或提交预测。
 

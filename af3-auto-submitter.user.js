@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AF3 Auto Submitter (huaaaajjj)
 // @namespace    https://github.com/huaaaajjj/af3-auto-submitter
-// @version      5.0.12
+// @version      5.0.13
 // @description  正式版：FASTA 分批保存与草稿导入、提交确认、按日期勾选官网下载、选择本地 ZIP 文件夹提取指标 CSV。
 // @author       Jiang Siyuan; huaaaajjj
 // @homepageURL  https://github.com/huaaaajjj/af3-auto-submitter
@@ -23,7 +23,7 @@
     'use strict';
 
     // --- 配置 ---
-    const SCRIPT_VERSION = '5.0.12';
+    const SCRIPT_VERSION = '5.0.13';
     // ponytail: keep v3 storage/DOM identifiers for upgrades; public releases use main.
     const CONTAINER_ID = 'af3-dev-panel';
     const PANEL_ROOT_ID = 'af3-dev-panel-root';
@@ -879,9 +879,9 @@
     window.__af3AutoSubmitterDevLoaded = true;
     window.__af3AutoSubmitterV24Loaded = true;
 
-    // FASTA data stays local until the explicit native-upload confirmation.
+    // FASTA data stays local until an explicit import action.
     const fastaEnglish = {
-        fastaTitle: 'FASTA batches', fastaHelp: 'Each >name is a job title; each following sequence line is a protein chain. 30 jobs per batch. Save locally before uploading drafts; no prediction is launched.',
+        fastaTitle: 'FASTA batches', fastaHelp: 'Each >name is a job title; each following sequence line is a protein chain. 30 jobs per batch. Save locally first. A batch menu imports directly to the current account when never imported; previous saves prompt. Drafts only, no prediction.',
         fastaFile: 'FASTA file',
         fastaGenerate: 'Generate and choose folder', fastaRestore: 'Open existing batch folder', fastaImport: 'Import next batch as drafts',
         fastaSync: 'Check history / update records', fastaStop: 'Stop', fastaIdle: 'Each >name starts a job. Each non-empty sequence line is one protein chain; a wrapped line is a new chain. Only proteins are generated.',
@@ -927,6 +927,9 @@
         fastaPageChanged: 'Stopped: the page address changed during the operation. Return to History and check again.',
         fastaNeedDraft: 'Select Saved draft only before importing. Existing dialogs/menus must be closed.',
         fastaCloseDialog: 'Close website dialogs and menus before checking or importing records.',
+        fastaBatchMenu: 'Batch {index} actions', fastaImportBatch: 'Import this batch', fastaReimportBatch: 'Reimport this batch',
+        fastaReimportConfirm: 'Reimport batch {index} ({count} jobs)? Prior import accounts: {accounts}. Current account: {account}. This uploads the whole batch to the current account for validation and draft saving only; no prediction is launched. Prior account records will be kept. Check the account before continuing.',
+        fastaAccountImported: 'This account already imported this batch, or its previous save is unconfirmed. Check history instead of uploading again. To import with another account, switch website accounts first.',
         fastaConfirm: 'Upload batch {index} ({count} jobs) to {account}? Selecting the JSON sends sequences for website validation. Only drafts will be saved; no prediction is launched.',
         fastaExisting: 'A batch task name already exists in history. Nothing was uploaded. Check records instead of importing it again.',
         fastaIdentity: 'A reused task title cannot identify a prediction without matching saved job IDs. Completion was not recorded; verify the website history.',
@@ -940,7 +943,7 @@
     Object.assign(I18N.en, fastaEnglish);
     for (const lang of Object.keys(I18N)) if (lang !== 'en') Object.assign(I18N[lang], fastaEnglish);
     Object.assign(I18N.zh, {
-        fastaTitle: 'FASTA 分批导入', fastaHelp: '>名称作为任务名，后续每行序列是一条蛋白链；每批 30 个任务。先保存 FASTA、官网 JSON 和 manifest，再确认上传草稿，不启动预测。',
+        fastaTitle: 'FASTA 分批导入', fastaHelp: '>名称作为任务名，后续每行序列是一条蛋白链；每批 30 个任务。先保存 FASTA、官网 JSON 和 manifest。批次菜单首次点击导入直接上传至当前账号；有过保存记录才提醒。仅保存草稿，不启动预测。',
         fastaFile: 'FASTA 文件',
         fastaGenerate: '生成并选择保存目录', fastaRestore: '打开已有批次文件夹', fastaImport: '导入下一批为草稿',
         fastaSync: '核对官网历史 / 更新记录', fastaStop: '停止', fastaIdle: '每个 >名称开始新任务；每个非空序列行是一条链，不拼接、不自动拆肽。只支持纯蛋白，长链请勿手动折行。',
@@ -986,6 +989,9 @@
         fastaPageChanged: '已停止：处理中页面地址发生变化。请返回 History 后重新核对。',
         fastaNeedDraft: '导入前请仅选择 Saved draft，并关闭已有官网弹窗和菜单。',
         fastaCloseDialog: '请先关闭官网已有弹窗和菜单，再核对或导入记录。',
+        fastaBatchMenu: '第 {index} 批操作', fastaImportBatch: '导入此批次', fastaReimportBatch: '再次导入此批次',
+        fastaReimportConfirm: '再次导入第 {index} 批（{count} 个任务）？此前导入账号：{accounts}。当前账号：{account}。将整批上传至当前账号校验并仅保存草稿，不启动预测；原账号记录保留。请确认已切换到正确账号。',
+        fastaAccountImported: '当前账号已导入此批次，或上次保存结果尚未确认。请核对历史，不重复上传；如需换账号导入，请先切换官网账号。',
         fastaConfirm: '将第 {index} 批（{count} 个任务）上传至 {account}？选择 JSON 就会发送序列进行官网校验；仅保存草稿，不启动预测。',
         fastaExisting: '官网已存在本批任务名称，未上传。请核对记录，不要重复导入。',
         fastaIdentity: '任务标题可能被复用，缺少可匹配的已保存任务 ID，未记录预测完成。请核对官网历史，不按名称猜认。',
@@ -1001,6 +1007,19 @@
     const FASTA_MANIFEST_LIMIT = 50 * 1024 * 1024;
     const FASTA_MAX_BATCHES = 10000;
     const fastaState = { error: false, busy: false, stop: false, dir: null, manifest: null, saved: false, inputChanged: false, context: null, message: '', dialog: null, progress: null };
+
+    function fastaAccountBatch(batch, account) {
+        return [batch, ...(batch.accountHistory || [])].find(item => normalizeAccountEmail(item.account) === account);
+    }
+
+    function fastaAccountBatches(manifest, account) {
+        return manifest.batches.map(batch => fastaAccountBatch(batch, account)).filter(Boolean);
+    }
+
+    function fastaHasImport(batch) {
+        return batch.jobs.some(job => job.importStatus === 'confirmed') ||
+            batch.attempts.some(attempt => attempt.saveClickedAt && attempt.result !== 'not_saved');
+    }
 
     async function fastaHash(value) {
         const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : value;
@@ -1143,7 +1162,7 @@
         }
         const found = new Map(), visited = new Set();
         const account = JSON.parse(fastaState.context).account;
-        const trackedNames = new Set(fastaState.manifest.batches.filter(batch => batch.account === account).flatMap(batch => batch.jobs.map(job => job.name)));
+        const trackedNames = new Set(fastaAccountBatches(fastaState.manifest, account).flatMap(batch => batch.jobs.map(job => job.name)));
         let scanned = 0, total = null;
         while (true) {
             fastaCheck();
@@ -1301,6 +1320,23 @@
             if (batch.index !== i + 1 || !/^[A-Za-z0-9_-]+_part\d+\.json$/.test(batch.jsonFile) || batch.fastaFile !== batch.jsonFile.replace(/\.json$/, '.fasta') ||
                 !Array.isArray(batch.jobs) || batch.jobs.length !== Math.min(30, manifest.source.records - i * 30) || !Array.isArray(batch.attempts) ||
                 (batch.account !== null && !normalizeAccountEmail(batch.account))) throw new Error(t('fastaChanged'));
+            if (batch.accountHistory !== undefined && !Array.isArray(batch.accountHistory)) throw new Error(t('fastaChanged'));
+            const accounts = new Set(batch.account ? [normalizeAccountEmail(batch.account)] : []);
+            for (const previous of batch.accountHistory || []) {
+                const account = normalizeAccountEmail(previous?.account);
+                if (!account || accounts.has(account) || previous.accountHistory !== undefined ||
+                    previous.index !== batch.index || previous.jsonFile !== batch.jsonFile || previous.fastaFile !== batch.fastaFile ||
+                    previous.jsonSha256 !== batch.jsonSha256 || previous.fastaSha256 !== batch.fastaSha256 ||
+                    !Array.isArray(previous.jobs) || previous.jobs.length !== batch.jobs.length || !Array.isArray(previous.attempts) ||
+                    previous.attempts.some(attempt => !attempt || typeof attempt !== 'object' || !normalizeAccountEmail(attempt.account))) throw new Error(t('fastaChanged'));
+                accounts.add(account);
+                for (const [position, job] of previous.jobs.entries()) {
+                    const original = batch.jobs[position];
+                    if (!job || ['record', 'header', 'name', 'chainLengths'].some(key => JSON.stringify(job[key]) !== JSON.stringify(original[key])) ||
+                        !['pending', 'confirmed'].includes(job.importStatus) ||
+                        !['unknown', 'draft', 'submitted', 'in_progress', 'completed', 'failed'].includes(job.predictionStatus)) throw new Error(t('fastaChanged'));
+                }
+            }
             for (const [position, job] of batch.jobs.entries()) {
                 if (job.record !== i * 30 + position + 1 || typeof job.name !== 'string' || (manifest.settings.sequenceFormat !== 'protein-lines' && !job.name.startsWith('af3_' + manifest.runId + '_')) || !/^[A-Za-z0-9 _:-]{1,100}$/.test(job.name) || names.has(job.name) ||
                     typeof job.header !== 'string' || !['pending', 'confirmed'].includes(job.importStatus) ||
@@ -1326,12 +1362,14 @@
                     fastaCheck(); await readSavedFastaBatch(batch);
                     const fasta = await (await dir.getFileHandle(batch.fastaFile)).getFile();
                     if (fasta.size > FASTA_FILE_LIMIT || await fastaHash(await fasta.text()) !== batch.fastaSha256) throw new Error(t('fastaChanged'));
-                    if (batch.attempts.some(attempt => !attempt || typeof attempt !== 'object' || !normalizeAccountEmail(attempt.account))) throw new Error(t('fastaChanged'));
-                    const attempt = batch.attempts.at(-1);
-                    if (attempt && !attempt.endedAt) { attempt.endedAt = new Date().toISOString(); attempt.result = 'interrupted'; }
-                    // Never trust a manually reset ready flag after a draft-save request was journalled.
-                    const confirmed = batch.jobs.filter(job => job.importStatus === 'confirmed').length;
-                    batch.status = confirmed === batch.jobs.length ? 'imported' : confirmed ? 'partial' : batch.attempts.some(item => item.saveClickedAt && !(item.result === 'not_saved' && item.endedAt)) ? 'uncertain' : 'ready';
+                    for (const record of [batch, ...(batch.accountHistory || [])]) {
+                        if (record.attempts.some(attempt => !attempt || typeof attempt !== 'object' || !normalizeAccountEmail(attempt.account))) throw new Error(t('fastaChanged'));
+                        const attempt = record.attempts.at(-1);
+                        if (attempt && !attempt.endedAt) { attempt.endedAt = new Date().toISOString(); attempt.result = 'interrupted'; }
+                        // Never trust a manually reset ready flag after a draft-save request was journalled.
+                        const confirmed = record.jobs.filter(job => job.importStatus === 'confirmed').length;
+                        record.status = confirmed === record.jobs.length ? 'imported' : confirmed ? 'partial' : record.attempts.some(item => item.saveClickedAt && !(item.result === 'not_saved' && item.endedAt)) ? 'uncertain' : 'ready';
+                    }
                 }
                 await persistFastaManifest();
             } catch (error) { Object.assign(fastaState, previous); throw error; }
@@ -1351,8 +1389,7 @@
     async function reconcileFastaHistory(found, account) {
         const now = new Date().toISOString();
         const result = { matched: 0, total: 0, unverified: 0 };
-        for (const batch of fastaState.manifest.batches) {
-            if (batch.account !== account) continue;
+        for (const batch of fastaAccountBatches(fastaState.manifest, account)) {
             result.total += batch.jobs.length;
             const confirmedBefore = batch.jobs.filter(job => job.importStatus === 'confirmed').length;
             let resolved = 0;
@@ -1410,10 +1447,12 @@
         return result;
     }
 
-    async function importFastaBatch(checkOnly = false) {
+    async function importFastaBatch(checkOnly = false, batchIndex = null) {
         if (fastaState.busy || isRunning || downloadState.busy || !fastaState.saved || !fastaState.manifest?.generationComplete) return;
-        const batch = fastaState.manifest.batches.find(item => item.status !== 'imported');
-        if (!checkOnly && (!batch || batch.status !== 'ready' || fastaState.inputChanged)) return;
+        const batch = batchIndex === null ? fastaState.manifest.batches.find(item => item.status !== 'imported') :
+            fastaState.manifest.batches.find(item => item.index === batchIndex);
+        if (!checkOnly && (!batch || (batchIndex === null && batch.status !== 'ready') || fastaState.inputChanged)) return;
+        fastaState.error = false;
         fastaState.busy = true; fastaState.stop = false; fastaState.context = null; fastaState.progress = null; fastaState.message = t('fastaChecking');
         let attempt = null, observer = null, nativeError = '', saveSent = false;
         renderFastaSection(); checkSystemStatus();
@@ -1424,7 +1463,15 @@
                 : t('fastaLogImportStart', { index: batch.index, count: batch.jobs.length, account }));
             if (Array.from(document.querySelectorAll('gdm-af-upload-dialog, [role="dialog"], mat-dialog-container, [role="menu"]')).some(downloadVisible)) throw new Error(t('fastaCloseDialog'));
             if (!checkOnly && (selected.length !== 1 || selected[0] !== 'saved draft')) throw new Error(t('fastaNeedDraft'));
-            if (!checkOnly && !confirm(t('fastaConfirm', { index: batch.index, count: batch.jobs.length, account }))) { addLog(t('logCancelled', { action: t('fastaImport') }), 'warn'); return; }
+            const accountBatch = !checkOnly && fastaAccountBatch(batch, account);
+            if (!checkOnly) {
+                const previous = [batch, ...(batch.accountHistory || [])].filter(fastaHasImport);
+                const message = batchIndex === null ? t('fastaConfirm', { index: batch.index, count: batch.jobs.length, account }) :
+                    previous.length ? t('fastaReimportConfirm', { index: batch.index, count: batch.jobs.length, account,
+                        accounts: previous.map(item => item.account).join(', ') }) : '';
+                if (message && !confirm(message)) { fastaState.message = t('logCancelled', { action: t('fastaImport') }); addLog(fastaState.message, 'warn'); return; }
+                if (accountBatch && accountBatch.status !== 'ready') throw new Error(t('fastaAccountImported'));
+            }
             fastaCheck();
             await selectHistoryScanPageSize(fastaState, getFastaContext, 'size', fastaCheck);
             addLog(t('fastaLogPageSize'));
@@ -1454,6 +1501,16 @@
             const input = dialog.querySelector('input[type="file"]');
             if (!input || dialog.querySelectorAll('.job').length) throw new Error(t('fastaPreview'));
             attempt = { startedAt: new Date().toISOString(), account, phase: 'validation', saveClickedAt: null, endedAt: null, result: 'pending' };
+            if (batch.account && normalizeAccountEmail(batch.account) !== account) {
+                // ponytail: one record per account; same-account retries still require history reconciliation.
+                const { accountHistory = [], ...previous } = batch;
+                const history = accountHistory.filter(item => item !== accountBatch);
+                history.push(previous);
+                Object.assign(batch, accountBatch || { account, status: 'ready', attempts: [], importedAt: null,
+                    jobs: batch.jobs.map(job => ({ ...job, importStatus: 'pending', predictionStatus: 'unknown',
+                        importedAt: null, submittedAt: null, completedAt: null, failedAt: null, lastSeenAt: null, modified: null, jobId: null })) });
+                batch.accountHistory = history;
+            }
             batch.account = account; batch.attempts.push(attempt); batch.status = 'validating';
             await persistFastaManifest();
             fastaState.message = t('fastaUploading', { index: batch.index }); renderFastaSection();
@@ -1531,7 +1588,7 @@
 
     function trackedFastaJob(name) {
         const account = normalizeAccountEmail(readAccountEmail());
-        const batch = fastaState.manifest?.batches.find(item => item.account === account && item.jobs.some(job => job.name === name));
+        const batch = fastaState.manifest && fastaAccountBatches(fastaState.manifest, account).find(item => item.jobs.some(job => job.name === name));
         return batch?.jobs.find(item => item.name === name);
     }
 
@@ -1574,11 +1631,27 @@
         summary.textContent = fastaState.manifest ? t('fastaLocal', { folder: fastaState.dir?.name || '', total: fastaState.manifest.summary?.generated || 0,
             imported: fastaState.manifest.summary?.imported || 0, submitted: fastaState.manifest.summary?.submitted || 0,
             completed: fastaState.manifest.summary?.completed || 0, failed: fastaState.manifest.summary?.failed || 0 }) : '';
-        const list = getUiElement('af3-fasta-batches'); list.replaceChildren();
+        const list = getUiElement('af3-fasta-batches');
+        // Keep native disclosure and focus stable across the 500ms status poll.
+        const signature = JSON.stringify([currentLanguage, busy, fastaState.saved, fastaState.inputChanged,
+            fastaState.manifest?.runId, fastaState.manifest?.revision, fastaState.manifest?.generationComplete]);
+        if (list.dataset.renderSignature === signature) return;
+        list.dataset.renderSignature = signature;
+        const open = new Set(Array.from(list.querySelectorAll('details[open]'), menu => menu.dataset.batchIndex));
+        list.replaceChildren();
         for (const item of fastaState.manifest?.batches || []) {
-            const row = document.createElement('p');
-            row.textContent = t('fastaBatch', { index: item.index, count: item.jobs.length, status: t(item.status === 'imported' ? 'fastaImported' : item.status === 'ready' ? 'fastaReady' : 'fastaUncertain') });
-            list.appendChild(row);
+            const row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:8px 0';
+            const label = document.createElement('span'); label.style.flex = '1';
+            label.textContent = t('fastaBatch', { index: item.index, count: item.jobs.length, status: t(item.status === 'imported' ? 'fastaImported' : item.status === 'ready' ? 'fastaReady' : 'fastaUncertain') });
+            // ponytail: native disclosure supplies keyboard support without a custom menu controller.
+            const menu = document.createElement('details'); menu.dataset.batchIndex = item.index; menu.open = open.has(String(item.index));
+            const toggle = document.createElement('summary'); toggle.textContent = '⋯'; toggle.style.cssText = 'cursor:pointer;padding:4px 8px;list-style:none';
+            toggle.setAttribute('aria-label', t('fastaBatchMenu', { index: item.index })); toggle.title = t('fastaBatchMenu', { index: item.index });
+            const action = document.createElement('button'); action.type = 'button';
+            action.textContent = t([item, ...(item.accountHistory || [])].some(fastaHasImport) ? 'fastaReimportBatch' : 'fastaImportBatch');
+            action.disabled = busy || !fastaState.saved || !fastaState.manifest.generationComplete || fastaState.inputChanged;
+            action.onclick = () => { menu.open = false; return importFastaBatch(false, item.index); };
+            menu.append(toggle, action); row.append(label, menu); list.appendChild(row);
         }
     }
 
@@ -3531,8 +3604,7 @@
 
     function boundDownloadJobs(manifest, account) {
         const bound = new Map();
-        for (const batch of manifest.batches) {
-            if (normalizeAccountEmail(batch.account) !== account) continue;
+        for (const batch of fastaAccountBatches(manifest, account)) {
             for (const job of batch.jobs) {
                 if (!job.jobId || typeof job.jobId !== 'string' || /[\\/\s?#\x00-\x1f\x7f]/.test(job.jobId) || job.importStatus !== 'confirmed') continue;
                 const key = 'id:' + job.jobId;
@@ -3562,7 +3634,7 @@
             const selected = downloadState.jobs.filter(job => job.id && bound.get(job.key)?.name === job.name);
             downloadState.batchOpened = fastaState.manifest; downloadState.batchOpenedRevision = fastaState.manifest.revision;
             downloadState.batchManifest = manifest;
-            const batches = manifest.batches.filter(batch => normalizeAccountEmail(batch.account) === account);
+            const batches = fastaAccountBatches(manifest, account);
             const confirmed = batches.flatMap(batch => batch.jobs).filter(job => job.importStatus === 'confirmed');
             const missing = confirmed.length - bound.size;
             addLog(t('downloadLogBatch', { folder: directory.name, batches: batches.length, bound: bound.size, missing, selected: selected.length }), selected.length ? 'info' : 'warn');
